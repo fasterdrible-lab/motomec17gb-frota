@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "motomec17",
+  "private_key_id": "c867d8a4d36d7da2e1ff68f189a1aac7a5b28f13",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCvaF6yz0nMW7CI\n0x5RKvyVRVgDBEI5qvgwggpatDcYEeRV/q16qA6XFecBfo1s30xOYm1dqpoHMhSo\n2ZHqh+setH+NAqTvuVMqma2h4t7+QlYZ0ZxVYJcW7x9xYNrgCU868u2lwhLni0D6\npZVH/PsVbpDS9x+Jm8S0PFiGWhAA2WvYn7PQiWJNey+Y7/h4sTASg8GAXsMw8zp+\npWLVxrpuIE72BX2I2RdkRdpdE/wDLxvlh/nDhNllMss1eeRoO9FI4Gg9nhI27vy4\n7vI91j5oNZjiNMaZcG1uDbqR7qJVPCc54IfxG55LQ6OFnvndlDN9c0M39HRXQ2e4\n/nG374G5AgMBAAECggEAFNYYEbOP96eYo9g4TLoHgQ/YsZsK5uDJVLHN2xJ3TPOr\nJQ/4uY5HFWlzpHjNAfbQkKsehLbkTyCC1b/qlmqI4n/cevqqbxObrn7M4mMZzChD\nJBQDNx0fNYk4OfagaWaRs9XxpvQT3M9s65lJz2BczyHwMC9M3sLTLfnRJjyClCcN\nTEWyZoOJftexOnTfqg3Ig+nLf+j7M4SJ2ngktG+hysDhw6Xuip5kl29A+HkzB9Pm\nxP11o6/7RTBoz9BsNXmV4rLloP/4enR/0bppbkGW+XBZFVFV61S31prfsUVAXlU1\nEY+hnWhngf/tLUX0WHH30TCur1ZP4L9369iUtX4EAQKBgQDZ7+9qVd6AMws2CKW8\njt0yC1FbD8TsuWK7ARXgAtfEIVHN4rvglj1oqIKcLDLYIGCV1cartYjDHExfB1Af\nBJlehfYUFHpWXWNAP1Bk2TicShyOT+hitSmDxnAploWbAYv3qhRo5zfXjcSdju9e\n21fBhCjiJX+IBBEr4wJ7ZMlOOQKBgQDOCuu3/pljhW9ZBTA4EYEKb22cNugyMkEJ\n5d4yNPLmkaSgTCdPIGrX4G7h/m4hDpwxIFqWl2KvjOGfHCKaBNZki9ebbFWR4Emp\n69EnujYj+XzTiPqAeojno2IJdqClnC2O7qTaLcPqLPUzofCx6mKU7IxQsgJAHF4c\njZcwKjfPgQKBgQDIQmawQnlzOfQ6UZXh/zEYdDfswj/E+tDTX7r3HgWgbrGZy5ey\nVrvU+MsTsLWDzbSS2l51mBk0mENBKxofdn1r0xL8/pgv1h6Ggedg1A3l51/4EUtL\nsIaWVPjp7iuU9MXl7T5V6ulwRBAAa8BfXJR1+PgMXkKi/IG+3xl/w2wLWQKBgCIS\n4ER/UDKLIIziNMUw79wf7UqGMgQLF4Jhh0taQkkrEMSJk36cZ87niK7K+r9wwRfG\nt/RreKB7ddxwNLCv2Bysm61STxxesQ/utZoSS13Lpn79CiAxI27bMB1MhuicWVRn\n1s9V/i493Rb60uk5T7A9Jj86EPE1P8MND1GhybUBAoGBAMD9XG9Xp/jxARCWlkVP\n5nevbdD/rdC/pkzqwOdlZmH9wtO4fXCkNTjpfqdqb3coP5+vBvRsIZSOBcETrEcD\nLE0egrtlr8u1pnI438NZoalvByRQzF/Eqnxvg2rm8ygIvAbySy8D1yMhs4Do2wKf\nFWRmW2RBjxy2Cg2nYfO+FWRq\n-----END PRIVATE KEY-----\n",
+  "client_email": "frota-17gb-automation@motomec17.iam.gserviceaccount.com",
+  "client_id": "108150459686635056521",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/frota-17gb-automation%40motomec17.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
