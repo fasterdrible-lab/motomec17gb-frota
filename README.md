@@ -1,17 +1,106 @@
-# 🚗 Sistema de Gestão de Frota - MotoMec17GB
+# 🚔 Mototec 17º GB — Sistema Enterprise de Gestão de Frota
 
-Sistema automatizado para gerenciar frota de veículos com alertas de manutenção, integração com Google Sheets e notificações via Telegram.
+Sistema profissional de gestão de frotas para o **17º Grupamento de Bombeiros (Polícia Militar)**, com **57 viaturas**, desenvolvido em Python (FastAPI) + React + PostgreSQL + Docker.
+
+[![CI/CD](https://github.com/fasterdrible-lab/motomec17gb-frota/actions/workflows/deploy.yml/badge.svg)](https://github.com/fasterdrible-lab/motomec17gb-frota/actions/workflows/deploy.yml)
 
 ---
 
-## 📋 Funcionalidades
+## 🎯 Funcionalidades Enterprise
 
-✅ **Integração com Google Sheets** - Leitura e escrita de dados da frota  
-✅ **API FIPE** - Consulta de preços e informações de veículos  
-✅ **Alertas Inteligentes** - Monitoramento de manutenção (óleo, pneus, bateria, inspeção)  
-✅ **Notificações Telegram** - Alertas em tempo real via bot  
-✅ **Relatórios Automáticos** - Geração de relatórios diários da frota  
-✅ **Logging Completo** - Rastreamento de todas as operações  
+✅ **API REST completa** (FastAPI + PostgreSQL) com 7 módulos  
+✅ **Dashboard React** com gráficos, estatísticas e alertas em tempo real  
+✅ **Integração com Google Sheets** — sincronização automática  
+✅ **API FIPE** — atualização de valor de mercado dos veículos  
+✅ **Bot Telegram** — alertas e registro via chat  
+✅ **Sistema de Alertas Inteligente** — crítico/aviso/info automático  
+✅ **Controle financeiro** — gastos por viatura, relatório mensal/anual  
+✅ **Ordens de Serviço** e gestão de defeitos  
+✅ **Docker containerizado** + CI/CD com GitHub Actions  
+✅ **Deploy em cloud** (Railway/Render)  
+
+---
+
+## 🏗️ Arquitetura
+
+```
+motomec17gb-frota/
+├── backend/               # Python FastAPI + PostgreSQL
+│   ├── app/
+│   │   ├── main.py        # FastAPI app principal
+│   │   ├── config.py      # Configurações de ambiente
+│   │   ├── database.py    # Conexão PostgreSQL (SQLAlchemy)
+│   │   ├── models/        # 9 modelos ORM
+│   │   ├── schemas/       # Schemas Pydantic v2
+│   │   ├── api/           # 7 routers REST
+│   │   ├── services/      # Lógica de negócio
+│   │   └── integrations/  # Google Sheets, FIPE, Telegram
+│   ├── database/
+│   │   ├── schema.sql     # Schema PostgreSQL completo
+│   │   └── migrations/    # Dados iniciais
+│   └── tests/             # Testes pytest
+├── frontend/              # React 18 + Recharts
+│   └── src/
+│       ├── pages/         # 7 páginas
+│       ├── components/    # Header, Sidebar, AlertCard, ViaturaCard
+│       └── services/api.js # Cliente Axios
+├── src/                   # Módulo Python legado (mantido)
+├── docker-compose.yml     # Orquestração local
+└── .github/workflows/     # CI/CD
+```
+
+---
+
+## 🚀 Quick Start (Docker)
+
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/fasterdrible-lab/motomec17gb-frota.git
+cd motomec17gb-frota
+
+# 2. Configurar variáveis de ambiente
+cp .env.example .env
+# Editar .env com suas credenciais
+
+# 3. Iniciar com Docker Compose
+docker-compose up -d
+
+# 4. Acessar
+# Frontend:  http://localhost:3000
+# API:       http://localhost:8000
+# Swagger:   http://localhost:8000/docs
+```
+
+## 🔧 Desenvolvimento Local (sem Docker)
+
+```bash
+# Backend
+cd backend
+pip install -r requirements.txt
+# Configure DATABASE_URL no .env
+python run.py
+
+# Frontend (outro terminal)
+cd frontend
+npm install
+npm start
+```
+
+## 📊 API Endpoints
+
+| Módulo | Endpoints |
+|--------|-----------|
+| Frota | `GET/POST /api/frota/`, `GET/PUT/DELETE /api/frota/{id}` |
+| Manutenção | `GET /api/manutencao/`, `/pendentes`, `/vencidas`, `POST`, `PUT/{id}` |
+| Abastecimento | `GET/POST /api/abastecimento/`, `GET /{id}/ultimos` |
+| Gastos | `GET/POST /api/gastos/`, `/por-viatura`, `/relatorio-mensal`, `/viatura-mais-cara` |
+| Alertas | `GET /api/alertas/`, `/criticos`, `/nao-lidos`, `PUT /{id}/marcar-lido` |
+| Relatórios | `GET /api/relatorios/frota-status`, `/diario`, `/mensal`, `/anual` |
+| Usuários | `GET/POST /api/usuarios/`, `PUT /{id}` |
+
+---
+
+## 📋 Funcionalidades (legado)
 
 ---
 

@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import frota, manutencao, abastecimento, gastos, alertas, relatorios, usuarios
 from app.database import engine, Base
+from app.config import CORS_ORIGINS
 
 
 @asynccontextmanager
@@ -22,7 +23,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

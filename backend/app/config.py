@@ -4,7 +4,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/mototec")
-SECRET_KEY = os.getenv("SECRET_KEY", "mototec-secret-key-17gb")
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+
+_raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080")
+CORS_ORIGINS: list = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 

@@ -1,32 +1,31 @@
 import logging
-from typing import Optional
+import requests as _requests
 from app.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 logger = logging.getLogger(__name__)
 
+TELEGRAM_API_BASE = "https://api.telegram.org/bot"
+
+
 class TelegramBot:
     def __init__(self):
-        self.bot = None
+        self.token = TELEGRAM_BOT_TOKEN
         self.chat_id = TELEGRAM_CHAT_ID
-        self._connect()
 
-    def _connect(self):
-        if not TELEGRAM_BOT_TOKEN:
+    def _is_configured(self) -> bool:
+        if not self.token:
             logger.warning("⚠️ TELEGRAM_BOT_TOKEN não configurado")
-            return
-        try:
-            import telegram
-            self.bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-            logger.info("✅ Telegram Bot conectado")
-        except Exception as e:
-            logger.warning(f"⚠️ Telegram não disponível: {e}")
+            return False
+        return True
 
     def enviar_mensagem(self, mensagem: str) -> bool:
-        if not self.bot or not self.chat_id:
+        if not self._is_configured() or not self.chat_id:
             return False
         try:
-            import asyncio
-            asyncio.run(self.bot.send_message(chat_id=self.chat_id, text=mensagem, parse_mode="HTML"))
+            url = f"{TELEGRAM_API_BASE}{self.token}/sendMessage"
+            payload = {"chat_id": self.chat_id, "text": mensagem, "parse_mode": "HTML"}
+            resp = _requests.post(url, json=payload, timeout=10)
+            resp.raise_for_status()
             return True
         except Exception as e:
             logger.error(f"Erro ao enviar mensagem Telegram: {e}")
@@ -38,12 +37,12 @@ class TelegramBot:
         return self.enviar_mensagem(texto)
 
     def enviar_relatorio_diario(self, relatorio: dict) -> bool:
-        texto = f"""📊 <b>RELATÓRIO DIÁRIO - 17º GB</b>
-        
-🚗 Total de viaturas: {relatorio.get('total_viaturas', 0)}
-✅ Operando: {relatorio.get('operando', 0)}
-🔧 Manutenção: {relatorio.get('manutencao', 0)}
-🔴 Alertas críticos: {relatorio.get('alertas_criticos', 0)}
-⏳ Manutenções pendentes: {relatorio.get('manutencoes_pendentes', 0)}
-"""
+        texto = (
+            "📊 <b>RELATÓRIO DIÁRIO - 17º GB</b>\n\n"
+            f"🚗 Total de viaturas: {relatorio.get('total_viaturas', 0)}\n"
+            f"✅ Operando: {relatorio.get('operando', 0)}\n"
+            f"🔧 Manutenção: {relatorio.get('manutencao', 0)}\n"
+            f"🔴 Alertas críticos: {relatorio.get('alertas_criticos', 0)}\n"
+            f"⏳ Manutenções pendentes: {relatorio.get('manutencoes_pendentes', 0)}\n"
+        )
         return self.enviar_mensagem(texto)
