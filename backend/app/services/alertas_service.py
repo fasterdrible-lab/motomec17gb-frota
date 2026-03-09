@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import TYPE_CHECKING, List, Dict, Any, Optional
 import logging
 
 from sqlalchemy.orm import Session
@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from app.models.alertas import Alerta
 from app.models.frota import Viatura
 from app.services.manutencao_service import ManutencaoService
+
+if TYPE_CHECKING:
+    from app.integrations.telegram_bot import TelegramIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +77,7 @@ class AlertasService:
         logger.info("Gerados %d novos alertas de manutenção", len(novos))
         return novos
 
-    def enviar_alertas_telegram(self, db: Session, telegram_bot: Any) -> int:
+    def enviar_alertas_telegram(self, db: Session, telegram_bot: "TelegramIntegration") -> int:
         """Send all unsent critical and urgent alerts via Telegram.
 
         Args:

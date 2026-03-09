@@ -22,10 +22,10 @@
   opacity: 0.65;
 }
 
-.alerta-item.alerta-critico  { border-left-color: var(--color-danger);  }
-.alerta-item.alerta-urgente  { border-left-color: var(--color-warning); }
-.alerta-item.alerta-aviso    { border-left-color: var(--color-info);    }
-.alerta-item.alerta-info     { border-left-color: #8b5cf6;              }
+.alerta-item.alerta-critico { border-left-color: var(--color-danger);  }
+.alerta-item.alerta-urgente { border-left-color: var(--color-warning); }
+.alerta-item.alerta-aviso { border-left-color: var(--color-info);    }
+.alerta-item.alerta-info { border-left-color: #8b5cf6;              }
 
 .alerta-icon {
   font-size: 1.4rem;

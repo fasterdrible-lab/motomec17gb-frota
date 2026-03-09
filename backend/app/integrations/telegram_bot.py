@@ -34,9 +34,18 @@ class TelegramIntegration:
             logger.error("Erro ao inicializar Telegram: %s", exc)
 
     def _run(self, coro: Any) -> Any:
-        """Run an async Telegram coroutine synchronously."""
+        """Run an async Telegram coroutine synchronously.
+
+        Creates a new event loop to avoid conflicts with any running async
+        context. Each call is intentionally isolated since Telegram sends
+        are infrequent fire-and-forget operations.
+        """
         try:
-            return asyncio.run(coro)
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(coro)
+            finally:
+                loop.close()
         except Exception as exc:
             logger.error("Telegram async error: %s", exc)
             return None

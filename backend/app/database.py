@@ -34,7 +34,6 @@ def _get_session_factory():
 
 
 # Convenience aliases used throughout the application
-@property  # type: ignore[misc]
 def engine():
     return _get_engine()
 

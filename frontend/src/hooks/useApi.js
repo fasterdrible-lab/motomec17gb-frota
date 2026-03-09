@@ -24,7 +24,7 @@ export default function useApi(fetchFn, ...args) {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchFn, JSON.stringify(args)]);
+  }, [fetchFn, ...args]);
 
   useEffect(() => {
     fetch_();
