@@ -6,7 +6,6 @@ import { formatCurrency, formatDate, currentYear, currentMonth } from '../utils/
 import { MESES } from '../services/constants';
 
 export default function Relatorios() {
-  const now = new Date();
   const [mes, setMes]   = useState(currentMonth());
   const [ano, setAno]   = useState(currentYear());
   const [tab, setTab]   = useState('mensal');

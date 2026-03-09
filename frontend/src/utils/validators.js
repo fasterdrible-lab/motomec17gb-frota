@@ -21,9 +21,9 @@ export function validateEmail(email) {
  */
 export function validatePlaca(placa) {
   if (!placa) return false;
-  const old_ = /^[A-Z]{3}-?\d{4}$/i;
-  const mercosul = /^[A-Z]{3}\d[A-Z]\d{2}$/i;
-  return old_.test(placa.trim()) || mercosul.test(placa.trim());
+  const oldPattern = /^[A-Z]{3}-?\d{4}$/i;
+  const mercosul   = /^[A-Z]{3}\d[A-Z]\d{2}$/i;
+  return oldPattern.test(placa.trim()) || mercosul.test(placa.trim());
 }
 
 /**
