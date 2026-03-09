@@ -1,0 +1,117 @@
+/* Alerts (Alertas) Styles */
+
+.alerta-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.alerta-item {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid transparent;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  transition: opacity var(--transition);
+}
+
+.alerta-item.lido {
+  opacity: 0.65;
+}
+
+.alerta-item.alerta-critico  { border-left-color: var(--color-danger);  }
+.alerta-item.alerta-urgente  { border-left-color: var(--color-warning); }
+.alerta-item.alerta-aviso    { border-left-color: var(--color-info);    }
+.alerta-item.alerta-info     { border-left-color: #8b5cf6;              }
+
+.alerta-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.alerta-body {
+  flex: 1;
+}
+
+.alerta-tipo-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-1);
+}
+
+.tipo-critico { background: #fee2e2; color: #991b1b; }
+.tipo-urgente { background: #fef3c7; color: #92400e; }
+.tipo-aviso   { background: #dbeafe; color: #1e40af; }
+.tipo-info    { background: #ede9fe; color: #5b21b6; }
+
+.alerta-mensagem {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-1);
+}
+
+.alerta-meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.alerta-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+
+/* Unread badge */
+.unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-danger);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* Alert filters */
+.alertas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+}
+
+.alertas-filters {
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-10);
+  color: var(--color-text-muted);
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-3);
+}

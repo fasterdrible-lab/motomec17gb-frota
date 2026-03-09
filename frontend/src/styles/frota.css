@@ -1,0 +1,67 @@
+/* Fleet (Frota) Table Styles */
+
+.frota-filters {
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: var(--spacing-4);
+}
+
+.frota-filters .form-group {
+  min-width: 160px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-input-wrapper .search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.search-input-wrapper .form-control {
+  padding-left: 34px;
+}
+
+/* Status badges for viaturas */
+.status-operacional  { background: #d1fae5; color: #065f46; }
+.status-manutencao   { background: #fef3c7; color: #92400e; }
+.status-inativo      { background: #f3f4f6; color: #374151; }
+.status-reserva      { background: #dbeafe; color: #1e40af; }
+.status-critico      { background: #fee2e2; color: #991b1b; }
+
+/* Prefixo column emphasis */
+td.td-prefixo {
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  color: var(--color-secondary);
+}
+
+/* Action buttons in table */
+.table-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+/* FIPE value */
+.fipe-value {
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+/* Row count */
+.results-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  padding: var(--spacing-2) 0;
+}
