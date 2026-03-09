@@ -1,0 +1,69 @@
+:root {
+  --color-primary: #1a73e8;
+  --color-primary-dark: #1558b0;
+  --color-primary-light: #4a90e8;
+  --color-secondary: #34a853;
+  --color-secondary-dark: #257a3e;
+  --color-secondary-light: #5cbf7a;
+  --color-warning: #fbbc04;
+  --color-warning-dark: #c9960a;
+  --color-error: #ea4335;
+  --color-error-dark: #b52d21;
+  --color-info: #4285f4;
+
+  --color-bg: #f5f7fa;
+  --color-bg-white: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-sidebar: #1e2a3a;
+  --color-bg-header: #ffffff;
+
+  --color-text-primary: #202124;
+  --color-text-secondary: #5f6368;
+  --color-text-muted: #9aa0a6;
+  --color-text-inverse: #ffffff;
+  --color-text-link: #1a73e8;
+
+  --color-border: #dadce0;
+  --color-border-light: #f1f3f4;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-shadow-md: rgba(0, 0, 0, 0.15);
+
+  --font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.125rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-full: 9999px;
+
+  --sidebar-width: 240px;
+  --header-height: 64px;
+
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.25s ease;
+  --transition-slow: 0.4s ease;
+
+  --z-sidebar: 100;
+  --z-header: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+}
