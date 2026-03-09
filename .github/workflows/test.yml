@@ -8,6 +8,9 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+
 jobs:
   backend-tests:
     name: Testes do Backend
