@@ -44,4 +44,12 @@ logs/
 
 # OS
 .DS_Store
-Thumbs.db*.db
+Thumbs.db
+*.db
+
+# Node / React
+frontend/node_modules/
+frontend/build/
+
+# Docker
+.dockerignore
