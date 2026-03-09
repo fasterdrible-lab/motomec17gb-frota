@@ -58,7 +58,7 @@ function Relatorios() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `relatorio-frota-${now.toISOString().split('T')[0]}.txt`;
+    link.download = `relatorio-frota-${now.toLocaleDateString('pt-BR').replace(/\//g, '-')}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
