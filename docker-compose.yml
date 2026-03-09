@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: motomec17gb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: motomec17gb
+      POSTGRES_USER: motomec
+      POSTGRES_PASSWORD: motomec_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U motomec -d motomec17gb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - motomec_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: motomec17gb-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://motomec:motomec_dev_password@postgres:5432/motomec17gb
+      GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID:-}
+      GOOGLE_CREDENTIALS_PATH: config/credentials.json
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      FIPE_API_URL: https://parallelum.com.br/fipe/api/v1
+      SECRET_KEY: ${SECRET_KEY:-changeme_use_openssl_rand_hex_32}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      ALERT_CHECK_INTERVAL: 1
+      DEBUG: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config:ro
+      - ./backend/logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - motomec_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: motomec17gb-frontend
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - motomec_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  motomec_network:
+    driver: bridge
