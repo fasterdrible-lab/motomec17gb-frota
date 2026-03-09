@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -25,14 +25,15 @@ async def get_alerts(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_active_user),
 ):
-    """Return pending maintenance records with a next service date in the past or within 7 days."""
+    """Return maintenance records due in the next 7 days or already overdue."""
     now = datetime.now(timezone.utc)
+    alert_window = now + timedelta(days=7)
     records = (
         db.query(Maintenance)
         .filter(
             Maintenance.status != MaintenanceStatus.concluido,
             Maintenance.data_proximo_servico.isnot(None),
-            Maintenance.data_proximo_servico <= now,
+            Maintenance.data_proximo_servico <= alert_window,
         )
         .order_by(Maintenance.data_proximo_servico.asc())
         .all()

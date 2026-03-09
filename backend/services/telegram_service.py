@@ -38,9 +38,11 @@ class TelegramService:
             import asyncio
 
             bot = self._get_bot()
-            asyncio.get_event_loop().run_until_complete(
-                bot.send_message(chat_id=self.chat_id, text=text, parse_mode="HTML")
-            )
+
+            async def _send():
+                await bot.send_message(chat_id=self.chat_id, text=text, parse_mode="HTML")
+
+            asyncio.run(_send())
             return True
         except Exception as exc:
             logger.warning("Failed to send Telegram message: %s", exc)
@@ -76,7 +78,11 @@ class TelegramService:
             import asyncio
 
             bot = self._get_bot()
-            me = asyncio.get_event_loop().run_until_complete(bot.get_me())
+
+            async def _get_me():
+                return await bot.get_me()
+
+            me = asyncio.run(_get_me())
             return {"ok": True, "bot_username": me.username, "bot_id": me.id}
         except Exception as exc:
             logger.warning("Telegram connection test failed: %s", exc)

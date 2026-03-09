@@ -52,10 +52,8 @@ async def create_driver(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_active_user),
 ):
-    if db.query(Driver).filter(Driver.cpf == driver_in.cpf).first():
-        raise HTTPException(status_code=400, detail="Driver with this CPF already exists")
-    if db.query(Driver).filter(Driver.cnh == driver_in.cnh).first():
-        raise HTTPException(status_code=400, detail="Driver with this CNH already exists")
+    if db.query(Driver).filter((Driver.cpf == driver_in.cpf) | (Driver.cnh == driver_in.cnh)).first():
+        raise HTTPException(status_code=400, detail="Driver with this CPF or CNH already exists")
     driver = Driver(**driver_in.model_dump())
     db.add(driver)
     db.commit()

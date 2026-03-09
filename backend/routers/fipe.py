@@ -28,7 +28,7 @@ async def _fipe_get(path: str) -> Any:
     url = f"{settings.FIPE_API_URL}/{path}"
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = client.get(url)
+            response = await client.get(url)
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
