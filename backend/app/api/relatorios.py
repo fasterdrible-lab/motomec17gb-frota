@@ -18,7 +18,7 @@ def status_frota(db: Session = Depends(get_db)):
     manutencao = db.query(func.count(Viatura.id)).filter(Viatura.status == StatusViatura.manutencao).scalar()
     baixada = db.query(func.count(Viatura.id)).filter(Viatura.status == StatusViatura.baixada).scalar()
     reserva = db.query(func.count(Viatura.id)).filter(Viatura.status == StatusViatura.reserva).scalar()
-    alertas_criticos = db.query(func.count(Alerta.id)).filter(Alerta.nivel == NivelAlerta.critico, Alerta.lido == False).scalar()
+    alertas_criticos = db.query(func.count(Alerta.id)).filter(Alerta.nivel == NivelAlerta.critico, Alerta.lido.is_(False)).scalar()
     manutencoes_pendentes = db.query(func.count(ManutencaoPreventiva.id)).filter(ManutencaoPreventiva.status == StatusManutencao.pendente).scalar()
 
     return {

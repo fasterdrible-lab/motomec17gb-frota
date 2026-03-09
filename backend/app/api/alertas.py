@@ -18,7 +18,7 @@ def listar_criticos(db: Session = Depends(get_db)):
 
 @router.get("/nao-lidos", response_model=List[AlertaResponse])
 def listar_nao_lidos(db: Session = Depends(get_db)):
-    return db.query(Alerta).filter(Alerta.lido == False).order_by(Alerta.data_criacao.desc()).all()
+    return db.query(Alerta).filter(Alerta.lido.is_(False)).order_by(Alerta.data_criacao.desc()).all()
 
 @router.put("/{alerta_id}/marcar-lido", response_model=AlertaResponse)
 def marcar_lido(alerta_id: int, db: Session = Depends(get_db)):

@@ -32,6 +32,6 @@ class RelatorioService:
         return {"ano": ano, "total_gastos": total}
 
     def _resumo_alertas(self) -> dict:
-        total = self.db.query(func.count(Alerta.id)).filter(Alerta.lido == False).scalar()
-        criticos = self.db.query(func.count(Alerta.id)).filter(Alerta.nivel == NivelAlerta.critico, Alerta.lido == False).scalar()
+        total = self.db.query(func.count(Alerta.id)).filter(Alerta.lido.is_(False)).scalar()
+        criticos = self.db.query(func.count(Alerta.id)).filter(Alerta.nivel == NivelAlerta.critico, Alerta.lido.is_(False)).scalar()
         return {"total_nao_lidos": total, "criticos": criticos}
