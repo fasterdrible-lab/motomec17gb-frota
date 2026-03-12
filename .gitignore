@@ -4,8 +4,8 @@
 .env.*.local
 
 # Credenciais
-#config/credentials.json
-#credentials.json
+config/credentials.json
+credentials.json
 
 # Python
 __pycache__/
