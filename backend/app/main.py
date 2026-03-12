@@ -1,15 +1,25 @@
 from contextlib import asynccontextmanager
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import frota, manutencao, abastecimento, gastos, alertas, relatorios, usuarios
 from app.database import engine, Base
 from app.config import CORS_ORIGINS
+from app.services.sheet_sync import start_sync_task
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Criar tabelas
     Base.metadata.create_all(bind=engine)
+    
+    # Iniciar sincronização Google Sheets
+    sync_task = asyncio.create_task(start_sync_task())
+    
     yield
+    
+    # Cleanup ao desligar
+    sync_task.cancel()
 
 
 app = FastAPI(
