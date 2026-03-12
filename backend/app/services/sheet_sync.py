@@ -18,7 +18,7 @@ SYNC_INTERVAL = 300  # 5 minutos
 async def get_google_sheets_client():
     """Autentica e retorna cliente do Google Sheets"""
     try:
-        creds_path = os.path.join(os.path.dirname(__file__), '../../config/credentials.json')
+        creds_path = '/app/config/credentials.json'
         
         creds = Credentials.from_service_account_file(
             creds_path,
