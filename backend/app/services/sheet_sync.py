@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import gspread
 from google.oauth2.service_account import Credentials
 from app.database import SessionLocal
-from app.models import Viatura, Manutencao, Alerta
+from app.models import Viatura, Alerta
 import os
 import json
 
