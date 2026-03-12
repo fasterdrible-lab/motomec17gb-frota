@@ -14,7 +14,7 @@ function Header() {
   return (
     <header className="header">
       <div className="header-left">
-        <h2>🚔 Mototec 17º GB — Gestão de Frota</h2>
+        <h2>🚔 MOTOMEC 17º GB — Gestão de Frota</h2>
       </div>
       <div className="header-right">
         {status && (

@@ -17,7 +17,7 @@ function Sidebar() {
       <div className="sidebar-brand">
         <span className="sidebar-logo">🚔</span>
         <div>
-          <div className="sidebar-title">Mototec</div>
+          <div className="sidebar-title">MOTOMEC</div>
           <div className="sidebar-subtitle">17º GB</div>
         </div>
       </div>

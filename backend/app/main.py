@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
-    title="Mototec 17º GB - Sistema de Gestão de Frota",
+    title="MOTOMEC 17º GB - Sistema de Gestão de Frota",
     description="API para gerenciamento da frota do 17º Grupamento de Bombeiros",
     version="2.0.0",
     docs_url="/docs",
@@ -39,7 +39,7 @@ app.include_router(usuarios.router, prefix="/api/usuarios", tags=["Usuários"])
 
 @app.get("/")
 def root():
-    return {"message": "Mototec 17º GB - Sistema de Gestão de Frota v2.0", "status": "online"}
+    return {"message": "MOTOMEC 17º GB - Sistema de Gestão de Frota v2.0", "status": "online"}
 
 @app.get("/health")
 def health():
