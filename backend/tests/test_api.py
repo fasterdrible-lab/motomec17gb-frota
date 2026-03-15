@@ -253,3 +253,50 @@ def test_listar_usuarios(client):
     resp = client.get("/api/usuarios/")
     assert resp.status_code == 200
     assert len(resp.json()) >= 1
+
+
+# ── Autenticação ─────────────────────────────────────────────
+
+def test_login_sucesso(client):
+    resp = client.post(
+        "/api/auth/login",
+        data={"username": "admin.teste@17gb.com", "password": "senha123"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+
+def test_login_senha_incorreta(client):
+    resp = client.post(
+        "/api/auth/login",
+        data={"username": "admin.teste@17gb.com", "password": "senhaerrada"},
+    )
+    assert resp.status_code == 401
+
+
+def test_login_usuario_inexistente(client):
+    resp = client.post(
+        "/api/auth/login",
+        data={"username": "naoexiste@17gb.com", "password": "qualquer"},
+    )
+    assert resp.status_code == 401
+
+
+def test_me_com_token_valido(client):
+    login_resp = client.post(
+        "/api/auth/login",
+        data={"username": "admin.teste@17gb.com", "password": "senha123"},
+    )
+    assert login_resp.status_code == 200
+    token = login_resp.json()["access_token"]
+    resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["email"] == "admin.teste@17gb.com"
+
+
+def test_me_sem_token(client):
+    resp = client.get("/api/auth/me")
+    assert resp.status_code == 401
