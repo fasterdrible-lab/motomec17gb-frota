@@ -44,7 +44,7 @@ export async function getStatusOperacional() {
   const rows = [
     ...(sgb1.table?.rows || []),
     ...(sgb2.table?.rows || []),
-  ].filter(r => getCell(r, 0)); // prefixo não vazio
+  ].filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))); // prefixo não vazio
 
   let operando = 0, baixadas = 0, reserva = 0;
   rows.forEach(r => {
@@ -78,7 +78,7 @@ export async function getAlertas() {
   const rows = [
     ...(sgb1.table?.rows || []),
     ...(sgb2.table?.rows || []),
-  ].filter(r => getCell(r, 0));
+  ].filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
 
   const alertas = [];
   const hoje = new Date();
@@ -161,8 +161,8 @@ export async function getFrotaCompleta() {
     fetchSheetData('2SGB'),
   ]);
   return [
-    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0)).map(r => mapViaturaRow(r, '1SGB')),
-    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0)).map(r => mapViaturaRow(r, '2SGB')),
+    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))).map(r => mapViaturaRow(r, '1SGB')),
+    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))).map(r => mapViaturaRow(r, '2SGB')),
   ];
 }
 
@@ -172,8 +172,8 @@ export async function getManutencoes() {
     fetchSheetData('2SGB'),
   ]);
   const allRows = [
-    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0)),
-    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0)),
+    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
+    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
   ];
 
   const manutencoes = [];
@@ -216,7 +216,7 @@ export async function getAlertasDetalhados() {
   const rows = [
     ...(sgb1.table?.rows || []),
     ...(sgb2.table?.rows || []),
-  ].filter(r => getCell(r, 0));
+  ].filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
 
   const alertas = [];
   const hoje = new Date();
@@ -316,7 +316,7 @@ export async function getDashboardMacro() {
   const frotaRows = [
     ...(sgb1.status === 'fulfilled' ? (sgb1.value.table?.rows || []) : []),
     ...(sgb2.status === 'fulfilled' ? (sgb2.value.table?.rows || []) : []),
-  ].filter(r => getCell(r, 0));
+  ].filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
 
   // 1. Status viaturas
   let operando = 0, baixadas = 0, reserva = 0;
