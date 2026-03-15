@@ -15,7 +15,11 @@ function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-logo">🚔</span>
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Bras%C3%A3o_do_Corpo_de_Bombeiros_Militar_do_Estado_de_S%C3%A3o_Paulo.svg/240px-Bras%C3%A3o_do_Corpo_de_Bombeiros_Militar_do_Estado_de_S%C3%A3o_Paulo.svg.png"
+          alt="CBMESP"
+          style={{ width: 60, height: 60, objectFit: 'contain' }}
+        />
         <div>
           <div className="sidebar-title">MOTOMEC</div>
           <div className="sidebar-subtitle">17º GB</div>
