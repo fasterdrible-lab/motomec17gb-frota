@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getDadosRelatorio } from '../services/api';
+import { getDadosRelatorio } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
 function Relatorios() {
