@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAlertasDetalhados } from '../services/googleSheets';
-import '../styles/Dashboard.css';
+import { getAlertasDetalhados } from '../services/api';
+import '../styles/dashboard.css';
 
 function Alertas() {
   const [alertas, setAlertas] = useState([]);

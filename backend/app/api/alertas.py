@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 from typing import List
 from datetime import datetime
 from app.database import get_db
@@ -8,9 +9,23 @@ from app.schemas.alertas_schema import AlertaCreate, AlertaResponse
 
 router = APIRouter()
 
+@router.get("/resumo")
+def resumo_alertas(db: Session = Depends(get_db)):
+    total = db.query(func.count(Alerta.id)).scalar()
+    criticos = db.query(func.count(Alerta.id)).filter(Alerta.nivel == NivelAlerta.critico).scalar()
+    avisos = db.query(func.count(Alerta.id)).filter(Alerta.nivel == NivelAlerta.aviso).scalar()
+    return [
+        {"tipo": "🚨 CRÍTICO", "nivel": "critico", "count": criticos},
+        {"tipo": "⚠️ AVISO", "nivel": "aviso", "count": avisos},
+    ]
+
 @router.get("/", response_model=List[AlertaResponse])
 def listar_alertas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(Alerta).order_by(Alerta.data_criacao.desc()).offset(skip).limit(limit).all()
+    items = db.query(Alerta).options(joinedload(Alerta.viatura)).order_by(Alerta.data_criacao.desc()).offset(skip).limit(limit).all()
+    for item in items:
+        if item.viatura:
+            item.prefixo = item.viatura.prefixo
+    return items
 
 @router.get("/criticos", response_model=List[AlertaResponse])
 def listar_criticos(db: Session = Depends(get_db)):

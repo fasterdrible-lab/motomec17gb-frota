@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getStatusOperacional } from '../services/googleSheets';
-import '../styles/Dashboard.css';
+import '../styles/dashboard.css';
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1q6wy9iO4aRDKMBPzxR9cISE7pCmUuIaYSRBdhUNlM4Q';
 

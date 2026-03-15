@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getDadosRelatorio } from '../services/googleSheets';
-import '../styles/Dashboard.css';
+import { getDadosRelatorio } from '../services/api';
+import '../styles/dashboard.css';
 
 function Relatorios() {
   const [dados, setDados] = useState(null);

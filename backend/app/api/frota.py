@@ -1,11 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from app.database import get_db
-from app.models.frota import Viatura
+from app.models.frota import Viatura, StatusViatura
 from app.schemas.frota_schema import ViaturaCreate, ViaturaUpdate, ViaturaResponse
 
 router = APIRouter()
+
+
+@router.get("/status-operacional")
+def status_operacional(db: Session = Depends(get_db)):
+    total = db.query(func.count(Viatura.id)).scalar()
+    operando = db.query(func.count(Viatura.id)).filter(Viatura.status == StatusViatura.operando).scalar()
+    baixadas = db.query(func.count(Viatura.id)).filter(Viatura.status == StatusViatura.baixada).scalar()
+    reserva = db.query(func.count(Viatura.id)).filter(Viatura.status == StatusViatura.reserva).scalar()
+    return {"total": total, "operando": operando, "baixadas": baixadas, "reserva": reserva}
+
 
 @router.get("/", response_model=List[ViaturaResponse])
 def listar_viaturas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

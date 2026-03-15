@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import frota, manutencao, abastecimento, gastos, alertas, relatorios, usuarios, auth
+from app.api import frota, manutencao, abastecimento, gastos, alertas, relatorios, usuarios, auth, tarefas
 from app.database import engine, Base
 from app.config import CORS_ORIGINS
 from app.services.sheet_sync import start_sync_task
@@ -48,6 +48,7 @@ app.include_router(gastos.router, prefix="/api/gastos", tags=["Gastos"])
 app.include_router(alertas.router, prefix="/api/alertas", tags=["Alertas"])
 app.include_router(relatorios.router, prefix="/api/relatorios", tags=["Relatórios"])
 app.include_router(usuarios.router, prefix="/api/usuarios", tags=["Usuários"])
+app.include_router(tarefas.router, prefix="/api/tarefas", tags=["Tarefas"])
 
 @app.get("/")
 def root():

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime
 from app.database import get_db
@@ -10,7 +10,11 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ManutencaoResponse])
 def listar_manutencoes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(ManutencaoPreventiva).offset(skip).limit(limit).all()
+    items = db.query(ManutencaoPreventiva).options(joinedload(ManutencaoPreventiva.viatura)).offset(skip).limit(limit).all()
+    for item in items:
+        if item.viatura:
+            item.prefixo = item.viatura.prefixo
+    return items
 
 @router.get("/pendentes", response_model=List[ManutencaoResponse])
 def listar_pendentes(db: Session = Depends(get_db)):

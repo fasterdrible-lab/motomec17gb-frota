@@ -285,3 +285,139 @@ export async function getDadosRelatorio() {
     geradoEm: new Date(),
   };
 }
+
+export async function getDashboardMacro() {
+  const [sgb1, sgb2, tarefasData, manutencoesData, osData] = await Promise.allSettled([
+    fetchSheetData('1SGB'),
+    fetchSheetData('2SGB'),
+    fetchSheetData('TAREFAS'),
+    fetchSheetData('RIV 2026'),
+    fetchSheetData('OS'),
+  ]);
+
+  const frotaRows = [
+    ...(sgb1.status === 'fulfilled' ? (sgb1.value.table?.rows || []) : []),
+    ...(sgb2.status === 'fulfilled' ? (sgb2.value.table?.rows || []) : []),
+  ].filter(r => getCell(r, 0));
+
+  // 1. Status viaturas
+  let operando = 0, baixadas = 0, reserva = 0;
+  frotaRows.forEach(r => {
+    const s = String(getCell(r, 15)).toUpperCase();
+    if (s.includes('BAIXA')) baixadas++;
+    else if (s.includes('RESERVA')) reserva++;
+    else operando++;
+  });
+
+  // 2. Total de alertas
+  const hoje = new Date();
+  let totalAlertas = 0;
+  frotaRows.forEach(r => {
+    const kmAtual = parseFloat(getCell(r, 2)) || 0;
+    const bateria = String(getCell(r, 11)).toUpperCase();
+    if (bateria.includes('VENCIDO') || bateria.includes('A VENCER')) totalAlertas++;
+    const lavagem = getCell(r, 12);
+    if (lavagem) {
+      const parts = String(lavagem).split('/');
+      if (parts.length === 3) {
+        const dataLav = new Date(parts[2], parts[1] - 1, parts[0]);
+        const dias = Math.floor((hoje - dataLav) / MS_PER_DAY);
+        if (dias >= WASHING_WARNING_DAYS) totalAlertas++;
+      }
+    }
+    const kmPneu = parseFloat(getCell(r, 13)) || 0;
+    if (kmPneu > 0 && (kmAtual >= kmPneu || kmPneu - kmAtual <= KM_THRESHOLD_WARNING)) totalAlertas++;
+    const kmEmb = parseFloat(getCell(r, 14)) || 0;
+    if (kmEmb > 0 && (kmAtual >= kmEmb || kmEmb - kmAtual <= KM_THRESHOLD_WARNING)) totalAlertas++;
+  });
+
+  // 3. Tarefas pendentes
+  const tarefasRows = tarefasData.status === 'fulfilled'
+    ? (tarefasData.value.table?.rows || []).filter(r => getCell(r, 2))
+    : [];
+  let tarefasPendentes = 0;
+  tarefasRows.forEach(r => {
+    const s = String(getCell(r, 4)).toUpperCase();
+    if (!s.includes('CONCLU')) tarefasPendentes++;
+  });
+
+  // 4. Manutenções e gastos (aba MANUTENCOES)
+  const mRows = manutencoesData.status === 'fulfilled'
+    ? (manutencoesData.value.table?.rows || []).filter(r => getCell(r, 0))
+    : [];
+  const gastosPorViatura = {};
+  let gastoTotal = 0;
+  let manutencoesRealizadas = 0;
+  mRows.forEach(r => {
+    const prefixo = getCell(r, 0);
+    if (!prefixo) return;
+    // Coluna G (índice 6) = VALOR, pode vir como número ou string "R$11.099,70"
+    const custoRaw = getCell(r, 6);
+    const custo = typeof custoRaw === 'number'
+      ? custoRaw
+      : parseFloat(String(custoRaw).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    gastosPorViatura[prefixo] = (gastosPorViatura[prefixo] || 0) + custo;
+    gastoTotal += custo;
+    manutencoesRealizadas++; // toda linha com prefixo = manutenção realizada
+  });
+  if (mRows.length === 0) {
+    frotaRows.forEach(r => {
+      const kmAtual = parseFloat(getCell(r, 2)) || 0;
+      [9, 10, 13, 14].forEach(col => {
+        const kmLimite = parseFloat(getCell(r, col)) || 0;
+        if (kmLimite > 0 && kmAtual >= kmLimite) manutencoesRealizadas++;
+      });
+    });
+  }
+  let viaturaTopGasto = { prefixo: '—', valor: 0 };
+  const entries = Object.entries(gastosPorViatura);
+  if (entries.length > 0) {
+    const [pref, val] = entries.reduce((a, b) => b[1] > a[1] ? b : a);
+    viaturaTopGasto = { prefixo: pref, valor: val };
+  }
+
+  // 5. Viatura mais velha
+  let viaturasMaisVelha = { prefixo: '—', ano: '—' };
+  let menorAno = Infinity;
+  frotaRows.forEach(r => {
+    const prefixo = getCell(r, 0);
+    const ano = parseInt(getCell(r, 5)) || 0;
+    if (ano > 1900 && ano < menorAno) {
+      menorAno = ano;
+      viaturasMaisVelha = { prefixo, ano };
+    }
+  });
+
+  // 6. Tipos de viatura
+  const tiposViatura = {};
+  frotaRows.forEach(r => {
+    const prefixo = String(getCell(r, 0));
+    const match = prefixo.match(/^([A-Za-z]+)/);
+    const tipo = match ? match[1].toUpperCase() : 'OUTRO';
+    tiposViatura[tipo] = (tiposViatura[tipo] || 0) + 1;
+  });
+
+  // 7. OS Status
+  const osRows = osData.status === 'fulfilled'
+    ? (osData.value.table?.rows || []).filter(r => getCell(r, 0))
+    : [];
+  let osAberta = 0, osFechada = 0, osAndamento = 0;
+  osRows.forEach(r => {
+    const s = String(getCell(r, 3)).toUpperCase();
+    if (s.includes('ABERTA')) osAberta++;
+    else if (s.includes('FECHADA') || s.includes('CONCLU')) osFechada++;
+    else if (s.includes('ANDAMENTO')) osAndamento++;
+  });
+
+  return {
+    frota: { total: frotaRows.length, operando, baixadas, reserva },
+    totalAlertas,
+    tarefasPendentes,
+    gastoTotal,
+    manutencoesRealizadas,
+    viaturaTopGasto,
+    viaturasMaisVelha,
+    tiposViatura,
+    os: { total: osRows.length, aberta: osAberta, fechada: osFechada, andamento: osAndamento },
+  };
+}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getManutencoes } from '../services/googleSheets';
-import '../styles/Dashboard.css';
+import { getManutencoes } from '../services/api';
+import '../styles/dashboard.css';
 
 function Manutencao() {
   const [manutencoes, setManutencoes] = useState([]);

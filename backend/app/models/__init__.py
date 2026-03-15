@@ -8,3 +8,4 @@ from app.models.ordens_servico import OrdemServico  # noqa: F401
 from app.models.alertas import Alerta  # noqa: F401
 from app.models.usuarios import Usuario  # noqa: F401
 from app.models.historico_km import HistoricoKm  # noqa: F401
+from app.models.tarefas import Tarefa  # noqa: F401
