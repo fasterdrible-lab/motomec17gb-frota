@@ -5,12 +5,13 @@
 
 -- Usuários iniciais (senhas em bcrypt — placeholder para troca em produção)
 -- Senha padrão de todos: Admin@2024
-INSERT INTO usuarios (nome, email, hashed_password, cargo, unidade, role) VALUES
-    ('Administrador Sistema',  'admin@17gb.bombeiros.gov.br',    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Administrador',         '1SGB', 'admin'),
-    ('Sgt Mecânico Silva',     'mecanico.silva@17gb.bombeiros.gov.br', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Sargento Mecânico',    '1SGB', 'editor'),
-    ('Cb Motorista Santos',    'motorista.santos@17gb.bombeiros.gov.br','$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Cabo Motorista',       '2SGB', 'editor'),
-    ('Ten Comandante Pereira', 'comandante@17gb.bombeiros.gov.br',     '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Tenente Comandante',   '1SGB', 'leitor'),
-    ('Sd Apoio Costa',         'apoio.costa@17gb.bombeiros.gov.br',    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Soldado de Apoio',     '2SGB', 'leitor')
+INSERT INTO usuarios (nome, email, senha_hash, cargo, unidade, ativo) VALUES
+    ('Administrador Sistema',  'admin@17gb.bombeiros.gov.br',         '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Administrador',      '1SGB', true),
+    ('Administrador',          'admin@bombeiros.gov.br',              '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Administrador',      '17GB', true),
+    ('Sgt Mecânico Silva',     'mecanico.silva@17gb.bombeiros.gov.br','$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Sargento Mecânico',  '1SGB', true),
+    ('Cb Motorista Santos',    'motorista.santos@17gb.bombeiros.gov.br','$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Cabo Motorista',     '2SGB', true),
+    ('Ten Comandante Pereira', 'comandante@17gb.bombeiros.gov.br',    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Tenente Comandante', '1SGB', true),
+    ('Sd Apoio Costa',         'apoio.costa@17gb.bombeiros.gov.br',   '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZfSJCZ9wL0i0KCE4HCuKS', 'Soldado de Apoio',   '2SGB', true)
 ON CONFLICT (email) DO NOTHING;
 
 -- Viaturas de exemplo
