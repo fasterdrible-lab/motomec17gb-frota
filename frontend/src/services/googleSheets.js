@@ -123,16 +123,16 @@ function normalizeStatus(rawStatus) {
 
 function mapViaturaRow(r, sgb) {
   return {
-    prefixo: getCell(r, 0),
-    placa: getCell(r, 1),
-    kmAtual: parseFloat(getCell(r, 2)) || 0,
-    modelo: getCell(r, 3),
-    marca: getCell(r, 4),
-    ano: getCell(r, 5),
-    cor: getCell(r, 6),
-    chassi: getCell(r, 7),
-    renavam: getCell(r, 8),
-    status: normalizeStatus(getCell(r, 15)),
+    prefixo: getCell(r, 0),       // A: VTR🚒
+    placa: getCell(r, 1),          // B: PLACA
+    kmAtual: parseFloat(getCell(r, 2)) || 0, // C: KM ATUAL
+    garantiaAte: r.c && r.c[3] && r.c[3].f ? r.c[3].f : '', // D: VTR EM GARANTIA (data formatada)
+    proxTrocaOleoKm: getCell(r, 4), // E: PRÓX TROCA ÓLEO (KM)
+    statusOleoKm: getCell(r, 8),    // I: STATUS ÓLEO KM
+    statusOleoTempo: getCell(r, 9), // J: STATUS ÓLEO TEMPO
+    statusFreio: getCell(r, 10),    // K: STATUS REVISÃO FREIO
+    statusBateria: getCell(r, 11),  // L: STATUS BATERIA
+    status: normalizeStatus(getCell(r, 15)), // P: SATUS OPERACIONAL
     sgb,
   };
 }
@@ -149,45 +149,28 @@ export async function getFrotaCompleta() {
 }
 
 export async function getManutencoes() {
-  const [sgb1, sgb2] = await Promise.all([
-    fetchSheetData('1SGB'),
-    fetchSheetData('2SGB'),
-  ]);
-  const allRows = [
-    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0)),
-    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0)),
-  ];
-
-  const manutencoes = [];
-
-  allRows.forEach(r => {
-    const prefixo = getCell(r, 0);
-    const kmAtual = parseFloat(getCell(r, 2)) || 0;
-
-    const checkKm = (col, tipo) => {
-      const kmLimite = parseFloat(getCell(r, col)) || 0;
-      if (kmLimite <= 0) return;
-      if (kmAtual >= kmLimite) {
-        manutencoes.push({ prefixo, tipo, status: 'vencida', detalhe: `KM atual ${kmAtual} ≥ limite ${kmLimite}` });
-      } else if (kmLimite - kmAtual <= KM_THRESHOLD_PENDING) {
-        manutencoes.push({ prefixo, tipo, status: 'pendente', detalhe: `Faltam ${kmLimite - kmAtual} km` });
-      }
+  const data = await fetchSheetData('RIV_2026');
+  const rows = (data.table?.rows || []).filter(r => getCell(r, 0));
+  return rows.map((r, i) => {
+    // Data vem como objeto Date do Google Sheets (Date(2026,1,9) = 09/02/2026)
+    const dataRaw = r.c && r.c[2] && r.c[2].f ? r.c[2].f : '';
+    // Valor pode ser número ou string "R$3.270,06"
+    const valorRaw = getCell(r, 6);
+    const valor = typeof valorRaw === 'number'
+      ? valorRaw
+      : parseFloat(String(valorRaw).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    return {
+      id: i + 1,
+      prefixo: getCell(r, 0),
+      neo: getCell(r, 1),
+      data: dataRaw,
+      km: getCell(r, 3),
+      servicos: getCell(r, 4),
+      empresa: getCell(r, 5),
+      valor,
+      valorFormatado: valor > 0 ? valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -',
     };
-
-    checkKm(9, 'Óleo Motor');
-    checkKm(10, 'Filtro Ar');
-    checkKm(13, 'Pneu');
-    checkKm(14, 'Embreagem');
-
-    const bateria = String(getCell(r, 11)).toUpperCase();
-    if (bateria.includes('VENCIDO')) {
-      manutencoes.push({ prefixo, tipo: 'Bateria', status: 'vencida', detalhe: 'Bateria vencida' });
-    } else if (bateria.includes('A VENCER')) {
-      manutencoes.push({ prefixo, tipo: 'Bateria', status: 'pendente', detalhe: 'Bateria a vencer' });
-    }
   });
-
-  return manutencoes;
 }
 
 export async function getAlertasDetalhados() {
@@ -291,7 +274,7 @@ export async function getDashboardMacro() {
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS'),
-    fetchSheetData('RIV 2026'),
+    fetchSheetData('RIV_2026'),
     fetchSheetData('OS'),
   ]);
 

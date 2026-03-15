@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getManutencoes } from '../services/api';
+import { getManutencoes } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
 function Manutencao() {
@@ -27,12 +27,15 @@ function Manutencao() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const filtradas = tab === 'todas' ? manutencoes : manutencoes.filter(m => m.status === (tab === 'vencidas' ? 'vencida' : 'pendente'));
+  const empresas = [...new Set(manutencoes.map(m => m.empresa).filter(Boolean))].sort();
+
+  const filtradas = tab === 'todas' ? manutencoes : manutencoes.filter(m => m.empresa === tab);
+
+  const valorTotal = filtradas.reduce((acc, m) => acc + (m.valor || 0), 0);
 
   const tabs = [
     { key: 'todas', label: `Todas (${manutencoes.length})` },
-    { key: 'vencidas', label: `Vencidas (${manutencoes.filter(m => m.status === 'vencida').length})` },
-    { key: 'pendentes', label: `Pendentes (${manutencoes.filter(m => m.status === 'pendente').length})` },
+    ...empresas.map(e => ({ key: e, label: `${e} (${manutencoes.filter(m => m.empresa === e).length})` })),
   ];
 
   return (
@@ -53,7 +56,7 @@ function Manutencao() {
 
       <div className="cbmesp-subbar">
         <span>Controle de Manutenção</span>
-        <span>{manutencoes.filter(m => m.status === 'vencida').length} vencidas · {manutencoes.filter(m => m.status === 'pendente').length} pendentes</span>
+        <span>{manutencoes.length} manutenções · Total: {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
       </div>
 
       <div className="dash-action-bar">
@@ -81,7 +84,7 @@ function Manutencao() {
 
       {!loading && !error && (
         <div style={{ padding: '0 20px 20px' }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
             {tabs.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
                 style={{
@@ -103,7 +106,7 @@ function Manutencao() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ background: '#f3f4f6', borderBottom: '2px solid #e5e7eb' }}>
-                    {['Prefixo', 'Tipo', 'Status', 'Detalhe'].map(col => (
+                    {['Prefixo', 'NEO', 'Data', 'KM', 'Serviços', 'Empresa', 'Valor'].map(col => (
                       <th key={col} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151' }}>{col}</th>
                     ))}
                   </tr>
@@ -112,15 +115,12 @@ function Manutencao() {
                   {filtradas.map((m, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td style={{ padding: '10px 14px', fontWeight: 600 }}>{m.prefixo}</td>
-                      <td style={{ padding: '10px 14px' }}>{m.tipo}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        {m.status === 'vencida' ? (
-                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, color: '#dc2626', background: '#fee2e2' }}>Vencida</span>
-                        ) : (
-                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, color: '#d97706', background: '#fef3c7' }}>Pendente</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '10px 14px', color: '#6b7280' }}>{m.detalhe}</td>
+                      <td style={{ padding: '10px 14px' }}>{m.neo}</td>
+                      <td style={{ padding: '10px 14px' }}>{m.data}</td>
+                      <td style={{ padding: '10px 14px' }}>{m.km ? Number(m.km).toLocaleString('pt-BR') : '—'}</td>
+                      <td style={{ padding: '10px 14px', maxWidth: 300, fontSize: '0.82rem', color: '#374151' }}>{m.servicos}</td>
+                      <td style={{ padding: '10px 14px' }}>{m.empresa || '—'}</td>
+                      <td style={{ padding: '10px 14px', fontWeight: 600, color: m.valor > 0 ? '#16a34a' : '#6b7280' }}>{m.valorFormatado}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -134,3 +134,4 @@ function Manutencao() {
 }
 
 export default Manutencao;
+

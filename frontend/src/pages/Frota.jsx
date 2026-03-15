@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getFrotaCompleta } from '../services/api';
+import { getFrotaCompleta } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
 const statusBadge = (status) => {
@@ -118,7 +118,7 @@ function Frota() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ background: '#f3f4f6', borderBottom: '2px solid #e5e7eb' }}>
-                    {['Prefixo', 'Placa', 'KM Atual', 'Modelo', 'Marca', 'Ano', 'Status', 'SGB'].map(col => (
+                    {['Prefixo', 'Placa', 'KM Atual', 'Garantia até', 'Status Óleo KM', 'Status Freio', 'Status Bateria', 'Status Operacional', 'SGB'].map(col => (
                       <th key={col} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151', whiteSpace: 'nowrap' }}>{col}</th>
                     ))}
                   </tr>
@@ -131,9 +131,10 @@ function Frota() {
                         <td style={{ padding: '10px 14px', fontWeight: 600 }}>{v.prefixo}</td>
                         <td style={{ padding: '10px 14px' }}>{v.placa}</td>
                         <td style={{ padding: '10px 14px' }}>{v.kmAtual ? v.kmAtual.toLocaleString('pt-BR') : '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.modelo || '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.marca || '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.ano || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.garantiaAte || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.statusOleoKm || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.statusFreio || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.statusBateria || '—'}</td>
                         <td style={{ padding: '10px 14px' }}>
                           <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, color: badge.color, background: badge.bg }}>
                             {badge.label}
