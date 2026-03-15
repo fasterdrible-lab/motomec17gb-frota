@@ -1,4 +1,5 @@
 import React from 'react';
+import LogoCBMESP from './LogoCBMESP';
 
 function Header() {
   return (
@@ -11,11 +12,7 @@ function Header() {
         alignItems: 'center',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Bras%C3%A3o_do_Corpo_de_Bombeiros_Militar_do_Estado_de_S%C3%A3o_Paulo.svg/240px-Bras%C3%A3o_do_Corpo_de_Bombeiros_Militar_do_Estado_de_S%C3%A3o_Paulo.svg.png"
-            alt="CBMESP"
-            style={{ width: 40, height: 40, objectFit: 'contain' }}
-          />
+          <LogoCBMESP size={40} />
           <div>
             <div style={{ color: 'white', fontWeight: 700, fontSize: '1.2rem' }}>
               17º Grupamento de Bombeiros
