@@ -291,7 +291,7 @@ export async function getDashboardMacro() {
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS'),
-    fetchSheetData('MANUTENCOES'),
+    fetchSheetData('RIV 2026'),
     fetchSheetData('OS'),
   ]);
 
@@ -350,11 +350,15 @@ export async function getDashboardMacro() {
   let manutencoesRealizadas = 0;
   mRows.forEach(r => {
     const prefixo = getCell(r, 0);
-    const custo = parseFloat(getCell(r, 3)) || 0;
-    const status = String(getCell(r, 5)).toUpperCase();
+    if (!prefixo) return;
+    // Coluna G (índice 6) = VALOR, pode vir como número ou string "R$11.099,70"
+    const custoRaw = getCell(r, 6);
+    const custo = typeof custoRaw === 'number'
+      ? custoRaw
+      : parseFloat(String(custoRaw).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
     gastosPorViatura[prefixo] = (gastosPorViatura[prefixo] || 0) + custo;
     gastoTotal += custo;
-    if (status.includes('REALIZ') || status.includes('CONCLU')) manutencoesRealizadas++;
+    manutencoesRealizadas++; // toda linha com prefixo = manutenção realizada
   });
   if (mRows.length === 0) {
     frotaRows.forEach(r => {
