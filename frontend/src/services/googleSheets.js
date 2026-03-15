@@ -144,12 +144,12 @@ function mapViaturaRow(r, sgb) {
     prefixo: getCell(r, 0),
     placa: getCell(r, 1),
     kmAtual: parseFloat(getCell(r, 2)) || 0,
-    modelo: getCell(r, 3),
-    marca: getCell(r, 4),
-    ano: getCell(r, 5),
-    cor: getCell(r, 6),
-    chassi: getCell(r, 7),
-    renavam: getCell(r, 8),
+    modelo: '',   // não existe na planilha operacional
+    marca: '',    // não existe na planilha operacional
+    ano: '',      // não existe na planilha operacional
+    cor: '',      // não existe na planilha operacional
+    chassi: '',   // não existe na planilha operacional
+    renavam: '',  // não existe na planilha operacional
     status: normalizeStatus(getCell(r, 15)),
     sgb,
   };
@@ -192,10 +192,33 @@ export async function getManutencoes() {
       }
     };
 
-    checkKm(9, 'Óleo Motor');
-    checkKm(10, 'Filtro Ar');
-    checkKm(13, 'Pneu');
-    checkKm(14, 'Embreagem');
+    checkKm(4, 'Óleo Motor');   // índice 4 = PRÓX TROCA ÓLEO (KM)
+    checkKm(6, 'Freio');        // índice 6 = REVISÃO: FREIO (KM)
+    checkKm(13, 'Pneu');        // índice 13 = PNEUS: KM PRÓX TROCA
+    checkKm(14, 'Embreagem');   // índice 14 = KM TROCA: EMBREAGEM
+
+    // STATUS: ÓLEO KM (idx 8) e STATUS: ÓLEO TEMPO (idx 9) — fallback quando KM não preenchido
+    const jaTemOleo = manutencoes.some(m => m.prefixo === prefixo && m.tipo === 'Óleo Motor');
+    if (!jaTemOleo) {
+      const statusOleo = String(getCell(r, 8)).toUpperCase();
+      const statusOleoTempo = String(getCell(r, 9)).toUpperCase();
+      if (statusOleo.includes('VENCIDO') || statusOleoTempo.includes('VENCIDO')) {
+        manutencoes.push({ prefixo, tipo: 'Óleo Motor', status: 'vencida', detalhe: 'Status indicado na planilha: VENCIDO' });
+      } else if (statusOleo.includes('A VENCER') || statusOleoTempo.includes('A VENCER') || statusOleo.includes('PENDENTE') || statusOleoTempo.includes('PENDENTE')) {
+        manutencoes.push({ prefixo, tipo: 'Óleo Motor', status: 'pendente', detalhe: 'Status indicado na planilha: A VENCER' });
+      }
+    }
+
+    // STATUS: REVISÃO FREIO (idx 10) — fallback quando KM não preenchido
+    const jaTemFreio = manutencoes.some(m => m.prefixo === prefixo && m.tipo === 'Freio');
+    if (!jaTemFreio) {
+      const statusFreio = String(getCell(r, 10)).toUpperCase();
+      if (statusFreio.includes('VENCIDO')) {
+        manutencoes.push({ prefixo, tipo: 'Freio', status: 'vencida', detalhe: 'Status indicado na planilha: VENCIDO' });
+      } else if (statusFreio.includes('A VENCER') || statusFreio.includes('PENDENTE')) {
+        manutencoes.push({ prefixo, tipo: 'Freio', status: 'pendente', detalhe: 'Status indicado na planilha: A VENCER' });
+      }
+    }
 
     const bateria = String(getCell(r, 11)).toUpperCase();
     if (bateria.includes('VENCIDO')) {
@@ -305,13 +328,17 @@ export async function getDadosRelatorio() {
 }
 
 export async function getDashboardMacro() {
-  const [sgb1, sgb2, tarefasData, manutencoesData, osData] = await Promise.allSettled([
+  // Tentar 'RIV 2026/2027' primeiro, depois 'RIV 2026' como fallback
+  const [riv1, riv2, sgb1, sgb2, tarefasData, osData] = await Promise.allSettled([
+    fetchSheetData('RIV 2026/2027'),
+    fetchSheetData('RIV 2026'),
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS'),
-    fetchSheetData('RIV 2026'),
     fetchSheetData('OS'),
   ]);
+
+  const manutencoesData = riv1.status === 'fulfilled' ? riv1 : riv2;
 
   const frotaRows = [
     ...(sgb1.status === 'fulfilled' ? (sgb1.value.table?.rows || []) : []),
@@ -381,7 +408,7 @@ export async function getDashboardMacro() {
   if (mRows.length === 0) {
     frotaRows.forEach(r => {
       const kmAtual = parseFloat(getCell(r, 2)) || 0;
-      [9, 10, 13, 14].forEach(col => {
+      [4, 6, 13, 14].forEach(col => {
         const kmLimite = parseFloat(getCell(r, col)) || 0;
         if (kmLimite > 0 && kmAtual >= kmLimite) manutencoesRealizadas++;
       });
