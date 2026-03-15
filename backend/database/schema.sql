@@ -45,16 +45,17 @@ CREATE TABLE IF NOT EXISTS usuarios (
     id               SERIAL PRIMARY KEY,
     nome             VARCHAR(100) NOT NULL,
     email            VARCHAR(150) NOT NULL UNIQUE,
-    hashed_password  VARCHAR(300) NOT NULL,
+    senha_hash       VARCHAR(300) NOT NULL,
     cargo            VARCHAR(100),
-    telefone         VARCHAR(20),
     unidade          VARCHAR(20),
-    role             role_usuario NOT NULL DEFAULT 'leitor',
     ativo            BOOLEAN NOT NULL DEFAULT TRUE,
-    data_cadastro    TIMESTAMP NOT NULL DEFAULT NOW()
+    data_cadastro    TIMESTAMP NOT NULL DEFAULT NOW(),
+    ultimo_acesso    TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios (email);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_usuarios_email ON usuarios (email);
+CREATE INDEX IF NOT EXISTS ix_usuarios_id ON usuarios (id);
 
 -- ============================================================
 -- Tabela: manutencao_preventiva
