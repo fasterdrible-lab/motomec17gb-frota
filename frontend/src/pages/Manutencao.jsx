@@ -37,25 +37,6 @@ function Manutencao() {
 
   return (
     <div>
-      <div className="cbmesp-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: '2rem' }}>🔥</span>
-          <div>
-            <div className="cbmesp-header-title">17º Grupamento de Bombeiros</div>
-            <div className="cbmesp-header-subtitle">Corpo de Bombeiros Militar do Estado de São Paulo</div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>🛡️ CBMESP</div>
-          <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>Secretaria da Segurança Pública</div>
-        </div>
-      </div>
-
-      <div className="cbmesp-subbar">
-        <span>Controle de Manutenção</span>
-        <span>{manutencoes.filter(m => m.status === 'vencida').length} vencidas · {manutencoes.filter(m => m.status === 'pendente').length} pendentes</span>
-      </div>
-
       <div className="dash-action-bar">
         <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>🔧 Manutenção</h2>
         <button className="btn-sincronizar" onClick={() => loadData(true)} disabled={syncing}>

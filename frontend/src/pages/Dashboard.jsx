@@ -159,7 +159,7 @@ function Dashboard() {
             <MacroCard
               icon="🏆"
               label="Viatura que Mais Gastou"
-              value={dados.viaturaTopGasto.prefixo}
+              value={dados.viaturaTopGasto.valor > 0 ? dados.viaturaTopGasto.prefixo : '—'}
               sub={dados.viaturaTopGasto.valor > 0 ? fmtMoeda(dados.viaturaTopGasto.valor) : '—'}
             />
             <MacroCard

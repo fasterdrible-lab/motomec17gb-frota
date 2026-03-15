@@ -14,9 +14,27 @@ async function fetchSheetData(sheetName) {
   return JSON.parse(json);
 }
 
+const MIN_VALID_YEAR = 1900;
+
+function isSyncRow(val) {
+  return String(val).toUpperCase().includes('SINCRONIZA');
+}
+
 function getCell(row, idx) {
   return row.c && row.c[idx] && row.c[idx].v != null ? row.c[idx].v : '';
 }
+
+function extractYear(val) {
+  if (!val) return 0;
+  if (typeof val === 'number') return val > MIN_VALID_YEAR ? val : 0;
+  const str = String(val);
+  const dateMatch = str.match(/Date\((\d{4})/);
+  if (dateMatch) return parseInt(dateMatch[1]);
+  const yearMatch = str.match(/\b(19|20)\d{2}\b/);
+  if (yearMatch) return parseInt(yearMatch[0]);
+  return 0;
+}
+
 
 export async function getStatusOperacional() {
   const [sgb1, sgb2] = await Promise.all([
@@ -343,7 +361,7 @@ export async function getDashboardMacro() {
 
   // 4. Manutenções e gastos (aba MANUTENCOES)
   const mRows = manutencoesData.status === 'fulfilled'
-    ? (manutencoesData.value.table?.rows || []).filter(r => getCell(r, 0))
+    ? (manutencoesData.value.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)))
     : [];
   const gastosPorViatura = {};
   let gastoTotal = 0;
@@ -381,8 +399,8 @@ export async function getDashboardMacro() {
   let menorAno = Infinity;
   frotaRows.forEach(r => {
     const prefixo = getCell(r, 0);
-    const ano = parseInt(getCell(r, 5)) || 0;
-    if (ano > 1900 && ano < menorAno) {
+    const ano = extractYear(getCell(r, 5)) || extractYear(getCell(r, 3));
+    if (ano > MIN_VALID_YEAR && ano < menorAno) {
       menorAno = ano;
       viaturasMaisVelha = { prefixo, ano };
     }
@@ -435,7 +453,7 @@ export async function getGastosPorViatura() {
                   riv2.status === 'fulfilled' ? riv2.value : null;
 
   if (rivData && rivData.table?.rows) {
-    mRows = rivData.table.rows.filter(r => getCell(r, 0));
+    mRows = rivData.table.rows.filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
   }
 
   // Estrutura da aba RIV: col A (idx 0) = Prefixo/VTR, col B = Placa, col C = Tipo Serviço,
