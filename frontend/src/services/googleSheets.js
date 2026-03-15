@@ -24,6 +24,37 @@ function getCell(row, idx) {
   return row.c && row.c[idx] && row.c[idx].v != null ? row.c[idx].v : '';
 }
 
+function parseCusto(val) {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  const str = String(val).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+  return parseFloat(str) || 0;
+}
+
+function findCustoInRow(r) {
+  for (let col = 6; col <= 14; col++) {
+    const val = getCell(r, col);
+    if (!val) continue;
+    // Prefer values that look like monetary amounts (contain R$, comma, or decimal point)
+    if (typeof val === 'string' && (val.includes('R$') || /\d[.,]\d/.test(val))) {
+      const custo = parseCusto(val);
+      if (custo > 0) return custo;
+    }
+  }
+  // Second pass: accept any numeric value from col 9+ (KM cols are usually 2-8)
+  for (let col = 9; col <= 14; col++) {
+    const val = getCell(r, col);
+    const custo = parseCusto(val);
+    if (custo > 0) return custo;
+  }
+  // Last resort: try cols 6-8 as plain numbers
+  for (let col = 6; col <= 8; col++) {
+    const custo = parseCusto(getCell(r, col));
+    if (custo > 0) return custo;
+  }
+  return 0;
+}
+
 function extractYear(val) {
   if (!val) return 0;
   if (typeof val === 'number') return val > MIN_VALID_YEAR ? val : 0;
@@ -329,13 +360,21 @@ export async function getDadosRelatorio() {
 
 export async function getDashboardMacro() {
   // Tentar 'RIV 2026/2027' primeiro, depois 'RIV 2026' como fallback
-  const [riv1, riv2, sgb1, sgb2, tarefasData, osData] = await Promise.allSettled([
+  // Para OS, tentar múltiplos nomes de aba
+  const osPromise = Promise.any([
+    fetchSheetData('OS'),
+    fetchSheetData('ORDENS'),
+    fetchSheetData('ORDENS DE SERVICO'),
+    fetchSheetData('OS 2026'),
+  ]).catch(() => null);
+
+  const [riv1, riv2, sgb1, sgb2, tarefasData, osResolved] = await Promise.allSettled([
     fetchSheetData('RIV 2026/2027'),
     fetchSheetData('RIV 2026'),
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS'),
-    fetchSheetData('OS'),
+    osPromise,
   ]);
 
   const manutencoesData = riv1.status === 'fulfilled' ? riv1 : riv2;
@@ -344,6 +383,11 @@ export async function getDashboardMacro() {
     ...(sgb1.status === 'fulfilled' ? (sgb1.value.table?.rows || []) : []),
     ...(sgb2.status === 'fulfilled' ? (sgb2.value.table?.rows || []) : []),
   ].filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
+
+  console.log('[Dashboard] frotaRows:', frotaRows.length,
+    '| manutencoesData:', manutencoesData.status === 'fulfilled' ? (manutencoesData.value.table?.rows || []).length : 0,
+    '| tarefasData:', tarefasData.status === 'fulfilled' ? (tarefasData.value.table?.rows || []).length : 0,
+    '| osResolved:', osResolved.status === 'fulfilled' && osResolved.value ? (osResolved.value.table?.rows || []).length : 0);
 
   // 1. Status viaturas
   let operando = 0, baixadas = 0, reserva = 0;
@@ -378,12 +422,17 @@ export async function getDashboardMacro() {
 
   // 3. Tarefas pendentes
   const tarefasRows = tarefasData.status === 'fulfilled'
-    ? (tarefasData.value.table?.rows || []).filter(r => getCell(r, 2))
+    ? (tarefasData.value.table?.rows || []).filter(r => {
+        const titulo = getCell(r, 1) || getCell(r, 2);
+        return titulo && !isSyncRow(titulo);
+      })
     : [];
   let tarefasPendentes = 0;
   tarefasRows.forEach(r => {
-    const s = String(getCell(r, 4)).toUpperCase();
-    if (!s.includes('CONCLU')) tarefasPendentes++;
+    const s3 = String(getCell(r, 3)).toUpperCase();
+    const s4 = String(getCell(r, 4)).toUpperCase();
+    const isConcluded = s3.includes('CONCLU') || s3.includes('FECHAD') || s4.includes('CONCLU') || s4.includes('FECHAD');
+    if (!isConcluded) tarefasPendentes++;
   });
 
   // 4. Manutenções e gastos (aba MANUTENCOES)
@@ -396,11 +445,8 @@ export async function getDashboardMacro() {
   mRows.forEach(r => {
     const prefixo = getCell(r, 0);
     if (!prefixo) return;
-    // Coluna G (índice 6) = VALOR, pode vir como número ou string "R$11.099,70"
-    const custoRaw = getCell(r, 6);
-    const custo = typeof custoRaw === 'number'
-      ? custoRaw
-      : parseFloat(String(custoRaw).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    // Scan columns to find the monetary cost value
+    const custo = findCustoInRow(r);
     gastosPorViatura[prefixo] = (gastosPorViatura[prefixo] || 0) + custo;
     gastoTotal += custo;
     manutencoesRealizadas++; // toda linha com prefixo = manutenção realizada
@@ -443,8 +489,9 @@ export async function getDashboardMacro() {
   });
 
   // 7. OS Status
-  const osRows = osData.status === 'fulfilled'
-    ? (osData.value.table?.rows || []).filter(r => getCell(r, 0))
+  const osValue = osResolved.status === 'fulfilled' ? osResolved.value : null;
+  const osRows = osValue
+    ? (osValue.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)))
     : [];
   let osAberta = 0, osFechada = 0, osAndamento = 0;
   osRows.forEach(r => {
@@ -484,7 +531,7 @@ export async function getGastosPorViatura() {
   }
 
   // Estrutura da aba RIV: col A (idx 0) = Prefixo/VTR, col B = Placa, col C = Tipo Serviço,
-  // col D = Data, col E = KM, col F = Descrição, col G (idx 6) = Valor
+  // col D = Data, col E = KM, col F = Descrição, col G+ = Valor (posição pode variar)
 
   const gastosPorViatura = {};
   const listaGastos = [];
@@ -496,10 +543,8 @@ export async function getGastosPorViatura() {
     const data = getCell(r, 3) || getCell(r, 4) || '';
     const km = getCell(r, 4) || getCell(r, 5) || '';
     const descricao = getCell(r, 5) || getCell(r, 6) || '';
-    const custoRaw = getCell(r, 6);
-    const custo = typeof custoRaw === 'number'
-      ? custoRaw
-      : parseFloat(String(custoRaw).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    // Scan columns dynamically to find the monetary cost value
+    const custo = findCustoInRow(r);
 
     if (!prefixo) return;
 
