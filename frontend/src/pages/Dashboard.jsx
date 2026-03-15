@@ -1,151 +1,183 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getFrotaStatus, getAlertasNaoLidos, getManutencoesPendentes } from '../services/api';
-import AlertCard from '../components/AlertCard';
+import { getStatusOperacional, getTarefas, getAlertas } from '../services/googleSheets';
+import '../styles/Dashboard.css';
 
-const COLORS = ['#16a34a', '#d97706', '#dc2626', '#6b7280'];
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos
 
 function Dashboard() {
-  const [frotaStatus, setFrotaStatus] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [tarefas, setTarefas] = useState(null);
   const [alertas, setAlertas] = useState([]);
-  const [pendentes, setPendentes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
+  const [ultimaSync, setUltimaSync] = useState(null);
+  const [now, setNow] = useState(new Date());
 
-  const loadData = useCallback(async () => {
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const loadData = useCallback(async (isManual = false) => {
+    if (isManual) setSyncing(true);
+    setError('');
     try {
-      const [statusRes, alertasRes, pendentesRes] = await Promise.allSettled([
-        getFrotaStatus(),
-        getAlertasNaoLidos(),
-        getManutencoesPendentes(),
+      const [statusData, tarefasData, alertasData] = await Promise.all([
+        getStatusOperacional(),
+        getTarefas(),
+        getAlertas(),
       ]);
-      if (statusRes.status === 'fulfilled') setFrotaStatus(statusRes.value.data);
-      if (alertasRes.status === 'fulfilled') setAlertas(alertasRes.value.data || []);
-      if (pendentesRes.status === 'fulfilled') setPendentes(pendentesRes.value.data || []);
+      setStatus(statusData);
+      setTarefas(tarefasData);
+      setAlertas(alertasData);
+      setUltimaSync(new Date());
     } catch (e) {
-      setError('Erro ao carregar dados do dashboard.');
+      setError('Erro ao buscar dados da planilha. Verifique a conexão e tente novamente.');
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000);
+    const interval = setInterval(() => loadData(), REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [loadData]);
 
-  if (loading) return <div className="loading">Carregando...</div>;
-
-  const pieData = frotaStatus
-    ? [
-        { name: 'Operando', value: frotaStatus.operando || 0 },
-        { name: 'Manutenção', value: frotaStatus.em_manutencao || 0 },
-        { name: 'Baixada', value: frotaStatus.baixadas || 0 },
-        { name: 'Reserva', value: frotaStatus.reserva || 0 },
-      ]
-    : [];
+  const dataFormatada = now.toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div>
-      <h1 className="page-title">Dashboard</h1>
-
-      {error && <div className="error-msg">{error}</div>}
-
-      <div className="stat-cards">
-        <div className="stat-card primary">
-          <div className="stat-card-icon">🚗</div>
-          <div className="stat-card-label">Total de Viaturas</div>
-          <div className="stat-card-value">{frotaStatus?.total_viaturas ?? '—'}</div>
-        </div>
-        <div className="stat-card success">
-          <div className="stat-card-icon">✅</div>
-          <div className="stat-card-label">Operando</div>
-          <div className="stat-card-value">{frotaStatus?.operando ?? '—'}</div>
-        </div>
-        <div className="stat-card danger">
-          <div className="stat-card-icon">🔴</div>
-          <div className="stat-card-label">Baixadas</div>
-          <div className="stat-card-value">{frotaStatus?.baixadas ?? '—'}</div>
-        </div>
-        <div className="stat-card warning">
-          <div className="stat-card-icon">⚠️</div>
-          <div className="stat-card-label">Alertas Críticos</div>
-          <div className="stat-card-value">{frotaStatus?.alertas_criticos ?? '—'}</div>
-        </div>
-      </div>
-
-      <div className="dashboard-grid">
-        <div className="chart-container">
-          <h3 className="chart-title">Distribuição da Frota</h3>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label>
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="empty-state">Sem dados de frota disponíveis.</div>
-          )}
-        </div>
-
-        <div className="card">
-          <div className="section-header">
-            <h3 className="section-title">⚠️ Alertas Recentes</h3>
-            <span className="text-muted">{alertas.length} não lidos</span>
+      {/* Header CBMESP */}
+      <div className="cbmesp-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: '2rem' }}>🔥</span>
+          <div>
+            <div className="cbmesp-header-title">17º Grupamento de Bombeiros</div>
+            <div className="cbmesp-header-subtitle">Corpo de Bombeiros Militar do Estado de São Paulo</div>
           </div>
-          {alertas.length === 0 ? (
-            <div className="empty-state">Nenhum alerta pendente. ✅</div>
-          ) : (
-            alertas.slice(0, 5).map(alerta => (
-              <AlertCard key={alerta.id} alerta={alerta} onUpdate={loadData} />
-            ))
-          )}
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>🛡️ CBMESP</div>
+          <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>Secretaria da Segurança Pública</div>
         </div>
       </div>
 
-      <div className="card dashboard-grid-full" style={{ marginTop: 20 }}>
-        <div className="section-header">
-          <h3 className="section-title">🔧 Manutenções Pendentes</h3>
-          <span className="text-muted">{pendentes.length} pendente(s)</span>
-        </div>
-        {pendentes.length === 0 ? (
-          <div className="empty-state">Nenhuma manutenção pendente.</div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tipo</th>
-                <th>Viatura ID</th>
-                <th>KM Próximo</th>
-                <th>Data Próxima</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendentes.map(m => (
-                <tr key={m.id}>
-                  <td>{m.id}</td>
-                  <td>{m.tipo}</td>
-                  <td>{m.viatura_id}</td>
-                  <td>{m.km_proximo?.toLocaleString('pt-BR')}</td>
-                  <td>{m.data_proxima ? new Date(m.data_proxima).toLocaleDateString('pt-BR') : '—'}</td>
-                  <td>
-                    <span className={`status-badge status-manutencao`}>{m.status}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Sub-barra */}
+      <div className="cbmesp-subbar">
+        <span>Sistema de Gestão de Frota</span>
+        <span>{dataFormatada}, {horaFormatada}</span>
+      </div>
+
+      {/* Barra de ação */}
+      <div className="dash-action-bar">
+        <h2>Dashboard</h2>
+        <button
+          className="btn-sincronizar"
+          onClick={() => loadData(true)}
+          disabled={syncing}
+        >
+          {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
+        </button>
+        {ultimaSync && (
+          <span className="sync-info">
+            Última sincronização: {ultimaSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
         )}
       </div>
+
+      {/* Estado de carregamento */}
+      {loading && (
+        <div className="dash-loading">⏳ Carregando dados da planilha...</div>
+      )}
+
+      {/* Estado de erro */}
+      {error && !loading && (
+        <div className="dash-error">
+          <span>⚠️ {error}</span>
+          <button className="btn-sincronizar" onClick={() => loadData(true)} style={{ marginLeft: 'auto' }}>
+            🔄 Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {/* Cards status operacional */}
+      {!loading && status && (
+        <div className="dash-stat-grid">
+          <div className="dash-stat-card">
+            <div className="dash-stat-icon">🚒</div>
+            <div className="dash-stat-value">{status.baixadas}</div>
+            <div className="dash-stat-label">Baixadas</div>
+          </div>
+          <div className="dash-stat-card">
+            <div className="dash-stat-icon">🚗</div>
+            <div className="dash-stat-value">{status.operando}</div>
+            <div className="dash-stat-label">Operando</div>
+          </div>
+          <div className="dash-stat-card">
+            <div className="dash-stat-icon">⏸️</div>
+            <div className="dash-stat-value">{status.reserva}</div>
+            <div className="dash-stat-label">Reserva</div>
+          </div>
+          <div className="dash-stat-card">
+            <div className="dash-stat-icon">📊</div>
+            <div className="dash-stat-value">{status.total}</div>
+            <div className="dash-stat-label">Total</div>
+          </div>
+        </div>
+      )}
+
+      {/* Tarefas + Alertas */}
+      {!loading && tarefas && (
+        <div className="dash-two-col">
+          {/* Tarefas */}
+          <div className="dash-card">
+            <div className="dash-card-title">📋 TAREFAS</div>
+            <div className="dash-task-row">
+              <span>📝 Total</span>
+              <strong>{tarefas.total}</strong>
+            </div>
+            <div className="dash-task-row">
+              <span>🔴 Pendente</span>
+              <strong>{tarefas.pendente}</strong>
+            </div>
+            <div className="dash-task-row">
+              <span>🟡 Em Andamento</span>
+              <strong>{tarefas.andamento}</strong>
+            </div>
+            <div className="dash-task-row">
+              <span>🟢 Concluída</span>
+              <strong>{tarefas.concluida}</strong>
+            </div>
+          </div>
+
+          {/* Alertas */}
+          <div className="dash-card">
+            <div className="dash-card-title">⏰ ALERTAS</div>
+            {alertas.length === 0 ? (
+              <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>✅ Nenhum alerta no momento.</div>
+            ) : (
+              alertas.map((a, i) => (
+                <div
+                  key={i}
+                  className={`dash-alerta-item ${a.nivel === 'critico' ? 'dash-alerta-critico' : 'dash-alerta-aviso'}`}
+                >
+                  <span style={{ flex: 1 }}>{a.tipo}</span>
+                  <span style={{ fontWeight: 700 }}>({a.count})</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

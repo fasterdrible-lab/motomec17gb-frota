@@ -1,36 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { getFrotaStatus } from '../services/api';
+import React from 'react';
 
 function Header() {
-  const [status, setStatus] = useState(null);
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    getFrotaStatus().then(r => setStatus(r.data)).catch(() => {});
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   return (
-    <header className="header">
-      <div className="header-left">
-        <h2>🚔 MOTOMEC 17º GB — Gestão de Frota</h2>
-      </div>
-      <div className="header-right">
-        {status && (
-          <div className="header-stats">
-            <span className="header-stat">🚗 {status.total_viaturas} viaturas</span>
-            <span className="header-stat">✅ {status.operando} operando</span>
-            {status.alertas_criticos > 0 && (
-              <span className="header-stat alert">🔴 {status.alertas_criticos} alertas críticos</span>
-            )}
+    <div>
+      <div style={{
+        background: '#CC1F1F',
+        padding: '14px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: '2rem' }}>🔥</span>
+          <div>
+            <div style={{ color: 'white', fontWeight: 700, fontSize: '1.2rem' }}>
+              17º Grupamento de Bombeiros
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>
+              Corpo de Bombeiros Militar do Estado de São Paulo
+            </div>
           </div>
-        )}
-        <div className="header-time">
-          {now.toLocaleDateString('pt-BR')} {now.toLocaleTimeString('pt-BR')}
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>
+            🛡️ CBMESP
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>
+            Secretaria da Segurança Pública
+          </div>
         </div>
       </div>
-    </header>
+    </div>
   );
 }
 
