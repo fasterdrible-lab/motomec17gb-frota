@@ -23,7 +23,7 @@ def criar_token(data: dict):
 @router.post("/login", tags=["Autenticação"])
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == form_data.username).first()
-    if not usuario or not pwd_context.verify(form_data.password, usuario.hashed_password):
+    if not usuario or not pwd_context.verify(form_data.password, usuario.senha_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos",

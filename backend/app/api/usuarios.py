@@ -20,7 +20,7 @@ def criar_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     hashed = pwd_context.hash(usuario.password)
     data = usuario.model_dump(exclude={"password"})
-    db_usuario = Usuario(**data, hashed_password=hashed)
+    db_usuario = Usuario(**data, senha_hash=hashed)
     db.add(db_usuario)
     db.commit()
     db.refresh(db_usuario)
