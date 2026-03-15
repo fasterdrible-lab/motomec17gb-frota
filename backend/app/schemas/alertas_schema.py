@@ -17,6 +17,7 @@ class AlertaResponse(AlertaBase):
     lido: bool
     data_criacao: datetime
     data_leitura: Optional[datetime] = None
+    prefixo: Optional[str] = None
 
     class Config:
         from_attributes = True

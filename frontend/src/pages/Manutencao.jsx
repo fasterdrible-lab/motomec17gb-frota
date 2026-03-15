@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getManutencoes } from '../services/googleSheets';
+import { getManutencoes } from '../services/api';
 import '../styles/Dashboard.css';
 
 function Manutencao() {

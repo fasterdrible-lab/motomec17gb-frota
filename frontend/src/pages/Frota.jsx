@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getFrotaCompleta } from '../services/googleSheets';
+import { getFrotaCompleta } from '../services/api';
 import '../styles/Dashboard.css';
 
 const statusBadge = (status) => {

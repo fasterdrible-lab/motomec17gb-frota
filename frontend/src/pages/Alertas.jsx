@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAlertasDetalhados } from '../services/googleSheets';
+import { getAlertasDetalhados } from '../services/api';
 import '../styles/Dashboard.css';
 
 function Alertas() {

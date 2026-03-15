@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getStatusOperacional, getTarefas, getAlertas } from '../services/googleSheets';
+import { getStatusOperacional, getTarefas, getAlertas } from '../services/api';
 import '../styles/Dashboard.css';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos
