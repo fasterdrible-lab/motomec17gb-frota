@@ -1,229 +1,156 @@
-import React, { useState, useEffect } from 'react';
-import { getFrota, createViatura } from '../services/api';
-import ViaturaCard from '../components/ViaturaCard';
+import React, { useState, useEffect, useCallback } from 'react';
+import { getFrotaCompleta } from '../services/googleSheets';
+import '../styles/Dashboard.css';
 
-const emptyForm = {
-  placa: '',
-  prefixo: '',
-  modelo: '',
-  marca: '',
-  ano: '',
-  unidade: '',
-  status: 'operando',
-  km_atual: '',
+const statusBadge = (status) => {
+  if (status === 'baixada') return { label: 'Baixada', color: '#dc2626', bg: '#fee2e2' };
+  if (status === 'reserva') return { label: 'Reserva', color: '#d97706', bg: '#fef3c7' };
+  return { label: 'Operando', color: '#16a34a', bg: '#dcfce7' };
 };
 
 function Frota() {
-  const [viaturas, setViaturas] = useState([]);
+  const [frota, setFrota] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState(emptyForm);
-  const [submitting, setSubmitting] = useState(false);
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterUnidade, setFilterUnidade] = useState('');
+  const [ultimaSync, setUltimaSync] = useState(null);
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroSgb, setFiltroSgb] = useState('todos');
 
-  const loadFrota = async () => {
+  const loadData = useCallback(async (isManual = false) => {
+    if (isManual) setSyncing(true);
+    setError('');
     try {
-      setLoading(true);
-      const res = await getFrota();
-      setViaturas(res.data || []);
-      setError('');
+      const data = await getFrotaCompleta();
+      setFrota(data);
+      setUltimaSync(new Date());
     } catch (e) {
-      setError('Erro ao carregar frota. Verifique a conexão com o backend.');
+      setError('Erro ao buscar dados da planilha. Verifique a conexão e tente novamente.');
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { loadFrota(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await createViatura({
-        ...formData,
-        ano: formData.ano ? parseInt(formData.ano) : null,
-        km_atual: formData.km_atual ? parseFloat(formData.km_atual) : 0,
-      });
-      setShowModal(false);
-      setFormData(emptyForm);
-      await loadFrota();
-    } catch (e) {
-      setError('Erro ao criar viatura. Verifique os dados e tente novamente.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const unidades = [...new Set(viaturas.map(v => v.unidade).filter(Boolean))];
-
-  const filtered = viaturas.filter(v => {
-    const matchSearch =
-      !search ||
-      v.placa?.toLowerCase().includes(search.toLowerCase()) ||
-      v.prefixo?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = !filterStatus || v.status === filterStatus;
-    const matchUnidade = !filterUnidade || v.unidade === filterUnidade;
-    return matchSearch && matchStatus && matchUnidade;
+  const frotaFiltrada = frota.filter(v => {
+    const texto = busca.toLowerCase();
+    const matchBusca = !texto || v.prefixo.toLowerCase().includes(texto) || v.placa.toLowerCase().includes(texto);
+    const matchStatus = filtroStatus === 'todos' || v.status === filtroStatus;
+    const matchSgb = filtroSgb === 'todos' || v.sgb === filtroSgb;
+    return matchBusca && matchStatus && matchSgb;
   });
 
   return (
     <div>
-      <div className="section-header">
-        <h1 className="page-title" style={{ margin: 0 }}>Gestão de Frota</h1>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>+ Nova Viatura</button>
+      <div className="cbmesp-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: '2rem' }}>🔥</span>
+          <div>
+            <div className="cbmesp-header-title">17º Grupamento de Bombeiros</div>
+            <div className="cbmesp-header-subtitle">Corpo de Bombeiros Militar do Estado de São Paulo</div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>🛡️ CBMESP</div>
+          <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>Secretaria da Segurança Pública</div>
+        </div>
       </div>
 
-      {error && <div className="error-msg">{error}</div>}
+      <div className="cbmesp-subbar">
+        <span>Controle de Frota</span>
+        <span>{frota.length} viaturas cadastradas</span>
+      </div>
 
-      <div className="filter-bar">
+      <div className="dash-action-bar" style={{ flexWrap: 'wrap', gap: 12 }}>
+        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>🚒 Frota</h2>
         <input
           type="text"
-          placeholder="Buscar por placa ou prefixo..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ minWidth: 220 }}
+          placeholder="Buscar por prefixo ou placa..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem', flex: 1, minWidth: 180 }}
         />
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Todos os Status</option>
+        <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }}>
+          <option value="todos">Todos os status</option>
           <option value="operando">Operando</option>
-          <option value="manutencao">Manutenção</option>
-          <option value="baixada">Baixada</option>
           <option value="reserva">Reserva</option>
+          <option value="baixada">Baixada</option>
         </select>
-        <select value={filterUnidade} onChange={e => setFilterUnidade(e.target.value)}>
-          <option value="">Todas as Unidades</option>
-          {unidades.map(u => <option key={u} value={u}>{u}</option>)}
+        <select value={filtroSgb} onChange={e => setFiltroSgb(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }}>
+          <option value="todos">Todos os SGB</option>
+          <option value="1SGB">1SGB</option>
+          <option value="2SGB">2SGB</option>
         </select>
+        <button className="btn-sincronizar" onClick={() => loadData(true)} disabled={syncing}>
+          {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
+        </button>
+        {ultimaSync && (
+          <span className="sync-info">
+            Última sinc.: {ultimaSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
       </div>
 
-      <p className="text-muted mb-16">{filtered.length} viatura(s) encontrada(s)</p>
+      {loading && <div className="dash-loading">⏳ Carregando dados da planilha...</div>}
 
-      {loading ? (
-        <div className="loading">Carregando...</div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-state">Nenhuma viatura encontrada.</div>
-      ) : (
-        <div className="viaturas-grid">
-          {filtered.map(v => <ViaturaCard key={v.id} viatura={v} />)}
+      {error && !loading && (
+        <div className="dash-error">
+          <span>⚠️ {error}</span>
+          <button className="btn-sincronizar" onClick={() => loadData(true)} style={{ marginLeft: 'auto' }}>
+            🔄 Tentar novamente
+          </button>
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="modal">
-            <div className="modal-header">
-              <h2 className="modal-title">Nova Viatura</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+      {!loading && !error && (
+        <div style={{ padding: '0 20px 20px' }}>
+          {frotaFiltrada.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', background: 'white', borderRadius: 10 }}>
+              🔍 Nenhuma viatura encontrada com os filtros selecionados.
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Placa *</label>
-                  <input
-                    className="form-control"
-                    name="placa"
-                    value={formData.placa}
-                    onChange={handleChange}
-                    required
-                    placeholder="ABC-1234"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Prefixo *</label>
-                  <input
-                    className="form-control"
-                    name="prefixo"
-                    value={formData.prefixo}
-                    onChange={handleChange}
-                    required
-                    placeholder="PM-0001"
-                  />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Marca</label>
-                  <input
-                    className="form-control"
-                    name="marca"
-                    value={formData.marca}
-                    onChange={handleChange}
-                    placeholder="Honda"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Modelo</label>
-                  <input
-                    className="form-control"
-                    name="modelo"
-                    value={formData.modelo}
-                    onChange={handleChange}
-                    placeholder="CB 500"
-                  />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Ano</label>
-                  <input
-                    className="form-control"
-                    name="ano"
-                    type="number"
-                    value={formData.ano}
-                    onChange={handleChange}
-                    placeholder="2022"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">KM Atual</label>
-                  <input
-                    className="form-control"
-                    name="km_atual"
-                    type="number"
-                    value={formData.km_atual}
-                    onChange={handleChange}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Unidade</label>
-                  <input
-                    className="form-control"
-                    name="unidade"
-                    value={formData.unidade}
-                    onChange={handleChange}
-                    placeholder="17º GB"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select className="form-control" name="status" value={formData.status} onChange={handleChange}>
-                    <option value="operando">Operando</option>
-                    <option value="manutencao">Manutenção</option>
-                    <option value="baixada">Baixada</option>
-                    <option value="reserva">Reserva</option>
-                  </select>
-                </div>
-              </div>
-              <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={submitting}>
-                  {submitting ? 'Salvando...' : 'Salvar Viatura'}
-                </button>
-              </div>
-            </form>
-          </div>
+          ) : (
+            <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ background: '#f3f4f6', borderBottom: '2px solid #e5e7eb' }}>
+                    {['Prefixo', 'Placa', 'KM Atual', 'Modelo', 'Marca', 'Ano', 'Status', 'SGB'].map(col => (
+                      <th key={col} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151', whiteSpace: 'nowrap' }}>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {frotaFiltrada.map((v, i) => {
+                    const badge = statusBadge(v.status);
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '10px 14px', fontWeight: 600 }}>{v.prefixo}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.placa}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.kmAtual ? v.kmAtual.toLocaleString('pt-BR') : '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.modelo || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.marca || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>{v.ano || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, color: badge.color, background: badge.bg }}>
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, background: '#e0e7ff', color: '#3730a3' }}>
+                            {v.sgb}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
