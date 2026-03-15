@@ -286,32 +286,12 @@ export async function getDadosRelatorio() {
   };
 }
 
-async function fetchRivData() {
-  const anoAtual = new Date().getFullYear();
-  // Tenta o ano atual primeiro
-  try {
-    const data = await fetchSheetData(`RIV ${anoAtual}`);
-    if (data && data.table && data.table.rows && data.table.rows.length > 0) {
-      return data;
-    }
-  } catch (e) {
-    // ignora e tenta o ano anterior
-  }
-  // Fallback: ano anterior
-  try {
-    const data = await fetchSheetData(`RIV ${anoAtual - 1}`);
-    return data;
-  } catch (e) {
-    return null;
-  }
-}
-
 export async function getDashboardMacro() {
-  const [sgb1, sgb2, tarefasData, manutencoesSettled, osData] = await Promise.allSettled([
+  const [sgb1, sgb2, tarefasData, manutencoesData, osData] = await Promise.allSettled([
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS'),
-    fetchRivData(),
+    fetchSheetData('RIV 2026'),
     fetchSheetData('OS'),
   ]);
 
@@ -362,8 +342,8 @@ export async function getDashboardMacro() {
   });
 
   // 4. Manutenções e gastos (aba MANUTENCOES)
-  const mRows = manutencoesSettled.status === 'fulfilled' && manutencoesSettled.value
-    ? (manutencoesSettled.value.table?.rows || []).filter(r => getCell(r, 0))
+  const mRows = manutencoesData.status === 'fulfilled'
+    ? (manutencoesData.value.table?.rows || []).filter(r => getCell(r, 0))
     : [];
   const gastosPorViatura = {};
   let gastoTotal = 0;
