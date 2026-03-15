@@ -177,3 +177,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 900px) {
+  .dash-macro-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .dash-highlight-grid-3 { grid-template-columns: 1fr !important; }
+}

@@ -1,13 +1,45 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getStatusOperacional, getTarefas, getAlertas } from '../services/api';
+import { getDashboardMacro } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos
+const REFRESH_INTERVAL = 5 * 60 * 1000;
+
+const CHIP_COLORS = [
+  '#CC1F1F', '#1d4ed8', '#15803d', '#7c3aed', '#b45309', '#0e7490', '#be185d', '#374151',
+];
+
+function TipoChip({ tipo, count, colorIndex }) {
+  const bg = CHIP_COLORS[colorIndex % CHIP_COLORS.length];
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      background: bg, color: 'white', borderRadius: 20,
+      padding: '4px 12px', fontSize: '0.85rem', fontWeight: 700,
+      margin: '4px',
+    }}>
+      {tipo} <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+    </span>
+  );
+}
+
+function MacroCard({ icon, label, value, sub, variant }) {
+  const borderColor = variant === 'alerta' ? '#dc2626' : variant === 'aviso' ? '#d97706' : '#e5e7eb';
+  const bgColor = variant === 'alerta' ? '#fff5f5' : variant === 'aviso' ? '#fffbeb' : 'white';
+  return (
+    <div style={{
+      background: bgColor, borderRadius: 10, padding: '20px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)', borderLeft: `4px solid ${borderColor}`,
+    }}>
+      <div style={{ fontSize: '1.8rem', marginBottom: 4 }}>{icon}</div>
+      <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1a1a2e', lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: 2 }}>{sub}</div>}
+      <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 6, fontWeight: 500 }}>{label}</div>
+    </div>
+  );
+}
 
 function Dashboard() {
-  const [status, setStatus] = useState(null);
-  const [tarefas, setTarefas] = useState(null);
-  const [alertas, setAlertas] = useState([]);
+  const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
@@ -15,25 +47,19 @@ function Dashboard() {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   const loadData = useCallback(async (isManual = false) => {
     if (isManual) setSyncing(true);
     setError('');
     try {
-      const [statusData, tarefasData, alertasData] = await Promise.all([
-        getStatusOperacional(),
-        getTarefas(),
-        getAlertas(),
-      ]);
-      setStatus(statusData);
-      setTarefas(tarefasData);
-      setAlertas(alertasData);
+      const data = await getDashboardMacro();
+      setDados(data);
       setUltimaSync(new Date());
     } catch (e) {
-      setError('Erro ao buscar dados da planilha. Verifique a conexão e tente novamente.');
+      setError('Erro ao buscar dados da planilha. Verifique a conexão.');
     } finally {
       setLoading(false);
       setSyncing(false);
@@ -42,49 +68,26 @@ function Dashboard() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(), REFRESH_INTERVAL);
-    return () => clearInterval(interval);
+    const iv = setInterval(() => loadData(), REFRESH_INTERVAL);
+    return () => clearInterval(iv);
   }, [loadData]);
 
-  const dataFormatada = now.toLocaleDateString('pt-BR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-  const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const fmtMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const dataHora = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+    + ', ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div>
-      {/* Header CBMESP */}
-      <div className="cbmesp-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: '2rem' }}>🔥</span>
-          <div>
-            <div className="cbmesp-header-title">17º Grupamento de Bombeiros</div>
-            <div className="cbmesp-header-subtitle">Corpo de Bombeiros Militar do Estado de São Paulo</div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>🛡️ CBMESP</div>
-          <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>Secretaria da Segurança Pública</div>
-        </div>
-      </div>
-
       {/* Sub-barra */}
       <div className="cbmesp-subbar">
-        <span>Sistema de Gestão de Frota</span>
-        <span>{dataFormatada}, {horaFormatada}</span>
+        <span>Sistema de Gestão de Frota — Dashboard</span>
+        <span>{dataHora}</span>
       </div>
 
       {/* Barra de ação */}
       <div className="dash-action-bar">
-        <h2>Dashboard</h2>
-        <button
-          className="btn-sincronizar"
-          onClick={() => loadData(true)}
-          disabled={syncing}
-        >
+        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>📊 Dashboard</h2>
+        <button className="btn-sincronizar" onClick={() => loadData(true)} disabled={syncing}>
           {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
         </button>
         {ultimaSync && (
@@ -94,12 +97,8 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Estado de carregamento */}
-      {loading && (
-        <div className="dash-loading">⏳ Carregando dados da planilha...</div>
-      )}
+      {loading && <div className="dash-loading">⏳ Carregando dados da planilha...</div>}
 
-      {/* Estado de erro */}
       {error && !loading && (
         <div className="dash-error">
           <span>⚠️ {error}</span>
@@ -109,73 +108,105 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Cards status operacional */}
-      {!loading && status && (
-        <div className="dash-stat-grid">
-          <div className="dash-stat-card">
-            <div className="dash-stat-icon">🚒</div>
-            <div className="dash-stat-value">{status.baixadas}</div>
-            <div className="dash-stat-label">Baixadas</div>
-          </div>
-          <div className="dash-stat-card">
-            <div className="dash-stat-icon">🚗</div>
-            <div className="dash-stat-value">{status.operando}</div>
-            <div className="dash-stat-label">Operando</div>
-          </div>
-          <div className="dash-stat-card">
-            <div className="dash-stat-icon">⏸️</div>
-            <div className="dash-stat-value">{status.reserva}</div>
-            <div className="dash-stat-label">Reserva</div>
-          </div>
-          <div className="dash-stat-card">
-            <div className="dash-stat-icon">📊</div>
-            <div className="dash-stat-value">{status.total}</div>
-            <div className="dash-stat-label">Total</div>
-          </div>
-        </div>
-      )}
+      {!loading && dados && (
+        <div style={{ padding: '0 20px 24px' }}>
 
-      {/* Tarefas + Alertas */}
-      {!loading && tarefas && (
-        <div className="dash-two-col">
-          {/* Tarefas */}
-          <div className="dash-card">
-            <div className="dash-card-title">📋 TAREFAS</div>
-            <div className="dash-task-row">
-              <span>📝 Total</span>
-              <strong>{tarefas.total}</strong>
-            </div>
-            <div className="dash-task-row">
-              <span>🔴 Pendente</span>
-              <strong>{tarefas.pendente}</strong>
-            </div>
-            <div className="dash-task-row">
-              <span>🟡 Em Andamento</span>
-              <strong>{tarefas.andamento}</strong>
-            </div>
-            <div className="dash-task-row">
-              <span>🟢 Concluída</span>
-              <strong>{tarefas.concluida}</strong>
-            </div>
+          {/* LINHA 1 — Status da Frota */}
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+            Status da Frota
+          </div>
+          <div className="dash-macro-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+            <MacroCard icon="🟢" label="Operando" value={dados.frota.operando} />
+            <MacroCard icon="🔴" label="Baixadas" value={dados.frota.baixadas} variant={dados.frota.baixadas > 0 ? 'alerta' : undefined} />
+            <MacroCard icon="⏸️" label="Reserva" value={dados.frota.reserva} />
+            <MacroCard icon="🚒" label="Total de Viaturas" value={dados.frota.total} />
           </div>
 
-          {/* Alertas */}
-          <div className="dash-card">
-            <div className="dash-card-title">⏰ ALERTAS</div>
-            {alertas.length === 0 ? (
-              <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>✅ Nenhum alerta no momento.</div>
+          {/* LINHA 2 — Indicadores Macro */}
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+            Indicadores Macro
+          </div>
+          <div className="dash-macro-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+            <MacroCard
+              icon="🔔"
+              label="Total de Alertas"
+              value={dados.totalAlertas}
+              variant={dados.totalAlertas > 0 ? 'alerta' : undefined}
+            />
+            <MacroCard
+              icon="📋"
+              label="Tarefas Pendentes"
+              value={dados.tarefasPendentes}
+              variant={dados.tarefasPendentes > 0 ? 'aviso' : undefined}
+            />
+            <MacroCard
+              icon="🔧"
+              label="Manutenções Realizadas"
+              value={dados.manutencoesRealizadas}
+            />
+            <MacroCard
+              icon="💰"
+              label="Gasto Total Manutenções"
+              value={fmtMoeda(dados.gastoTotal)}
+            />
+          </div>
+
+          {/* LINHA 3 — Destaques */}
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+            Destaques
+          </div>
+          <div className="dash-highlight-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
+            <MacroCard
+              icon="🏆"
+              label="Viatura que Mais Gastou"
+              value={dados.viaturaTopGasto.prefixo}
+              sub={dados.viaturaTopGasto.valor > 0 ? fmtMoeda(dados.viaturaTopGasto.valor) : '—'}
+            />
+            <MacroCard
+              icon="👴"
+              label="Viatura Mais Velha da Frota"
+              value={dados.viaturasMaisVelha.prefixo}
+              sub={dados.viaturasMaisVelha.ano !== '—' ? `Ano: ${dados.viaturasMaisVelha.ano}` : '—'}
+            />
+            <div style={{ background: 'white', borderRadius: 10, padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', borderLeft: '4px solid #e5e7eb' }}>
+              <div style={{ fontSize: '1.8rem', marginBottom: 4 }}>📝</div>
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1a1a2e', marginBottom: 10 }}>Ordens de Serviço</div>
+              {dados.os.total === 0 ? (
+                <div style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Sem O.S. cadastradas</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '4px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <span>🟡 Abertas</span><strong>{dados.os.aberta}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '4px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <span>🔵 Em Andamento</span><strong>{dados.os.andamento}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '4px 0' }}>
+                    <span>🟢 Fechadas</span><strong>{dados.os.fechada}</strong>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* LINHA 4 — Tipos de Viatura */}
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+            Tipos de Viatura na Frota
+          </div>
+          <div style={{ background: 'white', borderRadius: 10, padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            {Object.keys(dados.tiposViatura).length === 0 ? (
+              <span style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Nenhum dado disponível</span>
             ) : (
-              alertas.map((a, i) => (
-                <div
-                  key={i}
-                  className={`dash-alerta-item ${a.nivel === 'critico' ? 'dash-alerta-critico' : 'dash-alerta-aviso'}`}
-                >
-                  <span style={{ flex: 1 }}>{a.tipo}</span>
-                  <span style={{ fontWeight: 700 }}>({a.count})</span>
-                </div>
-              ))
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {Object.entries(dados.tiposViatura)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([tipo, count], idx) => (
+                    <TipoChip key={tipo} tipo={tipo} count={count} colorIndex={idx} />
+                  ))}
+              </div>
             )}
           </div>
+
         </div>
       )}
     </div>
