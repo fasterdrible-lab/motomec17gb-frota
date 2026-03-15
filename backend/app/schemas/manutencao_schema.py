@@ -30,6 +30,7 @@ class ManutencaoResponse(ManutencaoBase):
     km_ultima: Optional[float] = None
     data_ultima: Optional[datetime] = None
     data_criacao: datetime
+    prefixo: Optional[str] = None
 
     class Config:
         from_attributes = True

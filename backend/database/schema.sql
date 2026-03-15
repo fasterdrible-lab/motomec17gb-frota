@@ -187,3 +187,24 @@ CREATE TABLE IF NOT EXISTS historico_km (
 
 CREATE INDEX IF NOT EXISTS idx_hkm_viatura ON historico_km (viatura_id);
 CREATE INDEX IF NOT EXISTS idx_hkm_data    ON historico_km (data DESC);
+
+-- ============================================================
+-- Tabela: tarefas
+-- ============================================================
+CREATE TYPE status_tarefa AS ENUM ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDA');
+CREATE TYPE prioridade_tarefa AS ENUM ('BAIXA', 'MEDIA', 'ALTA');
+
+CREATE TABLE IF NOT EXISTS tarefas (
+    id               SERIAL PRIMARY KEY,
+    titulo           VARCHAR(200) NOT NULL,
+    descricao        VARCHAR(1000),
+    responsavel      VARCHAR(100),
+    status           status_tarefa NOT NULL DEFAULT 'PENDENTE',
+    prioridade       prioridade_tarefa NOT NULL DEFAULT 'MEDIA',
+    data_inicio      TIMESTAMP,
+    data_fim         TIMESTAMP,
+    data_criacao     TIMESTAMP NOT NULL DEFAULT NOW(),
+    data_atualizacao TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tarefas_status ON tarefas (status);
