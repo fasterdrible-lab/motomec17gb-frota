@@ -421,3 +421,57 @@ export async function getDashboardMacro() {
     os: { total: osRows.length, aberta: osAberta, fechada: osFechada, andamento: osAndamento },
   };
 }
+
+export async function getGastosPorViatura() {
+  // Tentar primeiro 'RIV 2026/2027', depois 'RIV 2026', depois '1SGB'+'2SGB' como fallback
+  let mRows = [];
+
+  const [riv1, riv2] = await Promise.allSettled([
+    fetchSheetData('RIV 2026/2027'),
+    fetchSheetData('RIV 2026'),
+  ]);
+
+  const rivData = riv1.status === 'fulfilled' ? riv1.value :
+                  riv2.status === 'fulfilled' ? riv2.value : null;
+
+  if (rivData && rivData.table?.rows) {
+    mRows = rivData.table.rows.filter(r => getCell(r, 0));
+  }
+
+  // Estrutura da aba RIV: col A (idx 0) = Prefixo/VTR, col B = Placa, col C = Tipo Serviço,
+  // col D = Data, col E = KM, col F = Descrição, col G (idx 6) = Valor
+
+  const gastosPorViatura = {};
+  const listaGastos = [];
+
+  mRows.forEach(r => {
+    const prefixo = getCell(r, 0);
+    const placa = getCell(r, 1);
+    const tipoServico = getCell(r, 2) || getCell(r, 3) || '';
+    const data = getCell(r, 3) || getCell(r, 4) || '';
+    const km = getCell(r, 4) || getCell(r, 5) || '';
+    const descricao = getCell(r, 5) || getCell(r, 6) || '';
+    const custoRaw = getCell(r, 6);
+    const custo = typeof custoRaw === 'number'
+      ? custoRaw
+      : parseFloat(String(custoRaw).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+
+    if (!prefixo) return;
+
+    if (!gastosPorViatura[prefixo]) {
+      gastosPorViatura[prefixo] = { prefixo, placa, totalGasto: 0, qtdServicos: 0, servicos: [] };
+    }
+    gastosPorViatura[prefixo].totalGasto += custo;
+    gastosPorViatura[prefixo].qtdServicos++;
+    gastosPorViatura[prefixo].servicos.push({ tipoServico, data, km, descricao, custo });
+
+    listaGastos.push({ prefixo, placa, tipoServico, data, km, descricao, custo });
+  });
+
+  const viaturas = Object.values(gastosPorViatura)
+    .sort((a, b) => b.totalGasto - a.totalGasto);
+
+  const totalGeral = viaturas.reduce((sum, v) => sum + v.totalGasto, 0);
+
+  return { viaturas, listaGastos, totalGeral };
+}
