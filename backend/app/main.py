@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import frota, manutencao, abastecimento, gastos, alertas, relatorios, usuarios
+from app.api import frota, manutencao, abastecimento, gastos, alertas, relatorios, usuarios, auth
 from app.database import engine, Base
 from app.config import CORS_ORIGINS
 from app.services.sheet_sync import start_sync_task
@@ -28,7 +28,8 @@ app = FastAPI(
     description="API para gerenciamento da frota do 17º Grupamento de Bombeiros",
     version="2.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    swagger_ui_oauth2_redirect_url="/docs/oauth2-redirect",
 )
 
 app.add_middleware(
@@ -39,6 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/auth", tags=["Autenticação"])
 app.include_router(frota.router, prefix="/api/frota", tags=["Frota"])
 app.include_router(manutencao.router, prefix="/api/manutencao", tags=["Manutenção"])
 app.include_router(abastecimento.router, prefix="/api/abastecimento", tags=["Abastecimento"])
