@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/mototec")
-SECRET_KEY = os.getenv("SECRET_KEY", "")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
 _raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080")
 CORS_ORIGINS: list = [o.strip() for o in _raw_origins.split(",") if o.strip()]
