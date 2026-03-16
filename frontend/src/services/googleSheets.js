@@ -71,6 +71,22 @@ function extractYear(val) {
   return 0;
 }
 
+function formatGSDate(val) {
+  if (!val) return '';
+  if (typeof val === 'string') {
+    const m = val.match(/Date\((\d+),(\d+),(\d+)/);
+    if (m) {
+      const d = new Date(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+      return d.toLocaleDateString('pt-BR');
+    }
+  }
+  return String(val);
+}
+
+function isGSDate(val) {
+  return typeof val === 'string' && /Date\(/.test(val);
+}
+
 
 export async function getStatusOperacional() {
   const [sgb1, sgb2] = await Promise.all([
@@ -345,7 +361,7 @@ export async function getTarefasCompletas() {
     placa: getCell(r, 1),
     descricao: getCell(r, 2),
     responsavel: getCell(r, 3),
-    status: getCell(r, 4) || '',
+    status: getCell(r, 4) || 'PENDENTE',
   }));
 }
 
@@ -461,15 +477,34 @@ export async function getDashboardMacro() {
 
   if (abastData && abastData.table?.rows) {
     const abastRows = (abastData.table.rows || []).filter(r => {
-      const prefixo = getCell(r, 1);
-      return prefixo && prefixo !== 'PREFIXO' && prefixo !== 'VTR' && !isSyncRow(prefixo);
+      const col0 = getCell(r, 0);
+      const col1 = getCell(r, 1);
+      // Accept rows where col 0 or col 1 contains a non-header, non-date VTR/prefixo
+      const prefixoCandidate = !isGSDate(col0) && col0 && col0 !== 'PREFIXO' && col0 !== 'VTR' && col0 !== 'DATA'
+        ? col0
+        : (!isGSDate(col1) && col1 && col1 !== 'PREFIXO' && col1 !== 'VTR' && col1 !== 'DATA' ? col1 : null);
+      return prefixoCandidate && !isSyncRow(prefixoCandidate);
     });
     totalAbastecimentos = abastRows.length;
     abastRows.forEach(r => { gastoTotalAbast += parseCusto(getCell(r, 5)); });
     if (abastRows.length > 0) {
       const ultimo = abastRows[abastRows.length - 1];
-      ultimoAbastData = getCell(ultimo, 0);
-      ultimoAbastPrefixo = getCell(ultimo, 1);
+      // Detect column layout: find which col has the date and which has the prefixo
+      const col0 = getCell(ultimo, 0);
+      const col1 = getCell(ultimo, 1);
+      if (isGSDate(col0) && !isGSDate(col1)) {
+        // col 0 = date, col 1 = prefixo
+        ultimoAbastData = formatGSDate(col0);
+        ultimoAbastPrefixo = String(col1 || '—');
+      } else if (!isGSDate(col0) && isGSDate(col1)) {
+        // col 0 = prefixo, col 1 = date
+        ultimoAbastPrefixo = String(col0 || '—');
+        ultimoAbastData = formatGSDate(col1);
+      } else {
+        // Fallback: apply formatGSDate to both
+        ultimoAbastData = formatGSDate(col0) || '—';
+        ultimoAbastPrefixo = formatGSDate(col1) || '—';
+      }
       ultimoAbastValor = parseCusto(getCell(ultimo, 5));
     }
   }
@@ -480,7 +515,7 @@ export async function getDashboardMacro() {
     tarefasPendentes,
     gastoTotal: gastosResult.total,
     manutencoesRealizadas,
-    viaturaTopGasto: { prefixo: gastosResult.viaturaDestaque, valor: gastosResult.total },
+    viaturaTopGasto: { prefixo: gastosResult.viaturaDestaque, valor: gastosResult.maiorGastoValor },
     viaturasMaisVelha,
     tiposViatura,
     os: {
@@ -639,7 +674,7 @@ export async function getGastosTotais() {
     }
   });
 
-  return { total, viaturaDestaque };
+  return { total, viaturaDestaque, maiorGastoValor: maiorGasto };
 }
 
 // ORDENS DE SERVIÇO — lê da aba CONTROLE O.S., coluna E
