@@ -565,3 +565,54 @@ export async function getGastosPorViatura() {
 
   return { viaturas, listaGastos, totalGeral };
 }
+
+// GASTO TOTAL — lê da aba GASTOS, coluna C
+export async function getGastosTotais() {
+  const data = await fetchSheetData('GASTOS').catch(() => null);
+  if (!data) return { total: 0, viaturaDestaque: '—' };
+
+  const rows = (data.table?.rows || []).filter(r => {
+    const prefixo = getCell(r, 0);
+    return prefixo && prefixo !== 'PREFIXO' && !isSyncRow(prefixo);
+  });
+
+  let total = 0;
+  let maiorGasto = 0;
+  let viaturaDestaque = '—';
+
+  rows.forEach(r => {
+    const prefixo = getCell(r, 0);
+    const gasto = parseCusto(getCell(r, 2)); // coluna C = índice 2
+    total += gasto;
+    if (gasto > maiorGasto) {
+      maiorGasto = gasto;
+      viaturaDestaque = prefixo;
+    }
+  });
+
+  return { total, viaturaDestaque };
+}
+
+// ORDENS DE SERVIÇO — lê da aba CONTROLE O.S., coluna E
+export async function getOrdensServico() {
+  const data = await fetchSheetData('CONTROLE O.S.').catch(() => null);
+  if (!data) return { executadas: 0, emAndamento: 0, pendentes: 0 };
+
+  const rows = (data.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
+
+  let executadas = 0, emAndamento = 0, pendentes = 0;
+
+  rows.forEach(r => {
+    const situacao = String(getCell(r, 4)).toUpperCase().trim(); // coluna E = índice 4
+    if (!situacao) return;
+    if (situacao.includes('EXECUTADO')) executadas++;
+    else if (situacao.includes('OFICINA')) emAndamento++;
+    else if (
+      situacao.includes('ORÇAMENTO') ||
+      situacao.includes('ORCAMENTO') ||
+      situacao.includes('AGENDAR')
+    ) pendentes++;
+  });
+
+  return { executadas, emAndamento, pendentes };
+}
