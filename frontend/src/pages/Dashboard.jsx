@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getDashboardMacro, getTarefasCompletas } from '../services/googleSheets';
+import { getDashboardMacro, getTarefasCompletas, getAbastecimentos } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -47,6 +47,10 @@ function Dashboard() {
   const [now, setNow] = useState(new Date());
   const [showTarefasPanel, setShowTarefasPanel] = useState(false);
   const [tarefasDetalhadas, setTarefasDetalhadas] = useState([]);
+  const [showAbastPanel, setShowAbastPanel] = useState(false);
+  const [abastecimentos, setAbastecimentos] = useState([]);
+  const [abastLoading, setAbastLoading] = useState(false);
+  const [abastBusca, setAbastBusca] = useState('');
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -91,6 +95,22 @@ function Dashboard() {
         <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>📊 Dashboard</h2>
         <button className="btn-sincronizar" onClick={() => loadData(true)} disabled={syncing}>
           {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
+        </button>
+        <button
+          className="btn-sincronizar"
+          onClick={() => {
+            setShowAbastPanel(true);
+            if (abastecimentos.length === 0) {
+              setAbastLoading(true);
+              getAbastecimentos()
+                .then(setAbastecimentos)
+                .catch(err => console.error('Erro ao carregar abastecimentos:', err))
+                .finally(() => setAbastLoading(false));
+            }
+          }}
+          style={{ background: '#0e7490' }}
+        >
+          ⛽ Abastecimentos
         </button>
         {ultimaSync && (
           <span className="sync-info">
@@ -160,6 +180,30 @@ function Dashboard() {
               icon="💰"
               label="Gasto Total Manutenções"
               value={fmtMoeda(dados.gastoTotal)}
+            />
+          </div>
+
+          {/* LINHA 2b — Abastecimentos e FCD */}
+          <div className="dash-macro-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
+            <MacroCard
+              icon="⛽"
+              label="Último Abastecimento"
+              value={dados.abastecimentos?.ultimoData || '—'}
+              sub={dados.abastecimentos?.ultimoPrefixo && dados.abastecimentos.ultimoPrefixo !== '—'
+                ? `Prefixo: ${dados.abastecimentos.ultimoPrefixo} — ${fmtMoeda(dados.abastecimentos.ultimoValor)}`
+                : '—'}
+            />
+            <MacroCard
+              icon="🛢️"
+              label="Abastecimentos Registrados"
+              value={dados.abastecimentos?.total ?? 0}
+              sub={dados.abastecimentos?.gastoTotal > 0 ? `${fmtMoeda(dados.abastecimentos.gastoTotal)} total gasto` : '—'}
+            />
+            <MacroCard
+              icon="📅"
+              label="FCD — Registros Hoje / Total"
+              value={`${dados.fcd?.hoje ?? 0} / ${dados.fcd?.total ?? 0}`}
+              sub={dados.fcd?.total > 0 ? `${dados.fcd.total} registros totais` : 'Sem registros'}
             />
           </div>
 
@@ -274,6 +318,90 @@ function Dashboard() {
           onClick={() => setShowTarefasPanel(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 999 }}
         />
+      )}
+
+      {/* Abastecimentos Panel */}
+      {showAbastPanel && (
+        <>
+          <div
+            onClick={() => setShowAbastPanel(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 999 }}
+          />
+          <div style={{
+            position: 'fixed', top: 0, right: 0, width: 520, height: '100vh',
+            background: 'white', boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+            zIndex: 1000, display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{
+              background: '#0e7490', color: 'white', padding: '16px 20px',
+              display: 'flex', flexDirection: 'column', gap: 8,
+              position: 'sticky', top: 0, zIndex: 1,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: '1rem' }}>⛽ Abastecimentos</strong>
+                <button
+                  onClick={() => setShowAbastPanel(false)}
+                  style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.4rem', cursor: 'pointer' }}
+                >✕</button>
+              </div>
+              {abastecimentos.length > 0 && (
+                <div style={{ display: 'flex', gap: 16, fontSize: '0.8rem', opacity: 0.9 }}>
+                  <span>📋 {abastecimentos.length} registros</span>
+                  <span>💧 {abastecimentos.reduce((s, a) => s + a.litros, 0).toFixed(1)} L total</span>
+                  <span>💰 {fmtMoeda(abastecimentos.reduce((s, a) => s + a.valorTotal, 0))}</span>
+                </div>
+              )}
+              <input
+                value={abastBusca}
+                onChange={e => setAbastBusca(e.target.value)}
+                placeholder="🔍 Buscar por prefixo, placa ou posto..."
+                style={{
+                  padding: '6px 10px', borderRadius: 6, border: 'none',
+                  fontSize: '0.85rem', width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, padding: 16 }}>
+              {abastLoading ? (
+                <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>⏳ Carregando abastecimentos...</div>
+              ) : abastecimentos.length === 0 ? (
+                <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>Nenhum abastecimento registrado.</div>
+              ) : (
+                abastecimentos
+                  .filter(a => {
+                    if (!abastBusca) return true;
+                    const b = abastBusca.toLowerCase();
+                    return (
+                      String(a.prefixo).toLowerCase().includes(b) ||
+                      String(a.placa).toLowerCase().includes(b) ||
+                      String(a.posto).toLowerCase().includes(b)
+                    );
+                  })
+                  .map((a, i) => (
+                    <div key={i} style={{
+                      background: '#f0fdfa', borderRadius: 8, padding: '12px 14px',
+                      marginBottom: 10, borderLeft: '4px solid #0e7490',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <strong style={{ color: '#1a1a2e', fontSize: '0.92rem' }}>{a.prefixo}</strong>
+                        <span style={{ color: '#0e7490', fontWeight: 700, fontSize: '0.9rem' }}>
+                          {fmtMoeda(a.valorTotal)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, fontSize: '0.78rem', color: '#6b7280', flexWrap: 'wrap' }}>
+                        {a.data && <span>📅 {a.data}</span>}
+                        {a.placa && <span>🚗 {a.placa}</span>}
+                        {a.km && <span>📏 {a.km} km</span>}
+                        {a.litros > 0 && <span>💧 {a.litros} L</span>}
+                        {a.posto && <span>⛽ {a.posto}</span>}
+                      </div>
+                      {a.obs && <div style={{ color: '#374151', fontSize: '0.8rem', marginTop: 4 }}>{a.obs}</div>}
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
