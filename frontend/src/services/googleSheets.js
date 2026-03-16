@@ -89,14 +89,16 @@ export async function getStatusOperacional() {
 
 export async function getTarefas() {
   const data = await fetchSheetData('TAREFAS');
-  const rows = (data.table?.rows || []).filter(r => getCell(r, 2));
+  const rows = (data.table?.rows || []).filter(r => {
+    const prefixo = getCell(r, 0);
+    return prefixo && prefixo !== 'PREFIXO' && !isSyncRow(prefixo);
+  });
   let pendente = 0, andamento = 0, concluida = 0;
   rows.forEach(r => {
-    const s = String(getCell(r, 4)).toUpperCase();
-    if (s.includes('PENDENTE')) pendente++;
+    const s = String(getCell(r, 4)).toUpperCase(); // col E = STATUS
+    if (s.includes('CONCLU')) concluida++;
     else if (s.includes('ANDAMENTO')) andamento++;
-    else if (s.includes('CONCLU')) concluida++;
-    else pendente++;
+    else pendente++; // PENDENTE ou vazio = pendente
   });
   return { total: rows.length, pendente, andamento, concluida };
 }
@@ -329,16 +331,16 @@ export async function getAlertasDetalhados() {
 
 export async function getTarefasCompletas() {
   const data = await fetchSheetData('TAREFAS');
-  const rows = (data.table?.rows || []).filter(r => getCell(r, 1));
+  const rows = (data.table?.rows || []).filter(r => {
+    const prefixo = getCell(r, 0);
+    return prefixo && prefixo !== 'PREFIXO' && !isSyncRow(prefixo);
+  });
   return rows.map(r => ({
-    id: getCell(r, 0),
-    titulo: getCell(r, 1),
+    prefixo: getCell(r, 0),
+    placa: getCell(r, 1),
     descricao: getCell(r, 2),
     responsavel: getCell(r, 3),
     status: getCell(r, 4) || 'PENDENTE',
-    prioridade: getCell(r, 5) || 'MÉDIA',
-    dataInicio: getCell(r, 6),
-    dataFim: getCell(r, 7),
   }));
 }
 
@@ -405,15 +407,13 @@ export async function getDashboardMacro() {
 
   // 3. Tarefas pendentes
   const tarefasRows = (tarefasData.table?.rows || []).filter(r => {
-    const titulo = getCell(r, 1) || getCell(r, 2);
-    return titulo && !isSyncRow(titulo);
+    const prefixo = getCell(r, 0);
+    return prefixo && prefixo !== 'PREFIXO' && !isSyncRow(prefixo);
   });
   let tarefasPendentes = 0;
   tarefasRows.forEach(r => {
-    const s3 = String(getCell(r, 3)).toUpperCase();
-    const s4 = String(getCell(r, 4)).toUpperCase();
-    const isConcluded = s3.includes('CONCLU') || s4.includes('CONCLU');
-    if (!isConcluded) tarefasPendentes++;
+    const s = String(getCell(r, 4)).toUpperCase(); // col E = STATUS
+    if (!s.includes('CONCLU')) tarefasPendentes++;
   });
 
   // 4. Manutenções realizadas (conta linhas da aba RIV_2026)

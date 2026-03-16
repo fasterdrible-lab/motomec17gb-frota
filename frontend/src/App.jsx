@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Frota from './pages/Frota';
 import Manutencao from './pages/Manutencao';
+import Tarefas from './pages/Tarefas';
 import Alertas from './pages/Alertas';
 import Gastos from './pages/Gastos';
 import Relatorios from './pages/Relatorios';
@@ -24,6 +25,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/frota" element={<Frota />} />
               <Route path="/manutencao" element={<Manutencao />} />
+              <Route path="/tarefas" element={<Tarefas />} />
               <Route path="/alertas" element={<Alertas />} />
               <Route path="/gastos" element={<Gastos />} />
               <Route path="/relatorios" element={<Relatorios />} />

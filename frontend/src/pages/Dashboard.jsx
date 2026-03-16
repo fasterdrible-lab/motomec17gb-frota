@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getDashboardMacro } from '../services/googleSheets';
+import { getDashboardMacro, getTarefasCompletas } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -22,19 +22,139 @@ function TipoChip({ tipo, count, colorIndex }) {
   );
 }
 
-function MacroCard({ icon, label, value, sub, variant }) {
+function MacroCard({ icon, label, value, sub, variant, onClick, clickable }) {
   const borderColor = variant === 'alerta' ? '#dc2626' : variant === 'aviso' ? '#d97706' : '#e5e7eb';
   const bgColor = variant === 'alerta' ? '#fff5f5' : variant === 'aviso' ? '#fffbeb' : 'white';
   return (
-    <div style={{
-      background: bgColor, borderRadius: 10, padding: '20px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)', borderLeft: `4px solid ${borderColor}`,
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        background: bgColor, borderRadius: 10, padding: '20px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)', borderLeft: `4px solid ${borderColor}`,
+        cursor: clickable ? 'pointer' : 'default',
+        transition: clickable ? 'box-shadow 0.15s, transform 0.1s' : undefined,
+      }}
+      onMouseEnter={e => { if (clickable) { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.16)'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+      onMouseLeave={e => { if (clickable) { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = ''; } }}
+    >
       <div style={{ fontSize: '1.8rem', marginBottom: 4 }}>{icon}</div>
       <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1a1a2e', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: 2 }}>{sub}</div>}
       <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 6, fontWeight: 500 }}>{label}</div>
+      {clickable && <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: 4 }}>Clique para detalhes →</div>}
     </div>
+  );
+}
+
+function statusBadge(status) {
+  const s = String(status).toUpperCase();
+  if (s.includes('CONCLU')) return { label: status || 'CONCLUÍDA', bg: '#16a34a', color: 'white' };
+  if (s.includes('ANDAMENTO')) return { label: status, bg: '#1d4ed8', color: 'white' };
+  if (s.includes('PENDENTE')) return { label: status, bg: '#dc2626', color: 'white' };
+  return { label: status || 'PENDENTE', bg: '#6b7280', color: 'white' };
+}
+
+function TarefasPanel({ onClose }) {
+  const [tarefas, setTarefas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busca, setBusca] = useState('');
+
+  useEffect(() => {
+    getTarefasCompletas().then(data => { setTarefas(data); setLoading(false); }).catch(err => { console.error('Erro ao carregar tarefas:', err); setLoading(false); });
+  }, []);
+
+  const filtered = tarefas.filter(t => {
+    if (!busca) return true;
+    const q = busca.toLowerCase();
+    return (
+      String(t.prefixo).toLowerCase().includes(q) ||
+      String(t.descricao).toLowerCase().includes(q) ||
+      String(t.placa).toLowerCase().includes(q)
+    );
+  });
+
+  const pendentes = tarefas.filter(t => !String(t.status).toUpperCase().includes('CONCLU'));
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1000,
+        }}
+      />
+      {/* Panel */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 480, maxWidth: '95vw',
+        background: 'white', zIndex: 1001, display: 'flex', flexDirection: 'column',
+        boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '18px 20px', borderBottom: '1px solid #e5e7eb',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#1a1a2e', color: 'white',
+        }}>
+          <div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>📋 Tarefas Pendentes</div>
+            {!loading && <div style={{ fontSize: '0.78rem', color: '#d1d5db', marginTop: 2 }}>{pendentes.length} pendente(s) de {tarefas.length} total</div>}
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
+              borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: '1rem',
+            }}
+          >✕</button>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
+          <input
+            type="text"
+            placeholder="Buscar por prefixo, placa ou descrição..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            style={{
+              width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db',
+              fontSize: '0.88rem', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+          {loading && <div style={{ color: '#6b7280', textAlign: 'center', marginTop: 40 }}>⏳ Carregando tarefas...</div>}
+          {!loading && filtered.length === 0 && (
+            <div style={{ color: '#6b7280', textAlign: 'center', marginTop: 40 }}>Nenhuma tarefa encontrada.</div>
+          )}
+          {!loading && filtered.map((t, i) => {
+            const badge = statusBadge(t.status);
+            return (
+              <div key={i} style={{
+                background: '#f9fafb', borderRadius: 8, padding: '12px 14px', marginBottom: 10,
+                borderLeft: `4px solid ${badge.bg}`,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1a1a2e' }}>{t.prefixo}</span>
+                    {t.placa && <span style={{ color: '#6b7280', fontSize: '0.82rem', marginLeft: 8 }}>{t.placa}</span>}
+                  </div>
+                  <span style={{
+                    background: badge.bg, color: badge.color,
+                    fontSize: '0.72rem', fontWeight: 700, borderRadius: 12,
+                    padding: '2px 10px', whiteSpace: 'nowrap',
+                  }}>{badge.label}</span>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#374151' }}>{t.descricao || '—'}</div>
+                {t.responsavel && <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: 4 }}>Responsável: {t.responsavel}</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -45,6 +165,7 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [ultimaSync, setUltimaSync] = useState(null);
   const [now, setNow] = useState(new Date());
+  const [showTarefasPanel, setShowTarefasPanel] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -78,6 +199,7 @@ function Dashboard() {
 
   return (
     <div>
+      {showTarefasPanel && <TarefasPanel onClose={() => setShowTarefasPanel(false)} />}
       {/* Sub-barra */}
       <div className="cbmesp-subbar">
         <span>Sistema de Gestão de Frota — Dashboard</span>
@@ -138,6 +260,8 @@ function Dashboard() {
               label="Tarefas Pendentes"
               value={dados.tarefasPendentes}
               variant={dados.tarefasPendentes > 0 ? 'aviso' : undefined}
+              onClick={() => setShowTarefasPanel(true)}
+              clickable
             />
             <MacroCard
               icon="🔧"
