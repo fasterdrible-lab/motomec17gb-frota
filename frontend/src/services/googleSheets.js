@@ -359,35 +359,18 @@ export async function getDadosRelatorio() {
 }
 
 export async function getDashboardMacro() {
-  // Tentar 'RIV 2026/2027' primeiro, depois 'RIV 2026' como fallback
-  // Para OS, tentar múltiplos nomes de aba
-  const osPromise = Promise.any([
-    fetchSheetData('OS'),
-    fetchSheetData('ORDENS'),
-    fetchSheetData('ORDENS DE SERVICO'),
-    fetchSheetData('OS 2026'),
-  ]).catch(() => null);
-
-  const [riv1, riv2, sgb1, sgb2, tarefasData, osResolved] = await Promise.allSettled([
-    fetchSheetData('RIV 2026/2027'),
-    fetchSheetData('RIV 2026'),
+  const [sgb1, sgb2, tarefasData, gastosResult, osResult] = await Promise.all([
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS'),
-    osPromise,
+    getGastosTotais(),
+    getOrdensServico(),
   ]);
 
-  const manutencoesData = riv1.status === 'fulfilled' ? riv1 : riv2;
-
   const frotaRows = [
-    ...(sgb1.status === 'fulfilled' ? (sgb1.value.table?.rows || []) : []),
-    ...(sgb2.status === 'fulfilled' ? (sgb2.value.table?.rows || []) : []),
+    ...(sgb1.table?.rows || []),
+    ...(sgb2.table?.rows || []),
   ].filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
-
-  console.log('[Dashboard] frotaRows:', frotaRows.length,
-    '| manutencoesData:', manutencoesData.status === 'fulfilled' ? (manutencoesData.value.table?.rows || []).length : 0,
-    '| tarefasData:', tarefasData.status === 'fulfilled' ? (tarefasData.value.table?.rows || []).length : 0,
-    '| osResolved:', osResolved.status === 'fulfilled' && osResolved.value ? (osResolved.value.table?.rows || []).length : 0);
 
   // 1. Status viaturas
   let operando = 0, baixadas = 0, reserva = 0;
@@ -421,50 +404,24 @@ export async function getDashboardMacro() {
   });
 
   // 3. Tarefas pendentes
-  const tarefasRows = tarefasData.status === 'fulfilled'
-    ? (tarefasData.value.table?.rows || []).filter(r => {
-        const titulo = getCell(r, 1) || getCell(r, 2);
-        return titulo && !isSyncRow(titulo);
-      })
-    : [];
+  const tarefasRows = (tarefasData.table?.rows || []).filter(r => {
+    const titulo = getCell(r, 1) || getCell(r, 2);
+    return titulo && !isSyncRow(titulo);
+  });
   let tarefasPendentes = 0;
   tarefasRows.forEach(r => {
     const s3 = String(getCell(r, 3)).toUpperCase();
     const s4 = String(getCell(r, 4)).toUpperCase();
-    const isConcluded = s3.includes('CONCLU') || s3.includes('FECHAD') || s4.includes('CONCLU') || s4.includes('FECHAD');
+    const isConcluded = s3.includes('CONCLU') || s4.includes('CONCLU');
     if (!isConcluded) tarefasPendentes++;
   });
 
-  // 4. Manutenções e gastos (aba MANUTENCOES)
-  const mRows = manutencoesData.status === 'fulfilled'
-    ? (manutencoesData.value.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)))
-    : [];
-  const gastosPorViatura = {};
-  let gastoTotal = 0;
+  // 4. Manutenções realizadas (conta linhas da aba RIV_2026)
   let manutencoesRealizadas = 0;
-  mRows.forEach(r => {
-    const prefixo = getCell(r, 0);
-    if (!prefixo) return;
-    // Scan columns to find the monetary cost value
-    const custo = findCustoInRow(r);
-    gastosPorViatura[prefixo] = (gastosPorViatura[prefixo] || 0) + custo;
-    gastoTotal += custo;
-    manutencoesRealizadas++; // toda linha com prefixo = manutenção realizada
-  });
-  if (mRows.length === 0) {
-    frotaRows.forEach(r => {
-      const kmAtual = parseFloat(getCell(r, 2)) || 0;
-      [4, 6, 13, 14].forEach(col => {
-        const kmLimite = parseFloat(getCell(r, col)) || 0;
-        if (kmLimite > 0 && kmAtual >= kmLimite) manutencoesRealizadas++;
-      });
-    });
-  }
-  let viaturaTopGasto = { prefixo: '—', valor: 0 };
-  const entries = Object.entries(gastosPorViatura);
-  if (entries.length > 0) {
-    const [pref, val] = entries.reduce((a, b) => b[1] > a[1] ? b : a);
-    viaturaTopGasto = { prefixo: pref, valor: val };
+  const rivData = await fetchSheetData('RIV_2026').catch(() => null);
+  if (rivData) {
+    manutencoesRealizadas = (rivData.table?.rows || [])
+      .filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))).length;
   }
 
   // 5. Viatura mais velha
@@ -488,29 +445,21 @@ export async function getDashboardMacro() {
     tiposViatura[tipo] = (tiposViatura[tipo] || 0) + 1;
   });
 
-  // 7. OS Status
-  const osValue = osResolved.status === 'fulfilled' ? osResolved.value : null;
-  const osRows = osValue
-    ? (osValue.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)))
-    : [];
-  let osAberta = 0, osFechada = 0, osAndamento = 0;
-  osRows.forEach(r => {
-    const s = String(getCell(r, 3)).toUpperCase();
-    if (s.includes('ABERTA')) osAberta++;
-    else if (s.includes('FECHADA') || s.includes('CONCLU')) osFechada++;
-    else if (s.includes('ANDAMENTO')) osAndamento++;
-  });
-
   return {
     frota: { total: frotaRows.length, operando, baixadas, reserva },
     totalAlertas,
     tarefasPendentes,
-    gastoTotal,
+    gastoTotal: gastosResult.total,
     manutencoesRealizadas,
-    viaturaTopGasto,
+    viaturaTopGasto: { prefixo: gastosResult.viaturaDestaque, valor: gastosResult.total },
     viaturasMaisVelha,
     tiposViatura,
-    os: { total: osRows.length, aberta: osAberta, fechada: osFechada, andamento: osAndamento },
+    os: {
+      total: osResult.executadas + osResult.emAndamento + osResult.pendentes,
+      aberta: osResult.pendentes,
+      fechada: osResult.executadas,
+      andamento: osResult.emAndamento,
+    },
   };
 }
 
