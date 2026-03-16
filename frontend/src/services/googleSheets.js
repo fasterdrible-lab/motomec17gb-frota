@@ -345,7 +345,7 @@ export async function getTarefasCompletas() {
     placa: getCell(r, 1),
     descricao: getCell(r, 2),
     responsavel: getCell(r, 3),
-    status: getCell(r, 4) || '',
+    status: getCell(r, 4) || 'PENDENTE',
   }));
 }
 
@@ -366,6 +366,19 @@ export async function getDadosRelatorio() {
 }
 
 export async function getDashboardMacro() {
+  function formatGSDate(val) {
+    if (!val) return '—';
+    if (typeof val === 'string') {
+      const m = val.match(/Date\((\d+),(\d+),(\d+)/);
+      if (m) {
+        const d = new Date(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+        return d.toLocaleDateString('pt-BR');
+      }
+      return val;
+    }
+    if (typeof val === 'number') return String(val);
+    return String(val);
+  }
   const [sgb1, sgb2, tarefasData, gastosResult, osResult, abastData, fcdResumo] = await Promise.all([
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
@@ -468,8 +481,9 @@ export async function getDashboardMacro() {
     abastRows.forEach(r => { gastoTotalAbast += parseCusto(getCell(r, 5)); });
     if (abastRows.length > 0) {
       const ultimo = abastRows[abastRows.length - 1];
-      ultimoAbastData = getCell(ultimo, 0);
-      ultimoAbastPrefixo = getCell(ultimo, 1);
+      ultimoAbastData = formatGSDate(getCell(ultimo, 0));
+      const rawPrefixo = getCell(ultimo, 1);
+      ultimoAbastPrefixo = (rawPrefixo && !String(rawPrefixo).startsWith('Date(')) ? rawPrefixo : getCell(ultimo, 2) || '—';
       ultimoAbastValor = parseCusto(getCell(ultimo, 5));
     }
   }
@@ -480,7 +494,7 @@ export async function getDashboardMacro() {
     tarefasPendentes,
     gastoTotal: gastosResult.total,
     manutencoesRealizadas,
-    viaturaTopGasto: { prefixo: gastosResult.viaturaDestaque, valor: gastosResult.total },
+    viaturaTopGasto: { prefixo: gastosResult.viaturaDestaque, valor: gastosResult.maiorGastoValor },
     viaturasMaisVelha,
     tiposViatura,
     os: {
@@ -639,7 +653,7 @@ export async function getGastosTotais() {
     }
   });
 
-  return { total, viaturaDestaque };
+  return { total, viaturaDestaque, maiorGastoValor: maiorGasto };
 }
 
 // ORDENS DE SERVIÇO — lê da aba CONTROLE O.S., coluna E

@@ -2,11 +2,145 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getFrotaCompleta } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
-const statusBadge = (status) => {
+const CATEGORIAS = [
+  { key: 'todas', label: 'Todas' },
+  { key: 'autobomba', label: 'Auto Bomba' },
+  { key: 'resgate', label: 'Resgate' },
+  { key: 'transporte', label: 'Transporte' },
+  { key: 'operacional', label: 'Operacional' },
+];
+
+const TIPO_COLORS = {
+  VO: '#CC1F1F',
+  ABS: '#991B1B',
+  AB: '#991B1B',
+  ABE: '#92400e',
+  ABP: '#991B1B',
+  UR: '#1d4ed8',
+  USA: '#1d4ed8',
+  AF: '#1d4ed8',
+  AS: '#4338ca',
+  ASE: '#4338ca',
+  MOB: '#d97706',
+  TP: '#7c3aed',
+  MO: '#374151',
+  AO: '#374151',
+  MT: '#475569',
+  AC: '#15803d',
+  AT: '#0e7490',
+  EP: '#db2777',
+  CA: '#65a30d',
+  CO: '#15803d',
+  UT: '#0e7490',
+  GO: '#15803d',
+  PP: '#db2777',
+  SK: '#374151',
+  AE: '#92400e',
+  AG: '#374151',
+  RE: '#4338ca',
+  CM: '#374151',
+};
+
+function getTipoPrefix(prefixo) {
+  const p = String(prefixo).toUpperCase().replace(/[-_\s].*$/, '');
+  const m = p.match(/^([A-Z]+)/);
+  return m ? m[1] : '?';
+}
+
+function getCategoriaViatura(prefixo) {
+  const tipo = getTipoPrefix(prefixo);
+  if (['AB', 'ABS', 'ABE', 'ABP'].some(t => tipo === t)) return 'autobomba';
+  if (['UR', 'USA', 'AF', 'AS', 'ASE'].some(t => tipo === t)) return 'resgate';
+  if (['TP', 'MO', 'AO', 'MT', 'VO'].some(t => tipo === t)) return 'transporte';
+  return 'operacional';
+}
+
+function getStatusBadge(status) {
   if (status === 'baixada') return { label: 'Baixada', color: '#dc2626', bg: '#fee2e2' };
   if (status === 'reserva') return { label: 'Reserva', color: '#d97706', bg: '#fef3c7' };
-  return { label: 'Operando', color: '#16a34a', bg: '#dcfce7' };
-};
+  return { label: 'Operacional', color: '#16a34a', bg: '#dcfce7' };
+}
+
+function ViaturaCard({ v }) {
+  const tipo = getTipoPrefix(v.prefixo);
+  const tipoColor = TIPO_COLORS[tipo] || '#1a1a2e';
+  const badge = getStatusBadge(v.status);
+
+  return (
+    <div style={{
+      background: 'white',
+      borderRadius: 12,
+      boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+      padding: '16px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+    }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: '50%',
+          background: tipoColor, color: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '0.7rem', fontWeight: 800, flexShrink: 0,
+          letterSpacing: 0.5,
+        }}>
+          {tipo.length > 3 ? tipo.slice(0, 3) : tipo}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1a1a2e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {v.prefixo}
+          </div>
+          {v.modelo && (
+            <div style={{ fontSize: '0.78rem', color: '#374151', fontWeight: 600 }}>{v.modelo}</div>
+          )}
+          {v.marca && (
+            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{v.marca}</div>
+          )}
+        </div>
+        <span style={{
+          background: badge.bg, color: badge.color,
+          padding: '3px 9px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 700,
+          whiteSpace: 'nowrap', flexShrink: 0,
+        }}>
+          {badge.label}
+        </span>
+      </div>
+
+      {/* Details */}
+      <div style={{ fontSize: '0.82rem', color: '#374151', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px' }}>
+        <div><span style={{ color: '#9ca3af', fontWeight: 600 }}>Placa: </span>{v.placa || '—'}</div>
+        <div><span style={{ color: '#9ca3af', fontWeight: 600 }}>Posto: </span>{v.sgb || '—'}</div>
+        <div><span style={{ color: '#9ca3af', fontWeight: 600 }}>Ano: </span>{v.ano || '—'}</div>
+        <div><span style={{ color: '#9ca3af', fontWeight: 600 }}>KM: </span>{v.kmAtual ? v.kmAtual.toLocaleString('pt-BR') : '—'}</div>
+      </div>
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <button
+          onClick={() => alert(`OS para ${v.prefixo}`)}
+          style={{
+            flex: 1, background: '#CC1F1F', color: 'white', border: 'none',
+            borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: '0.82rem',
+            cursor: 'pointer',
+          }}
+        >
+          🔧 OS
+        </button>
+        <button
+          style={{
+            width: 38, background: 'white', border: '1.5px solid #d1d5db',
+            borderRadius: 8, fontWeight: 700, fontSize: '1rem', cursor: 'pointer',
+            color: '#374151',
+          }}
+          title="Trocar viatura"
+        >
+          ⇄
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function Frota() {
   const [frota, setFrota] = useState([]);
@@ -15,8 +149,7 @@ function Frota() {
   const [error, setError] = useState('');
   const [ultimaSync, setUltimaSync] = useState(null);
   const [busca, setBusca] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('todos');
-  const [filtroSgb, setFiltroSgb] = useState('todos');
+  const [categoriaSel, setCategoriaSel] = useState('todas');
 
   const loadData = useCallback(async (isManual = false) => {
     if (isManual) setSyncing(true);
@@ -37,44 +170,96 @@ function Frota() {
 
   const frotaFiltrada = frota.filter(v => {
     const texto = busca.toLowerCase();
-    const matchBusca = !texto || v.prefixo.toLowerCase().includes(texto) || v.placa.toLowerCase().includes(texto);
-    const matchStatus = filtroStatus === 'todos' || v.status === filtroStatus;
-    const matchSgb = filtroSgb === 'todos' || v.sgb === filtroSgb;
-    return matchBusca && matchStatus && matchSgb;
+    const matchBusca = !texto ||
+      v.prefixo?.toLowerCase().includes(texto) ||
+      v.placa?.toLowerCase().includes(texto) ||
+      v.sgb?.toLowerCase().includes(texto);
+    const matchCat = categoriaSel === 'todas' || getCategoriaViatura(v.prefixo) === categoriaSel;
+    return matchBusca && matchCat;
   });
 
   return (
-    <div>
-      <div className="dash-action-bar" style={{ flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>🚒 Frota</h2>
-        <input
-          type="text"
-          placeholder="Buscar por prefixo ou placa..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem', flex: 1, minWidth: 180 }}
-        />
-        <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
-          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }}>
-          <option value="todos">Todos os status</option>
-          <option value="operando">Operando</option>
-          <option value="reserva">Reserva</option>
-          <option value="baixada">Baixada</option>
-        </select>
-        <select value={filtroSgb} onChange={e => setFiltroSgb(e.target.value)}
-          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }}>
-          <option value="todos">Todos os SGB</option>
-          <option value="1SGB">1SGB</option>
-          <option value="2SGB">2SGB</option>
-        </select>
-        <button className="btn-sincronizar" onClick={() => loadData(true)} disabled={syncing}>
-          {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
-        </button>
-        {ultimaSync && (
-          <span className="sync-info">
-            Última sinc.: {ultimaSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        )}
+    <div style={{ padding: '0 0 32px' }}>
+      {/* Page Header */}
+      <div style={{
+        background: '#1a1a2e', padding: '16px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div>
+          <div style={{ color: 'white', fontWeight: 800, fontSize: '1.1rem' }}>Controle de Viaturas</div>
+          <div style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Gestão de Frota - Corpo de Bombeiros</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {ultimaSync && (
+            <span style={{ color: '#9ca3af', fontSize: '0.78rem' }}>
+              Sinc.: {ultimaSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button
+            className="btn-sincronizar"
+            onClick={() => loadData(true)}
+            disabled={syncing}
+            style={{ fontSize: '0.82rem' }}
+          >
+            {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
+          </button>
+          <button disabled style={{
+            background: '#CC1F1F', color: 'white', border: 'none',
+            borderRadius: 8, padding: '8px 16px', fontWeight: 700,
+            fontSize: '0.85rem', cursor: 'not-allowed', opacity: 0.75,
+          }}>
+            + Nova Manutenção
+          </button>
+        </div>
+      </div>
+
+      {/* Category Tabs + Search */}
+      <div style={{ background: 'white', borderBottom: '1.5px solid #e5e7eb', padding: '0 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 0 }}>
+            {CATEGORIAS.map(cat => (
+              <button
+                key={cat.key}
+                onClick={() => setCategoriaSel(cat.key)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '14px 18px', fontWeight: 700, fontSize: '0.88rem',
+                  color: categoriaSel === cat.key ? '#CC1F1F' : '#6b7280',
+                  borderBottom: categoriaSel === cat.key ? '2.5px solid #CC1F1F' : '2.5px solid transparent',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {cat.label}
+                {cat.key !== 'todas' && (
+                  <span style={{
+                    marginLeft: 6, background: '#f3f4f6', color: '#374151',
+                    borderRadius: 10, padding: '1px 7px', fontSize: '0.75rem', fontWeight: 600,
+                  }}>
+                    {frota.filter(v => getCategoriaViatura(v.prefixo) === cat.key).length}
+                  </span>
+                )}
+                {cat.key === 'todas' && (
+                  <span style={{
+                    marginLeft: 6, background: '#f3f4f6', color: '#374151',
+                    borderRadius: 10, padding: '1px 7px', fontSize: '0.75rem', fontWeight: 600,
+                  }}>
+                    {frota.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            placeholder="🔍 Buscar por prefixo, placa ou posto..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: '1px solid #d1d5db',
+              fontSize: '0.88rem', width: 280,
+            }}
+          />
+        </div>
       </div>
 
       {loading && <div className="dash-loading">⏳ Carregando dados da planilha...</div>}
@@ -89,47 +274,20 @@ function Frota() {
       )}
 
       {!loading && !error && (
-        <div style={{ padding: '0 20px 20px' }}>
+        <div style={{ padding: '20px 24px' }}>
           {frotaFiltrada.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', background: 'white', borderRadius: 10 }}>
-              🔍 Nenhuma viatura encontrada com os filtros selecionados.
+              🔍 Nenhuma viatura encontrada.
             </div>
           ) : (
-            <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ background: '#f3f4f6', borderBottom: '2px solid #e5e7eb' }}>
-                    {['Prefixo', 'Placa', 'KM Atual', 'Modelo', 'Marca', 'Ano', 'Status', 'SGB'].map(col => (
-                      <th key={col} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151', whiteSpace: 'nowrap' }}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {frotaFiltrada.map((v, i) => {
-                    const badge = statusBadge(v.status);
-                    return (
-                      <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '10px 14px', fontWeight: 600 }}>{v.prefixo}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.placa}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.kmAtual ? v.kmAtual.toLocaleString('pt-BR') : '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.modelo || '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.marca || '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>{v.ano || '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, color: badge.color, background: badge.bg }}>
-                            {badge.label}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, background: '#e0e7ff', color: '#3730a3' }}>
-                            {v.sgb}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: 16,
+            }}>
+              {frotaFiltrada.map((v, i) => (
+                <ViaturaCard key={i} v={v} />
+              ))}
             </div>
           )}
         </div>
