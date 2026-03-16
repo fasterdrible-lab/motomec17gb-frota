@@ -8,6 +8,7 @@ const navItems = [
   { path: '/manutencao', icon: '🔧', label: 'Manutenção' },
   { path: '/alertas', icon: '⚠️', label: 'Alertas' },
   { path: '/gastos', icon: '💰', label: 'Gastos' },
+  { path: '/tarefas', icon: '📋', label: 'Tarefas' },
   { path: '/relatorios', icon: '📈', label: 'Relatórios' },
   { path: '/configuracoes', icon: '⚙️', label: 'Configurações' },
 ];

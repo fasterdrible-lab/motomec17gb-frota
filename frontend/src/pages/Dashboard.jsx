@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getDashboardMacro } from '../services/googleSheets';
+import { getDashboardMacro, getTarefasCompletas } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -45,6 +45,8 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [ultimaSync, setUltimaSync] = useState(null);
   const [now, setNow] = useState(new Date());
+  const [showTarefasPanel, setShowTarefasPanel] = useState(false);
+  const [tarefasDetalhadas, setTarefasDetalhadas] = useState([]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -133,12 +135,22 @@ function Dashboard() {
               value={dados.totalAlertas}
               variant={dados.totalAlertas > 0 ? 'alerta' : undefined}
             />
-            <MacroCard
-              icon="📋"
-              label="Tarefas Pendentes"
-              value={dados.tarefasPendentes}
-              variant={dados.tarefasPendentes > 0 ? 'aviso' : undefined}
-            />
+            <div
+              onClick={() => {
+                setShowTarefasPanel(true);
+                if (tarefasDetalhadas.length === 0) {
+                  getTarefasCompletas().then(setTarefasDetalhadas).catch(err => console.error('Erro ao carregar tarefas:', err));
+                }
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              <MacroCard
+                icon="📋"
+                label="Tarefas Pendentes — clique para ver"
+                value={dados.tarefasPendentes}
+                variant={dados.tarefasPendentes > 0 ? 'aviso' : undefined}
+              />
+            </div>
             <MacroCard
               icon="🔧"
               label="Manutenções Realizadas"
@@ -208,6 +220,60 @@ function Dashboard() {
           </div>
 
         </div>
+      )}
+
+      {showTarefasPanel && (
+        <div style={{
+          position: 'fixed', top: 0, right: 0, width: 480, height: '100vh',
+          background: 'white', boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+          zIndex: 1000, display: 'flex', flexDirection: 'column', overflowY: 'auto',
+        }}>
+          <div style={{
+            background: '#1a1a2e', color: 'white', padding: '16px 20px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            position: 'sticky', top: 0, zIndex: 1,
+          }}>
+            <strong style={{ fontSize: '1rem' }}>📋 Tarefas Pendentes</strong>
+            <button
+              onClick={() => setShowTarefasPanel(false)}
+              style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.4rem', cursor: 'pointer' }}
+            >✕</button>
+          </div>
+          <div style={{ padding: 16 }}>
+            {tarefasDetalhadas.length === 0 ? (
+              <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>⏳ Carregando tarefas...</div>
+            ) : (
+              tarefasDetalhadas
+                .filter(t => !String(t.status).toUpperCase().includes('CONCLU'))
+                .map((t, i) => (
+                  <div key={i} style={{
+                    background: '#f9fafb', borderRadius: 8, padding: '12px 14px',
+                    marginBottom: 10, borderLeft: `4px solid ${t.status ? '#d97706' : '#9ca3af'}`,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <strong style={{ color: '#1a1a2e', fontSize: '0.92rem' }}>{t.prefixo}</strong>
+                      <span style={{
+                        background: t.status ? '#fef3c7' : '#f3f4f6',
+                        color: t.status ? '#92400e' : '#6b7280',
+                        padding: '2px 8px', borderRadius: 10, fontSize: '0.75rem', fontWeight: 600,
+                      }}>
+                        {t.status || 'SEM STATUS'}
+                      </span>
+                    </div>
+                    {t.placa && <div style={{ color: '#6b7280', fontSize: '0.78rem' }}>🚗 {t.placa}</div>}
+                    {t.descricao && <div style={{ color: '#374151', fontSize: '0.85rem', marginTop: 4 }}>{t.descricao}</div>}
+                    {t.responsavel && <div style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: 4 }}>👤 {t.responsavel}</div>}
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
+      {showTarefasPanel && (
+        <div
+          onClick={() => setShowTarefasPanel(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 999 }}
+        />
       )}
     </div>
   );
