@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Fundo cinza claro -->
+  <circle cx="100" cy="100" r="98" fill="#f0f0f0" stroke="#ccc" stroke-width="2"/>
+  
+  <!-- Cruz de Malta (4 braços) -->
+  <!-- Braço superior -->
+  <polygon points="100,5 85,35 100,50 115,35" fill="#1a1a1a"/>
+  <!-- Braço inferior -->
+  <polygon points="100,195 85,165 100,150 115,165" fill="#1a1a1a"/>
+  <!-- Braço esquerdo -->
+  <polygon points="5,100 35,85 50,100 35,115" fill="#1a1a1a"/>
+  <!-- Braço direito -->
+  <polygon points="195,100 165,85 150,100 165,115" fill="#1a1a1a"/>
+  
+  <!-- Diagonal superior-esquerda (vermelho SP) -->
+  <polygon points="25,25 55,45 50,50 45,55 20,30" fill="#CC1F1F"/>
+  <!-- Diagonal superior-direita -->
+  <polygon points="175,25 145,45 150,50 155,55 180,30" fill="#000"/>
+  <!-- Diagonal inferior-esquerda -->
+  <polygon points="25,175 55,155 50,150 45,145 20,170" fill="#000"/>
+  <!-- Diagonal inferior-direita (vermelho SP) -->
+  <polygon points="175,175 145,155 150,150 155,145 180,170" fill="#CC1F1F"/>
+
+  <!-- Círculo central verde (paisagem) -->
+  <circle cx="100" cy="92" r="44" fill="#4a9e4a"/>
+  
+  <!-- Sol no centro -->
+  <circle cx="100" cy="76" r="10" fill="#FFD700"/>
+  
+  <!-- Número 17 -->
+  <text x="100" y="108" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="30" font-weight="900" fill="#FF4500">17</text>
+  
+  <!-- Chamas na base -->
+  <polygon points="75,175 82,155 88,170 95,150 100,165 105,150 112,170 118,155 125,175" fill="#FF4500" opacity="0.9"/>
+  <polygon points="80,178 87,160 93,172 100,158 107,172 113,160 120,178" fill="#FFD700" opacity="0.8"/>
+</svg>
