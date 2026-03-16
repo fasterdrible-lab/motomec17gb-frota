@@ -1,36 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <!-- Fundo cinza claro -->
-  <circle cx="100" cy="100" r="98" fill="#f0f0f0" stroke="#ccc" stroke-width="2"/>
+  <!-- Fundo circular vermelho -->
+  <circle cx="100" cy="100" r="98" fill="#CC1F1F" stroke="#8B0000" stroke-width="3"/>
   
-  <!-- Cruz de Malta (4 braços) -->
-  <!-- Braço superior -->
-  <polygon points="100,5 85,35 100,50 115,35" fill="#1a1a1a"/>
-  <!-- Braço inferior -->
-  <polygon points="100,195 85,165 100,150 115,165" fill="#1a1a1a"/>
-  <!-- Braço esquerdo -->
-  <polygon points="5,100 35,85 50,100 35,115" fill="#1a1a1a"/>
-  <!-- Braço direito -->
-  <polygon points="195,100 165,85 150,100 165,115" fill="#1a1a1a"/>
+  <!-- Escudo branco interno -->
+  <path d="M100 20 L160 45 L160 105 Q160 155 100 178 Q40 155 40 105 L40 45 Z" fill="white" stroke="#CC1F1F" stroke-width="1.5"/>
   
-  <!-- Diagonal superior-esquerda (vermelho SP) -->
-  <polygon points="25,25 55,45 50,50 45,55 20,30" fill="#CC1F1F"/>
-  <!-- Diagonal superior-direita -->
-  <polygon points="175,25 145,45 150,50 155,55 180,30" fill="#000"/>
-  <!-- Diagonal inferior-esquerda -->
-  <polygon points="25,175 55,155 50,150 45,145 20,170" fill="#000"/>
-  <!-- Diagonal inferior-direita (vermelho SP) -->
-  <polygon points="175,175 145,155 150,150 155,145 180,170" fill="#CC1F1F"/>
-
-  <!-- Círculo central verde (paisagem) -->
-  <circle cx="100" cy="92" r="44" fill="#4a9e4a"/>
+  <!-- Chama externa vermelha -->
+  <path d="M100 55 C92 70 78 78 81 98 C84 114 100 122 100 122 C100 122 116 114 119 98 C122 78 108 70 100 55Z" fill="#CC1F1F"/>
   
-  <!-- Sol no centro -->
-  <circle cx="100" cy="76" r="10" fill="#FFD700"/>
+  <!-- Chama interna laranja -->
+  <path d="M100 68 C95 79 87 85 89 98 C91 108 100 113 100 113 C100 113 109 108 111 98 C113 85 105 79 100 68Z" fill="#FF6B35"/>
   
-  <!-- Número 17 -->
-  <text x="100" y="108" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="30" font-weight="900" fill="#FF4500">17</text>
+  <!-- Texto 17GB -->
+  <text x="100" y="155" text-anchor="middle" fill="#CC1F1F" font-size="18" font-weight="bold" font-family="Arial, sans-serif">17GB</text>
   
-  <!-- Chamas na base -->
-  <polygon points="75,175 82,155 88,170 95,150 100,165 105,150 112,170 118,155 125,175" fill="#FF4500" opacity="0.9"/>
-  <polygon points="80,178 87,160 93,172 100,158 107,172 113,160 120,178" fill="#FFD700" opacity="0.8"/>
+  <!-- Borda dourada -->
+  <circle cx="100" cy="100" r="94" fill="none" stroke="#FFD700" stroke-width="2"/>
 </svg>

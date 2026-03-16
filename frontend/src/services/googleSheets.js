@@ -32,6 +32,11 @@ function parseCusto(val) {
 }
 
 function findCustoInRow(r) {
+  // Prioritize col F (idx 5) as cost based on RIV sheet structure
+  const colF = parseCusto(getCell(r, 5));
+  if (colF > 0) return colF;
+
+  // Then scan cols 6-14 for monetary-looking values
   for (let col = 6; col <= 14; col++) {
     const val = getCell(r, col);
     if (!val) continue;
@@ -361,12 +366,14 @@ export async function getDadosRelatorio() {
 }
 
 export async function getDashboardMacro() {
-  const [sgb1, sgb2, tarefasData, gastosResult, osResult] = await Promise.all([
+  const [sgb1, sgb2, tarefasData, gastosResult, osResult, abastData, fcdResumo] = await Promise.all([
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS'),
     getGastosTotais(),
     getOrdensServico(),
+    fetchSheetData('ABASTECIMENTO').catch(() => null),
+    getFCDResumo().catch(() => ({ total: 0, hoje: 0 })),
   ]);
 
   const frotaRows = [
@@ -445,6 +452,28 @@ export async function getDashboardMacro() {
     tiposViatura[tipo] = (tiposViatura[tipo] || 0) + 1;
   });
 
+  // 7. Abastecimentos
+  let totalAbastecimentos = 0;
+  let gastoTotalAbast = 0;
+  let ultimoAbastData = '—';
+  let ultimoAbastPrefixo = '—';
+  let ultimoAbastValor = 0;
+
+  if (abastData && abastData.table?.rows) {
+    const abastRows = (abastData.table.rows || []).filter(r => {
+      const prefixo = getCell(r, 1);
+      return prefixo && prefixo !== 'PREFIXO' && prefixo !== 'VTR' && !isSyncRow(prefixo);
+    });
+    totalAbastecimentos = abastRows.length;
+    abastRows.forEach(r => { gastoTotalAbast += parseCusto(getCell(r, 5)); });
+    if (abastRows.length > 0) {
+      const ultimo = abastRows[abastRows.length - 1];
+      ultimoAbastData = getCell(ultimo, 0);
+      ultimoAbastPrefixo = getCell(ultimo, 1);
+      ultimoAbastValor = parseCusto(getCell(ultimo, 5));
+    }
+  }
+
   return {
     frota: { total: frotaRows.length, operando, baixadas, reserva },
     totalAlertas,
@@ -460,23 +489,53 @@ export async function getDashboardMacro() {
       fechada: osResult.executadas,
       andamento: osResult.emAndamento,
     },
+    abastecimentos: {
+      total: totalAbastecimentos,
+      gastoTotal: gastoTotalAbast,
+      ultimoData: ultimoAbastData,
+      ultimoPrefixo: ultimoAbastPrefixo,
+      ultimoValor: ultimoAbastValor,
+    },
+    fcd: { total: fcdResumo.total, hoje: fcdResumo.hoje },
   };
 }
 
 export async function getGastosPorViatura() {
-  // Tentar primeiro 'RIV 2026/2027', depois 'RIV 2026', depois '1SGB'+'2SGB' como fallback
+  // Try multiple sheet name variants for maximum compatibility
+  const sheetNamesToTry = [
+    'RIV 2026/2027',
+    'RIV 2026',
+    'RIV_2026',
+    'RIV_2026/2027',
+    '1SGB',
+    '2SGB',
+  ];
+
   let mRows = [];
+  let foundSheetName = null;
 
-  const [riv1, riv2] = await Promise.allSettled([
-    fetchSheetData('RIV 2026/2027'),
-    fetchSheetData('RIV 2026'),
-  ]);
+  for (const sheetName of sheetNamesToTry) {
+    try {
+      const rivData = await fetchSheetData(sheetName);
+      if (rivData && rivData.table?.rows && rivData.table.rows.length > 0) {
+        const filtered = rivData.table.rows.filter(r => {
+          const col0 = getCell(r, 0);
+          return col0 && !isSyncRow(col0) && String(col0).toUpperCase() !== 'PREFIXO' && String(col0).toUpperCase() !== 'VTR';
+        });
+        if (filtered.length > 0) {
+          mRows = filtered;
+          foundSheetName = sheetName;
+          console.log(`[Gastos] Aba encontrada: "${sheetName}" — ${filtered.length} linhas`);
+          break;
+        }
+      }
+    } catch (e) {
+      // try next
+    }
+  }
 
-  const rivData = riv1.status === 'fulfilled' ? riv1.value :
-                  riv2.status === 'fulfilled' ? riv2.value : null;
-
-  if (rivData && rivData.table?.rows) {
-    mRows = rivData.table.rows.filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
+  if (!foundSheetName) {
+    console.warn('[Gastos] Nenhuma aba RIV encontrada. Dados de gastos indisponíveis.');
   }
 
   // Estrutura da aba RIV: col A (idx 0) = Prefixo/VTR, col B = Placa, col C = Tipo Serviço,
@@ -515,7 +574,48 @@ export async function getGastosPorViatura() {
   return { viaturas, listaGastos, totalGeral };
 }
 
-// GASTO TOTAL — lê da aba GASTOS, coluna C
+export async function getAbastecimentos() {
+  const data = await fetchSheetData('ABASTECIMENTO');
+  const rows = (data.table?.rows || []).filter(r => {
+    const prefixo = getCell(r, 1);
+    return prefixo && prefixo !== 'PREFIXO' && prefixo !== 'VTR' && !isSyncRow(prefixo);
+  });
+  return rows.map(r => ({
+    data: getCell(r, 0),
+    prefixo: getCell(r, 1),
+    placa: getCell(r, 2),
+    km: getCell(r, 3),
+    litros: parseFloat(String(getCell(r, 4)).replace(',', '.')) || 0,
+    valorTotal: parseCusto(getCell(r, 5)),
+    posto: getCell(r, 6) || '',
+    obs: getCell(r, 7) || '',
+  })).sort((a, b) => String(b.data).localeCompare(String(a.data)));
+}
+
+export async function getFCDResumo() {
+  const [fcd1, fcd2] = await Promise.allSettled([
+    fetchSheetData('FCD'),
+    fetchSheetData('FCD_2026'),
+  ]);
+  const fcdData = fcd1.status === 'fulfilled' ? fcd1.value :
+                  fcd2.status === 'fulfilled' ? fcd2.value : null;
+
+  if (!fcdData || !fcdData.table?.rows) return { total: 0, hoje: 0 };
+
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const rows = (fcdData.table?.rows || []).filter(r => {
+    const col0 = getCell(r, 0);
+    return col0 && !isSyncRow(col0) && String(col0).toUpperCase() !== 'DATA';
+  });
+
+  const hojeRegistros = rows.filter(r => {
+    const d = getCell(r, 0);
+    return String(d).includes(hoje) ||
+           (d && new Date(d).toLocaleDateString('pt-BR') === hoje);
+  }).length;
+
+  return { total: rows.length, hoje: hojeRegistros };
+}
 export async function getGastosTotais() {
   const data = await fetchSheetData('GASTOS').catch(() => null);
   if (!data) return { total: 0, viaturaDestaque: '—' };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getTarefasCompletas } from '../services/googleSheets';
 
 const STATUS_COLORS = {
@@ -19,15 +19,25 @@ function getStatusKey(s) {
 export default function Tarefas() {
   const [tarefas, setTarefas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState('TODAS');
   const [busca, setBusca] = useState('');
 
-  useEffect(() => {
-    getTarefasCompletas()
-      .then(setTarefas)
-      .catch(err => console.error('Erro ao carregar tarefas:', err))
-      .finally(() => setLoading(false));
+  const loadTarefas = useCallback(async (isManual = false) => {
+    if (isManual) setSyncing(true);
+    else setLoading(true);
+    try {
+      const data = await getTarefasCompletas();
+      setTarefas(data);
+    } catch (err) {
+      console.error('Erro ao carregar tarefas:', err);
+    } finally {
+      setLoading(false);
+      setSyncing(false);
+    }
   }, []);
+
+  useEffect(() => { loadTarefas(); }, [loadTarefas]);
 
   const filtradas = tarefas.filter(t => {
     const sk = getStatusKey(t.status);
@@ -58,9 +68,22 @@ export default function Tarefas() {
         Sistema de Gestão de Frota — Tarefas
       </div>
       <div style={{ padding: '16px 20px' }}>
-        <h2 style={{ margin: '0 0 16px', fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>
-          📋 Tarefas
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>
+            📋 Tarefas
+          </h2>
+          <button
+            onClick={() => loadTarefas(true)}
+            disabled={syncing}
+            style={{
+              background: '#1a1a2e', color: 'white', border: 'none', borderRadius: 6,
+              padding: '8px 16px', cursor: syncing ? 'not-allowed' : 'pointer',
+              fontSize: '0.85rem', fontWeight: 600, opacity: syncing ? 0.7 : 1,
+            }}
+          >
+            {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
+          </button>
+        </div>
 
         {/* Contadores */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
