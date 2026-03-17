@@ -8,6 +8,7 @@ import Manutencao from './pages/Manutencao';
 import Alertas from './pages/Alertas';
 import Gastos from './pages/Gastos';
 import Tarefas from './pages/Tarefas';
+import Abastecimentos from './pages/Abastecimentos';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
 import './styles/App.css';
@@ -28,6 +29,7 @@ function App() {
               <Route path="/alertas" element={<Alertas />} />
               <Route path="/gastos" element={<Gastos />} />
               <Route path="/tarefas" element={<Tarefas />} />
+              <Route path="/abastecimentos" element={<Abastecimentos />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
             </Routes>
