@@ -446,7 +446,7 @@ export async function getDashboardMacro() {
     abastRows.forEach(r => { gastoTotalAbast += parseCusto(getCell(r, 10)); });
     if (abastRows.length > 0) {
       const ultimo = abastRows[abastRows.length - 1];
-      const rawData = getCell(ultimo, 7); ultimoAbastData = typeof rawData === "object" && rawData !== null ? formatDateFromRaw(JSON.stringify(rawData)) : formatDateFromRaw(rawData);
+      ultimoAbastData = formatDateFromRaw(getCell(ultimo, 7));
       ultimoAbastPrefixo = getCell(ultimo, 5);
       ultimoAbastValor = parseCusto(getCell(ultimo, 10));
     }
@@ -594,6 +594,8 @@ export async function getOrdensServico() {
   });
   return { executadas, emAndamento, pendentes };
 }
+
+
 
 
 
