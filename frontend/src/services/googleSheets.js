@@ -432,7 +432,7 @@ export async function getDashboardMacro() {
   });
 
   let totalAbastecimentos = 0, gastoTotalAbast = 0;
-  let ultimoAbastData = 'â€”', ultimoAbastPrefixo = 'â€”', ultimoAbastValor = 0;
+  let ultimoAbastData = '-', ultimoAbastPrefixo = '-', ultimoAbastValor = 0;
   if (abastData && abastData.table?.rows) {
     const abastRows = (abastData.table.rows || []).filter(r => {
       const prefixo = getCell(r, 5);
@@ -594,6 +594,7 @@ export async function getOrdensServico() {
   });
   return { executadas, emAndamento, pendentes };
 }
+
 
 
 
