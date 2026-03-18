@@ -18,8 +18,12 @@ SYNC_INTERVAL = 300  # 5 minutos
 async def get_google_sheets_client():
     """Autentica e retorna cliente do Google Sheets"""
     try:
-        creds_path = '/app/config/credentials.json'
-        
+        creds_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "/app/config/credentials.json")
+
+        if not os.path.exists(creds_path):
+            logger.warning(f"Arquivo de credenciais não encontrado: {creds_path} — Google Sheets desabilitado")
+            return None
+
         creds = Credentials.from_service_account_file(
             creds_path,
             scopes=SCOPES
@@ -90,8 +94,11 @@ async def start_sync_task():
     while True:
         try:
             logger.info("Sincronizando com Google Sheets...")
-            await sync_viaturas_from_sheets()
-            logger.info(f"Próxima sincronização em {SYNC_INTERVAL} segundos")
+            result = await sync_viaturas_from_sheets()
+            if result:
+                logger.info(f"Sincronização concluída. Próxima em {SYNC_INTERVAL} segundos")
+            else:
+                logger.warning(f"Sincronização falhou ou pulada. Próxima tentativa em {SYNC_INTERVAL} segundos")
             await asyncio.sleep(SYNC_INTERVAL)
         except asyncio.CancelledError:
             logger.info("Serviço de sincronização encerrado")
