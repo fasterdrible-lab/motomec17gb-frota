@@ -347,6 +347,58 @@ LOG_LEVEL=WARNING  # Apenas avisos
 
 ---
 
+## 🚀 Deploy (Railway)
+
+### Pré-requisitos
+1. Conta no [Railway](https://railway.app)
+2. Railway CLI instalado: `npm install -g @railway/cli`
+
+### Configuração inicial (apenas uma vez)
+
+1. Faça login no Railway:
+   ```bash
+   railway login
+   ```
+
+2. Crie um novo projeto no Railway:
+   ```bash
+   railway init
+   ```
+
+3. Adicione os serviços:
+   - **PostgreSQL**: New Service → Database → PostgreSQL
+   - **Backend**: New Service → GitHub Repo → selecionar `backend/`
+   - **Frontend**: New Service → GitHub Repo → selecionar `frontend/`
+
+4. Configure as variáveis de ambiente no painel do Railway:
+   | Variável | Valor |
+   |----------|-------|
+   | `DATABASE_URL` | Gerado automaticamente pelo Railway PostgreSQL |
+   | `SECRET_KEY` | Gere com: `python -c "import secrets; print(secrets.token_hex(32))"` |
+   | `GOOGLE_SHEETS_ID` | ID da planilha Google Sheets |
+   | `GOOGLE_CREDENTIALS_PATH` | `config/credentials.json` |
+   | `TELEGRAM_BOT_TOKEN` | Token do bot Telegram |
+   | `TELEGRAM_CHAT_ID` | ID do chat Telegram |
+   | `FIPE_API_URL` | `https://parallelum.com.br/fipe/api/v1` |
+   | `CORS_ORIGINS` | URL pública do frontend no Railway |
+   | `REACT_APP_API_URL` | URL pública do backend no Railway |
+
+5. Adicione o secret `RAILWAY_TOKEN` no GitHub:
+   - Gere em: Railway → Account Settings → Tokens
+   - Adicione em: GitHub → Settings → Secrets → `RAILWAY_TOKEN`
+
+### Deploy automático
+
+Após a configuração inicial, cada `push` na branch `main` dispara o deploy automático via GitHub Actions.
+
+### Deploy manual
+
+```bash
+railway up
+```
+
+---
+
 ## 🤝 Contribuindo
 
 1. Faça um Fork do projeto
