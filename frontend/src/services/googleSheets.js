@@ -12,4 +12,4 @@ async function fetchSheetData(sheetName, gid = null) {
     ? `${base}&gid=${gid}`
     : `${base}&sheet=${encodeURIComponent(sheetName)}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} ao buscar aba \
+  if (!res.ok) throw new Error(`HTTP ${res.status} ao buscar aba ${sheetName}`);
