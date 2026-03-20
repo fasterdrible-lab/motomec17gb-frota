@@ -11,6 +11,7 @@ import Tarefas from './pages/Tarefas';
 import Abastecimentos from './pages/Abastecimentos';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
+import Logistica from './pages/Logistica';
 import './styles/App.css';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
               <Route path="/abastecimentos" element={<Abastecimentos />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/logistica" element={<Logistica />} />
             </Routes>
           </div>
         </div>

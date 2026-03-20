@@ -10,6 +10,7 @@ const navItems = [
   { path: "/tarefas", icon: "📋", label: "Tarefas" },
   { path: "/abastecimentos", icon: "⛽", label: "Abastecimentos" },
   { path: "/relatorios", icon: "📈", label: "Relatorios" },
+  { path: "/logistica", icon: "🚒", label: "Logística" },
   { path: "/configuracoes", icon: "⚙️", label: "Configuracoes" },
 ];
 
