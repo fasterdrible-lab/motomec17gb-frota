@@ -12,7 +12,7 @@ function Header() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src="/logo17gb.png"
+            src={process.env.PUBLIC_URL + "/logo17gb.png"}
             alt="Brasao 17 GB"
             width={48}
             height={48}
@@ -37,7 +37,7 @@ function Header() {
             </div>
           </div>
           <img
-            src="/logocb.png"
+            src={process.env.PUBLIC_URL + "/logocb.png"}
             alt="Brasao CBMESP"
             width={48}
             height={48}
