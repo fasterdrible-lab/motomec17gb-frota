@@ -3,29 +3,19 @@
 // 17º Grupamento de Bombeiros · Seção de Logística
 // ═══════════════════════════════════════════════════════════════════
 
-const SHEETS = {
-  matOperacionais: {
-    id: '1QAccPlASgG0sosEjkudXOice0VCG3YWXFloEMA8TOTI',
-    abas: [
-      'EPR',
-      'COMPRESSOR',
-      'EMBARCAÇÕES',
-      'CILÍNDROS',
-      'MS - MA - MP - SS',
-      'DESENCARCERADORES',
-      'EQUIPAMENTOS DIVERSOS',
-    ],
-  },
-  planilha2: {
-    id: '12-j2AL6r-Sf8PBXto5c54CgV_cip85qvziHqOXUVBeM',
-    gid: '2136806454',
-    nome: 'Planilha 2',
-  },
-  planilha3: {
-    id: '1kLhkCtGEWn7fkiKzPZ6Aa-NhEDqYkA4tp4wgA42-t2I',
-    gid: '1992950492',
-    nome: 'Planilha 3',
-  },
+const SHEET_ID = '1QAccPlASgG0sosEjkudXOice0VCG3YWXFloEMA8TOTI';
+
+// GIDs de cada aba
+const GIDS = {
+  EPR:                   '596180045',
+  COMPRESSOR:            '1613428792',
+  EMBARCACOES:           '458665463',
+  CILINDROS:             '1422380462',
+  MS_MA_MP_SS:           '1154868919',
+  DESENCARCERADORES:     '7781778',
+  EQUIP_DIVERSOS:        '1892367676',
+  PAS_DE_DEA:            '1660387307',
+  REPAROS:               '302627638',
 };
 
 // ─── FETCH GENÉRICO ──────────────────────────────────────────────────────────
@@ -64,7 +54,6 @@ function parseLinhas(gvizData, colunas) {
       return obj;
     })
     .filter(obj => {
-      // Ignorar linhas de cabeçalho repetido ou linhas vazias
       const vals = Object.values(obj);
       const temConteudo = vals.some(v => v && v.length > 0);
       const ehCabecalho = vals.some(v =>
@@ -72,6 +61,21 @@ function parseLinhas(gvizData, colunas) {
       );
       return temConteudo && !ehCabecalho;
     });
+}
+
+// ─── PARSER GENÉRICO (cabeçalho automático) ──────────────────────────────────
+function parseGenerico(gvizData) {
+  const headers = gvizData?.table?.cols?.map(c => c.label || c.id || '') || [];
+  const colsVis = headers.filter(h => h && !h.startsWith('Unnamed'));
+  const rows = (gvizData?.table?.rows || [])
+    .filter(r => r.c && r.c.some(c => c && c.v != null))
+    .map(r => {
+      const obj = {};
+      colsVis.forEach((h, i) => { obj[h] = strCell(r, i); });
+      return obj;
+    })
+    .filter(obj => Object.values(obj).some(v => v));
+  return { headers: colsVis, rows };
 }
 
 // ─── CONTAGEM POR STATUS ─────────────────────────────────────────────────────
@@ -87,7 +91,7 @@ export function contarStatus(rows, campoStatus = 'STATUS') {
 
 // ─── ABA EPR ─────────────────────────────────────────────────────────────────
 async function getEPR() {
-  const data = await fetchGviz(SHEETS.matOperacionais.id, { sheetName: 'EPR' });
+  const data = await fetchGviz(SHEET_ID, { gid: GIDS.EPR });
   const rows = parseLinhas(data, ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO', 'MÁSCARA', 'OBSERVAÇÕES']);
   const validos = rows.filter(r => ['OPERANDO', 'BAIXADO'].includes(r.STATUS));
   return { aba: 'EPR', icone: '🛡️', rows: validos, ...contarStatus(validos) };
@@ -95,7 +99,7 @@ async function getEPR() {
 
 // ─── ABA COMPRESSOR ───────────────────────────────────────────────────────────
 async function getCompressor() {
-  const data = await fetchGviz(SHEETS.matOperacionais.id, { sheetName: 'COMPRESSOR' });
+  const data = await fetchGviz(SHEET_ID, { gid: GIDS.COMPRESSOR });
   const rows = parseLinhas(data, ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO', 'OBSERVAÇÕES']);
   const validos = rows.filter(r => ['OPERANDO', 'BAIXADO'].includes(r.STATUS));
   return { aba: 'COMPRESSOR', icone: '⚙️', rows: validos, ...contarStatus(validos) };
@@ -103,7 +107,7 @@ async function getCompressor() {
 
 // ─── ABA EMBARCAÇÕES ─────────────────────────────────────────────────────────
 async function getEmbarcacoes() {
-  const data = await fetchGviz(SHEETS.matOperacionais.id, { sheetName: 'EMBARCAÇÕES' });
+  const data = await fetchGviz(SHEET_ID, { gid: GIDS.EMBARCACOES });
   const rows = parseLinhas(data, ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO', 'OBSERVAÇÕES']);
   const validos = rows.filter(r => ['OPERANDO', 'BAIXADO'].includes(r.STATUS));
   return { aba: 'EMBARCAÇÕES', icone: '🚤', rows: validos, ...contarStatus(validos) };
@@ -111,7 +115,7 @@ async function getEmbarcacoes() {
 
 // ─── ABA CILÍNDROS ───────────────────────────────────────────────────────────
 async function getCilindros() {
-  const data = await fetchGviz(SHEETS.matOperacionais.id, { sheetName: 'CILÍNDROS' });
+  const data = await fetchGviz(SHEET_ID, { gid: GIDS.CILINDROS });
   const rows = parseLinhas(data, ['Nº SÉRIE', 'TIPO', 'SUBTIPO', 'STATUS', 'LOCALIZAÇÃO', 'VENCIMENTO TH', 'OBSERVAÇÕES']);
   const validos = rows.filter(r => ['OPERANDO', 'BAIXADO'].includes(r.STATUS));
   const fim2026 = new Date('2026-12-31');
@@ -125,7 +129,7 @@ async function getCilindros() {
 
 // ─── ABA MS/MA/MP/SS ─────────────────────────────────────────────────────────
 async function getMSSerra() {
-  const data = await fetchGviz(SHEETS.matOperacionais.id, { sheetName: 'MS - MA - MP - SS' });
+  const data = await fetchGviz(SHEET_ID, { gid: GIDS.MS_MA_MP_SS });
   const rows = parseLinhas(data, ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO', 'OBSERVAÇÕES']);
   const validos = rows.filter(r => ['OPERANDO', 'BAIXADO'].includes(r.STATUS));
   return { aba: 'MS/MA/MP/SS', icone: '🪚', rows: validos, ...contarStatus(validos) };
@@ -133,7 +137,7 @@ async function getMSSerra() {
 
 // ─── ABA DESENCARCERADORES ───────────────────────────────────────────────────
 async function getDesencarceradores() {
-  const data = await fetchGviz(SHEETS.matOperacionais.id, { sheetName: 'DESENCARCERADORES' });
+  const data = await fetchGviz(SHEET_ID, { gid: GIDS.DESENCARCERADORES });
   const rows = parseLinhas(data, ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO', 'OBSERVAÇÕES']);
   const validos = rows.filter(r => ['OPERANDO', 'BAIXADO'].includes(r.STATUS));
   return { aba: 'DESENCARCERADORES', icone: '🔧', rows: validos, ...contarStatus(validos) };
@@ -141,57 +145,49 @@ async function getDesencarceradores() {
 
 // ─── ABA EQUIPAMENTOS DIVERSOS ───────────────────────────────────────────────
 async function getEquipDiversos() {
-  const data = await fetchGviz(SHEETS.matOperacionais.id, { sheetName: 'EQUIPAMENTOS DIVERSOS' });
+  const data = await fetchGviz(SHEET_ID, { gid: GIDS.EQUIP_DIVERSOS });
   const rows = parseLinhas(data, ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO', 'OBSERVAÇÕES']);
   const validos = rows.filter(r => ['OPERANDO', 'BAIXADO'].includes(r.STATUS));
   return { aba: 'EQUIP. DIVERSOS', icone: '📦', rows: validos, ...contarStatus(validos) };
 }
 
-// ─── PLANILHA 2 ──────────────────────────────────────────────────────────────
-export async function getPlanilha2() {
+// ─── ABA PAS DE DEA ──────────────────────────────────────────────────────────
+async function getPasDea() {
   try {
-    const data = await fetchGviz(SHEETS.planilha2.id, { gid: SHEETS.planilha2.gid });
-    const headers = data?.table?.cols?.map(c => c.label || c.id || '') || [];
-    const rows = (data?.table?.rows || []).map(r => {
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = strCell(r, i); });
-      return obj;
-    }).filter(obj => Object.values(obj).some(v => v));
+    const data = await fetchGviz(SHEET_ID, { gid: GIDS.PAS_DE_DEA });
+    const { headers, rows } = parseGenerico(data);
     const statusKey = headers.find(h => h.toUpperCase().includes('STATUS') || h.toUpperCase().includes('SITUAÇÃO'));
-    const counts = statusKey ? contarStatus(rows, statusKey) : { op: rows.length, bx: 0, total: rows.length };
-    return { nome: SHEETS.planilha2.nome, headers, rows, ...counts };
+    const validos = statusKey ? rows.filter(r => ['OPERANDO', 'BAIXADO'].includes((r[statusKey] || '').toUpperCase())) : rows;
+    const counts = statusKey ? contarStatus(validos, statusKey) : { op: rows.length, bx: 0, total: rows.length };
+    return { aba: 'PAS DE DEA', icone: '🫀', headers, rows: validos.length ? validos : rows, ...counts };
   } catch (e) {
-    return { nome: SHEETS.planilha2.nome, headers: [], rows: [], op: 0, bx: 0, total: 0, erro: e.message };
+    return { aba: 'PAS DE DEA', icone: '🫀', headers: [], rows: [], op: 0, bx: 0, total: 0, erro: e.message };
   }
 }
 
-// ─── PLANILHA 3 ──────────────────────────────────────────────────────────────
-export async function getPlanilha3() {
+// ─── ABA REPAROS ─────────────────────────────────────────────────────────────
+async function getReparos() {
   try {
-    const data = await fetchGviz(SHEETS.planilha3.id, { gid: SHEETS.planilha3.gid });
-    const headers = data?.table?.cols?.map(c => c.label || c.id || '') || [];
-    const rows = (data?.table?.rows || []).map(r => {
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = strCell(r, i); });
-      return obj;
-    }).filter(obj => Object.values(obj).some(v => v));
+    const data = await fetchGviz(SHEET_ID, { gid: GIDS.REPAROS });
+    const { headers, rows } = parseGenerico(data);
     const statusKey = headers.find(h => h.toUpperCase().includes('STATUS') || h.toUpperCase().includes('SITUAÇÃO'));
     const counts = statusKey ? contarStatus(rows, statusKey) : { op: rows.length, bx: 0, total: rows.length };
-    return { nome: SHEETS.planilha3.nome, headers, rows, ...counts };
+    return { aba: 'REPAROS', icone: '🛠️', headers, rows, ...counts };
   } catch (e) {
-    return { nome: SHEETS.planilha3.nome, headers: [], rows: [], op: 0, bx: 0, total: 0, erro: e.message };
+    return { aba: 'REPAROS', icone: '🛠️', headers: [], rows: [], op: 0, bx: 0, total: 0, erro: e.message };
   }
 }
 
 // ─── EXPORTAÇÃO PRINCIPAL ────────────────────────────────────────────────────
 export async function getMateriaisOperacionais() {
-  const [epr, compressor, embarcacoes, cilindros, msSerra, desenc, diversos] =
+  const [epr, compressor, embarcacoes, cilindros, msSerra, desenc, diversos, pasDea, reparos] =
     await Promise.allSettled([
       getEPR(), getCompressor(), getEmbarcacoes(), getCilindros(),
       getMSSerra(), getDesencarceradores(), getEquipDiversos(),
+      getPasDea(), getReparos(),
     ]);
 
-  const abas = [epr, compressor, embarcacoes, cilindros, msSerra, desenc, diversos]
+  const abas = [epr, compressor, embarcacoes, cilindros, msSerra, desenc, diversos, pasDea, reparos]
     .map(r => r.status === 'fulfilled' ? r.value : null)
     .filter(Boolean);
 
@@ -202,4 +198,13 @@ export async function getMateriaisOperacionais() {
   const thVencendo = abas.find(a => a.aba === 'CILÍNDROS')?.thVencendo || 0;
 
   return { abas, totais, thVencendo };
+}
+
+// ─── EXPORTAÇÕES LEGADAS (compatibilidade) ───────────────────────────────────
+export async function getPlanilha2() {
+  return { nome: 'Planilha 2', headers: [], rows: [], op: 0, bx: 0, total: 0, erro: 'Não configurada' };
+}
+
+export async function getPlanilha3() {
+  return { nome: 'Planilha 3', headers: [], rows: [], op: 0, bx: 0, total: 0, erro: 'Não configurada' };
 }
