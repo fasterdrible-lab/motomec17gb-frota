@@ -12,6 +12,8 @@ import Abastecimentos from './pages/Abastecimentos';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
 import Logistica from './pages/Logistica';
+import MatOperacionais from './pages/MatOperacionais';
+import PasDeaReparos from './pages/PasDeaReparos';
 import './styles/App.css';
 
 function App() {
@@ -34,6 +36,8 @@ function App() {
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/logistica" element={<Logistica />} />
+              <Route path="/logistica/mat-operacionais" element={<MatOperacionais />} />
+              <Route path="/logistica/pas-dea-reparos" element={<PasDeaReparos />} />
             </Routes>
           </div>
         </div>
