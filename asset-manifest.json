@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/motomec17gb-frota/static/css/main.1f50a8ed.css",
-    "main.js": "/motomec17gb-frota/static/js/main.a2e3ad7e.js",
+    "main.js": "/motomec17gb-frota/static/js/main.4ecd6179.js",
     "index.html": "/motomec17gb-frota/index.html",
     "main.1f50a8ed.css.map": "/motomec17gb-frota/static/css/main.1f50a8ed.css.map",
-    "main.a2e3ad7e.js.map": "/motomec17gb-frota/static/js/main.a2e3ad7e.js.map"
+    "main.4ecd6179.js.map": "/motomec17gb-frota/static/js/main.4ecd6179.js.map"
   },
   "entrypoints": [
     "static/css/main.1f50a8ed.css",
-    "static/js/main.a2e3ad7e.js"
+    "static/js/main.4ecd6179.js"
   ]
 }
