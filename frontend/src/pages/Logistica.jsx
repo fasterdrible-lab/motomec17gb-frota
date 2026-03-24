@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getMateriaisOperacionais, getPlanilha2, getPlanilha3 } from '../services/logisticaSheets';
+import { getMateriaisOperacionais } from '../services/logisticaSheets';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 
@@ -92,20 +92,51 @@ function AbaHeader({ aba }) {
   );
 }
 
-function TabelaEquipamentos({ rows, colunas, abaKey }) {
+// ─── TABELA GENÉRICA (funciona para qualquer aba) ─────────────────────────────
+function TabelaAba({ aba }) {
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
 
   const fim2026 = new Date('2026-12-31');
-  const filtrados = rows.filter(r => {
+
+  // Decide quais colunas mostrar
+  const COLUNAS_FIXAS = {
+    'EPR':               ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
+    'COMPRESSOR':        ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
+    'EMBARCAÇÕES':       ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
+    'CILÍNDROS':         ['Nº SÉRIE', 'TIPO', 'STATUS', 'LOCALIZAÇÃO', 'VENCIMENTO TH'],
+    'MS/MA/MP/SS':       ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
+    'DESENCARCERADORES': ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
+    'EQUIP. DIVERSOS':   ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
+  };
+
+  const colunas = COLUNAS_FIXAS[aba.aba]
+    || (aba.headers && aba.headers.length ? aba.headers.slice(0, 9) : ['PATRIMÔNIO', 'TIPO', 'STATUS', 'LOCALIZAÇÃO']);
+
+  const isVencCol = col => col.toUpperCase().includes('VENCIMENTO') || col.toUpperCase().includes('TH');
+  const uid = `sel-${aba.aba}`.replace(/[^a-z0-9]/gi, '');
+
+  const temStatus = colunas.includes('STATUS') || colunas.some(c => c.toUpperCase().includes('STATUS'));
+
+  const filtrados = aba.rows.filter(r => {
     const txt = Object.values(r).join(' ').toLowerCase();
     const okBusca  = !busca || txt.includes(busca.toLowerCase());
-    const okStatus = !filtroStatus || (r.STATUS || '').toUpperCase() === filtroStatus;
+    const statusField = colunas.find(c => c.toUpperCase().includes('STATUS'));
+    const okStatus = !filtroStatus || !statusField || (r[statusField] || '').toUpperCase() === filtroStatus;
     return okBusca && okStatus;
   });
 
-  const isVencCol = col => col.toUpperCase().includes('VENCIMENTO') || col.toUpperCase().includes('TH');
-  const uid = `sel-${abaKey}`.replace(/[^a-z0-9]/gi, '');
+  if (aba.erro) return (
+    <div style={{ textAlign: 'center', padding: 40, color: C.mid }}>
+      ⚠️ Erro ao carregar: {aba.erro}
+    </div>
+  );
+
+  if (!aba.rows.length) return (
+    <div style={{ textAlign: 'center', padding: 40, color: C.mid }}>
+      Nenhum dado encontrado nesta aba.
+    </div>
+  );
 
   return (
     <div>
@@ -125,17 +156,21 @@ function TabelaEquipamentos({ rows, colunas, abaKey }) {
             borderRadius: 6, fontSize: '0.8rem', color: C.dark, minWidth: 200,
           }}
         />
-        <span style={{ fontSize: '0.74rem', color: C.mid, fontWeight: 600 }}>Status:</span>
-        <select
-          id={uid}
-          value={filtroStatus}
-          onChange={e => setFiltroStatus(e.target.value)}
-          style={{ padding: '6px 10px', border: '1px solid #CFD8DC', borderRadius: 6, fontSize: '0.8rem' }}
-        >
-          <option value="">Todos ({rows.length})</option>
-          <option value="OPERANDO">✅ Operando</option>
-          <option value="BAIXADO">❌ Baixado</option>
-        </select>
+        {temStatus && (
+          <>
+            <span style={{ fontSize: '0.74rem', color: C.mid, fontWeight: 600 }}>Status:</span>
+            <select
+              id={uid}
+              value={filtroStatus}
+              onChange={e => setFiltroStatus(e.target.value)}
+              style={{ padding: '6px 10px', border: '1px solid #CFD8DC', borderRadius: 6, fontSize: '0.8rem' }}
+            >
+              <option value="">Todos ({aba.rows.length})</option>
+              <option value="OPERANDO">✅ Operando</option>
+              <option value="BAIXADO">❌ Baixado</option>
+            </select>
+          </>
+        )}
         <span style={{ fontSize: '0.74rem', color: C.mid }}>{filtrados.length} itens</span>
       </div>
 
@@ -163,78 +198,26 @@ function TabelaEquipamentos({ rows, colunas, abaKey }) {
                 onMouseLeave={e => e.currentTarget.style.background = ''}
               >
                 {colunas.map(col => {
-                  if (col === 'STATUS') return (
-                    <td key={col} style={{ padding: '8px 12px' }}>
-                      <StatusBadge status={r[col] || '—'} />
-                    </td>
-                  );
+                  const val = r[col] || '—';
+                  const up = val.toUpperCase();
+                  // Coluna de status
+                  if (col.toUpperCase().includes('STATUS') || up === 'OPERANDO' || up === 'BAIXADO') {
+                    if (up.includes('OPERANDO') || up.includes('BAIXADO') || up.includes('ATIVO') || up.includes('INATIVO')) {
+                      return <td key={col} style={{ padding: '8px 12px' }}><StatusBadge status={val} /></td>;
+                    }
+                  }
+                  // Coluna de vencimento
                   if (isVencCol(col)) {
-                    const val = r[col] || '';
                     const d = new Date(val);
                     const vencendo = !isNaN(d) && d <= fim2026;
                     return (
                       <td key={col} style={{ padding: '8px 12px', color: vencendo ? C.orange : 'inherit', fontWeight: vencendo ? 700 : 'normal' }}>
-                        {val ? val.substring(0, 10) : '—'}
+                        {val !== '—' ? val.substring(0, 10) : '—'}
                         {vencendo && ' ⚠️'}
                       </td>
                     );
                   }
-                  return <td key={col} style={{ padding: '8px 12px' }}>{r[col] || '—'}</td>;
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function TabelaGenerica({ headers, rows, nome }) {
-  const [busca, setBusca] = useState('');
-  if (!headers.length) return (
-    <div style={{ textAlign: 'center', padding: 40, color: C.mid }}>
-      Nenhuma coluna identificada nesta aba.
-    </div>
-  );
-  const colsVis = headers.filter(h => h && !h.startsWith('Unnamed')).slice(0, 9);
-  const filtrados = rows.filter(r =>
-    !busca || Object.values(r).join(' ').toLowerCase().includes(busca.toLowerCase())
-  );
-  return (
-    <div>
-      <div style={{
-        background: '#fff', padding: '10px 16px', display: 'flex', gap: 10,
-        border: '1px solid #ddd', borderTop: 'none', alignItems: 'center',
-      }}>
-        <span style={{ fontSize: '0.74rem', color: C.mid, fontWeight: 600 }}>Buscar:</span>
-        <input
-          type="text" placeholder="Texto..." value={busca}
-          onChange={e => setBusca(e.target.value)}
-          style={{ padding: '6px 10px', border: '1px solid #CFD8DC', borderRadius: 6, fontSize: '0.8rem', minWidth: 200 }}
-        />
-        <span style={{ fontSize: '0.74rem', color: C.mid }}>{filtrados.length} itens</span>
-      </div>
-      <div style={{ overflowX: 'auto', border: '1px solid #ddd', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-          <thead style={{ background: '#263238', color: '#fff' }}>
-            <tr>{colsVis.map(h => (
-              <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
-            ))}</tr>
-          </thead>
-          <tbody>
-            {filtrados.map((r, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #ECEFF1' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-                onMouseLeave={e => e.currentTarget.style.background = ''}
-              >
-                {colsVis.map(h => {
-                  const v = r[h] || '—';
-                  const up = v.toUpperCase();
-                  const isOp = up.includes('OPERANDO') || up.includes('ATIVO');
-                  const isBx = up.includes('BAIXADO') || up.includes('INATIVO');
-                  if (isOp || isBx) return <td key={h} style={{ padding: '8px 12px' }}><StatusBadge status={v} /></td>;
-                  return <td key={h} style={{ padding: '8px 12px' }}>{v}</td>;
+                  return <td key={col} style={{ padding: '8px 12px' }}>{val}</td>;
                 })}
               </tr>
             ))}
@@ -246,40 +229,21 @@ function TabelaGenerica({ headers, rows, nome }) {
 }
 
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
-const COLUNAS_ABA = {
-  'EPR':              ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
-  'COMPRESSOR':       ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
-  'EMBARCAÇÕES':      ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
-  'CILÍNDROS':        ['Nº SÉRIE', 'TIPO', 'STATUS', 'LOCALIZAÇÃO', 'VENCIMENTO TH'],
-  'MS/MA/MP/SS':      ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
-  'DESENCARCERADORES':['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
-  'EQUIP. DIVERSOS':  ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
-};
-
 function Logistica() {
-  const [matOp, setMatOp]       = useState(null);
-  const [p2, setP2]             = useState(null);
-  const [p3, setP3]             = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [syncing, setSyncing]   = useState(false);
-  const [error, setError]       = useState('');
+  const [matOp, setMatOp]           = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [syncing, setSyncing]       = useState(false);
+  const [error, setError]           = useState('');
   const [ultimaSync, setUltimaSync] = useState(null);
-  const [abaAtiva, setAbaAtiva] = useState(null);
-  const [secao, setSecao]       = useState('mat-op'); // 'mat-op' | 'p2' | 'p3'
+  const [abaAtiva, setAbaAtiva]     = useState(null);
 
   const loadData = useCallback(async (manual = false) => {
     if (manual) setSyncing(true);
     else setLoading(true);
     setError('');
     try {
-      const [matResult, p2Result, p3Result] = await Promise.all([
-        getMateriaisOperacionais(),
-        getPlanilha2(),
-        getPlanilha3(),
-      ]);
+      const matResult = await getMateriaisOperacionais();
       setMatOp(matResult);
-      setP2(p2Result);
-      setP3(p3Result);
       if (!abaAtiva && matResult.abas.length) setAbaAtiva(matResult.abas[0].aba);
       setUltimaSync(new Date());
     } catch (e) {
@@ -323,13 +287,6 @@ function Logistica() {
   const pctGeral = totais.total ? Math.round(totais.op / totais.total * 100) : 0;
   const abaObj = matOp?.abas?.find(a => a.aba === abaAtiva);
 
-  // ── NAV INTERNA ──────────────────────────────────────────────────────────────
-  const secoes = [
-    { key: 'mat-op', label: '📋 Mat. Operacionais' },
-    { key: 'p2',     label: `📋 ${p2?.nome || 'Planilha 2'}` },
-    { key: 'p3',     label: `📋 ${p3?.nome || 'Planilha 3'}` },
-  ];
-
   return (
     <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto' }}>
 
@@ -369,8 +326,8 @@ function Logistica() {
         <KPICard icon="✅" label="Operando" value={totais.op} sub={`${pctGeral}% disponibilidade`} variant="success" />
         <KPICard icon="❌" label="Baixados" value={totais.bx} sub={`${100 - pctGeral}% indisponíveis`} variant={totais.bx > 20 ? 'danger' : 'warning'} />
         <KPICard icon="⚠️" label="TH Vencendo em 2026" value={thVencendo} sub="cilíndros" variant={thVencendo > 0 ? 'warning' : 'success'} />
-        <KPICard icon="🚤" label="Embarcações" value={`${matOp?.abas?.find(a=>a.aba==='EMBARCAÇÕES')?.op || 0}/${matOp?.abas?.find(a=>a.aba==='EMBARCAÇÕES')?.total || 0}`} sub="100% operacionais" variant="success" />
-        <KPICard icon="⚙️" label="Compressores" value={`${matOp?.abas?.find(a=>a.aba==='COMPRESSOR')?.op || 0}/${matOp?.abas?.find(a=>a.aba==='COMPRESSOR')?.total || 0}`} sub="Ponto crítico" variant="danger" />
+        <KPICard icon="🚤" label="Embarcações" value={`${matOp?.abas?.find(a=>a.aba==='EMBARCAÇÕES')?.op || 0}/${matOp?.abas?.find(a=>a.aba==='EMBARCAÇÕES')?.total || 0}`} sub="operacionais" variant="success" />
+        <KPICard icon="⚙️" label="Compressores" value={`${matOp?.abas?.find(a=>a.aba==='COMPRESSOR')?.op || 0}/${matOp?.abas?.find(a=>a.aba==='COMPRESSOR')?.total || 0}`} sub="operacionais" variant="info" />
       </div>
 
       {/* ALERTAS */}
@@ -395,114 +352,31 @@ function Logistica() {
         </div>
       )}
 
-      {/* NAVEGAÇÃO INTERNA */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: '2px solid #e5e7eb', paddingBottom: 0 }}>
-        {secoes.map(s => (
-          <button key={s.key} onClick={() => setSecao(s.key)} style={{
-            padding: '10px 18px', background: 'transparent', border: 'none',
-            borderBottom: secao === s.key ? `3px solid ${C.red2}` : '3px solid transparent',
-            color: secao === s.key ? C.red2 : C.mid,
-            fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', letterSpacing: '0.3px',
+      {/* ABAS DE CATEGORIA — todas dinâmicas */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        {matOp?.abas?.map(a => (
+          <button key={a.aba} onClick={() => setAbaAtiva(a.aba)} style={{
+            padding: '7px 14px', borderRadius: 20,
+            border: `2px solid ${abaAtiva === a.aba ? C.red2 : '#ddd'}`,
+            background: abaAtiva === a.aba ? C.red2 : '#fff',
+            color: abaAtiva === a.aba ? '#fff' : C.mid,
+            fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', transition: '0.2s',
           }}>
-            {s.label}
+            {a.icone} {a.aba}
+            <span style={{
+              marginLeft: 6, background: abaAtiva === a.aba ? 'rgba(255,255,255,0.25)' : '#f3f4f6',
+              color: abaAtiva === a.aba ? '#fff' : C.mid,
+              borderRadius: 10, padding: '1px 7px', fontSize: '0.7rem',
+            }}>{a.total}</span>
           </button>
         ))}
       </div>
 
-      {/* ── SEÇÃO: MATERIAIS OPERACIONAIS ── */}
-      {secao === 'mat-op' && (
+      {/* CONTEÚDO DA ABA SELECIONADA */}
+      {abaObj && (
         <div>
-          {/* Abas de categoria */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            {matOp?.abas?.map(a => (
-              <button key={a.aba} onClick={() => setAbaAtiva(a.aba)} style={{
-                padding: '7px 14px', borderRadius: 20,
-                border: `2px solid ${abaAtiva === a.aba ? C.red2 : '#ddd'}`,
-                background: abaAtiva === a.aba ? C.red2 : '#fff',
-                color: abaAtiva === a.aba ? '#fff' : C.mid,
-                fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', transition: '0.2s',
-              }}>
-                {a.icone} {a.aba}
-                <span style={{
-                  marginLeft: 6, background: abaAtiva === a.aba ? 'rgba(255,255,255,0.25)' : '#f3f4f6',
-                  color: abaAtiva === a.aba ? '#fff' : C.mid,
-                  borderRadius: 10, padding: '1px 7px', fontSize: '0.7rem',
-                }}>{a.total}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Conteúdo da aba selecionada */}
-          {abaObj && (
-            <div>
-              <AbaHeader aba={abaObj} />
-              <TabelaEquipamentos
-                rows={abaObj.rows}
-                colunas={COLUNAS_ABA[abaObj.aba] || ['PATRIMÔNIO', 'TIPO', 'STATUS', 'LOCALIZAÇÃO']}
-                abaKey={abaObj.aba}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── SEÇÃO: PLANILHA 2 ── */}
-      {secao === 'p2' && (
-        <div>
-          {p2?.erro ? (
-            <div style={{
-              background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 10,
-              padding: 40, textAlign: 'center', color: C.red2,
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: 8 }}>❌</div>
-              <div style={{ fontWeight: 700 }}>Não foi possível carregar {p2.nome}</div>
-              <div style={{ fontSize: '0.82rem', color: C.mid, marginTop: 6 }}>{p2.erro}</div>
-            </div>
-          ) : (
-            <div>
-              <div style={{
-                background: `linear-gradient(90deg, ${C.red2}, ${C.orange})`,
-                color: '#fff', padding: '12px 18px', borderRadius: '8px 8px 0 0',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <div style={{ fontWeight: 700 }}>📋 {p2?.nome}</div>
-                <span style={{ background: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 700 }}>
-                  {p2?.total} itens
-                </span>
-              </div>
-              <TabelaGenerica headers={p2?.headers || []} rows={p2?.rows || []} nome={p2?.nome} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── SEÇÃO: PLANILHA 3 ── */}
-      {secao === 'p3' && (
-        <div>
-          {p3?.erro ? (
-            <div style={{
-              background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 10,
-              padding: 40, textAlign: 'center', color: C.red2,
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: 8 }}>❌</div>
-              <div style={{ fontWeight: 700 }}>Não foi possível carregar {p3.nome}</div>
-              <div style={{ fontSize: '0.82rem', color: C.mid, marginTop: 6 }}>{p3.erro}</div>
-            </div>
-          ) : (
-            <div>
-              <div style={{
-                background: `linear-gradient(90deg, ${C.red2}, ${C.orange})`,
-                color: '#fff', padding: '12px 18px', borderRadius: '8px 8px 0 0',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <div style={{ fontWeight: 700 }}>📋 {p3?.nome}</div>
-                <span style={{ background: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 700 }}>
-                  {p3?.total} itens
-                </span>
-              </div>
-              <TabelaGenerica headers={p3?.headers || []} rows={p3?.rows || []} nome={p3?.nome} />
-            </div>
-          )}
+          <AbaHeader aba={abaObj} />
+          <TabelaAba aba={abaObj} />
         </div>
       )}
     </div>
