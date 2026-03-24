@@ -62,10 +62,29 @@ function Sidebar() {
         {/* ABA PRINCIPAL: LOGÍSTICA */}
         <NavLink
           to="/logistica"
+          end
           className={({ isActive }) => `sidebar-item sidebar-main-item ${isActive ? "active" : ""}`}
         >
           <span className="sidebar-icon">🚒</span>
           <span>Logística</span>
+        </NavLink>
+
+        {/* SUB-ITENS DE LOGÍSTICA */}
+        <NavLink
+          to="/logistica/mat-operacionais"
+          className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? "active" : ""}`}
+          style={{ paddingLeft: 36, fontSize: '0.8rem', opacity: 0.85 }}
+        >
+          <span className="sidebar-icon">📦</span>
+          <span>Mat. Operacionais</span>
+        </NavLink>
+        <NavLink
+          to="/logistica/pas-dea-reparos"
+          className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? "active" : ""}`}
+          style={{ paddingLeft: 36, fontSize: '0.8rem', opacity: 0.85 }}
+        >
+          <span className="sidebar-icon">🫀</span>
+          <span>PAS/DEA &amp; Reparos</span>
         </NavLink>
 
         {/* Relatórios e Configurações */}
