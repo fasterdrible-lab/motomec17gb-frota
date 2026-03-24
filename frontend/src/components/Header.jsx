@@ -1,5 +1,7 @@
 import React from "react";
 
+const BASE_URL = "https://fasterdrible-lab.github.io/motomec17gb-frota";
+
 function Header() {
   return (
     <div>
@@ -12,7 +14,7 @@ function Header() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src={process.env.PUBLIC_URL + "/logo17gb.png"}
+            src={BASE_URL + "/logo17gb.png"}
             alt="Brasao 17 GB"
             width={48}
             height={48}
@@ -37,7 +39,7 @@ function Header() {
             </div>
           </div>
           <img
-            src={process.env.PUBLIC_URL + "/logocb.png"}
+            src={BASE_URL + "/logocb.png"}
             alt="Brasao CBMESP"
             width={48}
             height={48}
