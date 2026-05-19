@@ -1,6 +1,6 @@
 import React from "react";
 
-const BASE_URL = "https://fasterdrible-lab.github.io/motomec17gb-frota";
+const publicUrl = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 
 function Header() {
   return (
@@ -14,7 +14,7 @@ function Header() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src={BASE_URL + "/logo17gb.png"}
+            src={`${publicUrl}/logo17gb.png`}
             alt="Brasao 17 GB"
             width={48}
             height={48}
@@ -39,7 +39,7 @@ function Header() {
             </div>
           </div>
           <img
-            src={BASE_URL + "/logocb.png"}
+            src={`${publicUrl}/logocb.png`}
             alt="Brasao CBMESP"
             width={48}
             height={48}

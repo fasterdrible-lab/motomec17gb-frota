@@ -1,9 +1,11 @@
 import React from "react";
 
+const publicUrl = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+
 function LogoCBMESP({ size = 40 }) {
   return (
     <img
-      src={process.env.PUBLIC_URL + "/logo17gb.png"}
+      src={`${publicUrl}/logo17gb.png`}
       alt="Brasao 17 Grupamento de Bombeiros"
       width={size}
       height={size}
