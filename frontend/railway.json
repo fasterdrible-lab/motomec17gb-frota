@@ -4,8 +4,7 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
     "buildArgs": {
-      "REACT_APP_API_URL": "https://motomec17gb-frota-production.up.railway.app",
-      "PUBLIC_URL": "/"
+      "REACT_APP_API_URL": "https://motomec17gb-frota-production.up.railway.app"
     }
   },
   "deploy": {

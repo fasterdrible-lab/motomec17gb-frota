@@ -1,5 +1,7 @@
-const SHEET_ID = '1q6wy9iO4aRDKMBPzxR9cISE7pCmUuIaYSRBdhUNlM4Q';
-const TAREFAS_GID = '1988288811';
+import { publicConfig, requirePublicConfig } from '../config/publicConfig';
+
+const SHEET_ID = requirePublicConfig(publicConfig.frotaSheetId, 'REACT_APP_FROTA_SHEET_ID');
+const TAREFAS_GID = requirePublicConfig(publicConfig.tarefasGid, 'REACT_APP_TAREFAS_GID');
 const MS_PER_DAY = 86400000;
 const KM_THRESHOLD_PENDING = 3000;
 const KM_THRESHOLD_WARNING = 5000;
@@ -594,7 +596,6 @@ export async function getOrdensServico() {
   });
   return { executadas, emAndamento, pendentes };
 }
-
 
 
 

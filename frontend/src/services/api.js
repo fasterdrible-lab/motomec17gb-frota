@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { publicConfig } from '../config/publicConfig';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = publicConfig.apiUrl;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -30,6 +31,16 @@ export async function login(email, password) {
   const res = await api.post('/api/auth/login', params, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   });
+  return res.data;
+}
+
+export async function cadastrar({ nome, email, password, cargo, unidade }) {
+  const res = await api.post('/api/usuarios/', { nome, email, password, cargo, unidade });
+  return res.data;
+}
+
+export async function getMe() {
+  const res = await api.get('/api/auth/me');
   return res.data;
 }
 

@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 
 const submenuMotomec = [
   { path: "/frota", icon: "🚗", label: "Frota" },
-  { path: "/manutencao", icon: "🔧", label: "Manutencao" },
+  { path: "/manutencao", icon: "🔧", label: "Manutenção" },
   { path: "/alertas", icon: "⚠️", label: "Alertas" },
   { path: "/gastos", icon: "💰", label: "Gastos" },
   { path: "/tarefas", icon: "📋", label: "Tarefas" },
@@ -93,7 +93,7 @@ function Sidebar() {
           className={({ isActive }) => `sidebar-item ${isActive ? "active" : ""}`}
         >
           <span className="sidebar-icon">📈</span>
-          <span>Relatorios</span>
+          <span>Relatórios</span>
         </NavLink>
 
         <NavLink
@@ -101,7 +101,7 @@ function Sidebar() {
           className={({ isActive }) => `sidebar-item ${isActive ? "active" : ""}`}
         >
           <span className="sidebar-icon">⚙️</span>
-          <span>Configuracoes</span>
+          <span>Configurações</span>
         </NavLink>
 
       </nav>

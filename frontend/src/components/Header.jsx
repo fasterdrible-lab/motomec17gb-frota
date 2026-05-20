@@ -1,8 +1,10 @@
 import React from "react";
 
-const publicUrl = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const publicUrl = process.env.PUBLIC_URL || "";
+const logo17gb = `${publicUrl}/assets/logo17gb.png`;
+const logocb = `${publicUrl}/assets/logocb.png`;
 
-function Header() {
+function Header({ onLogout }) {
   return (
     <div>
       <div style={{
@@ -14,7 +16,7 @@ function Header() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src={`${publicUrl}/logo17gb.png`}
+            src={logo17gb}
             alt="Brasao 17 GB"
             width={48}
             height={48}
@@ -29,7 +31,7 @@ function Header() {
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ textAlign: "right" }}>
             <div style={{ color: "white", fontWeight: 700, fontSize: "0.85rem" }}>
               CBMESP
@@ -39,12 +41,36 @@ function Header() {
             </div>
           </div>
           <img
-            src={`${publicUrl}/logocb.png`}
+            src={logocb}
             alt="Brasao CBMESP"
             width={48}
             height={48}
             style={{ objectFit: "contain" }}
           />
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title="Sair"
+              style={{
+                background: "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.4)",
+                borderRadius: 8,
+                color: "white",
+                padding: "6px 14px",
+                cursor: "pointer",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.28)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
+            >
+              ⏻ Sair
+            </button>
+          )}
         </div>
       </div>
     </div>

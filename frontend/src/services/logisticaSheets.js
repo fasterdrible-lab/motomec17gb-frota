@@ -3,19 +3,21 @@
 // 17º Grupamento de Bombeiros · Seção de Logística
 // ═══════════════════════════════════════════════════════════════════
 
-const SHEET_ID = '1QAccPlASgG0sosEjkudXOice0VCG3YWXFloEMA8TOTI';
+import { publicConfig, requirePublicConfig } from '../config/publicConfig';
+
+const SHEET_ID = requirePublicConfig(publicConfig.logisticaSheetId, 'REACT_APP_LOGISTICA_SHEET_ID');
 
 // GIDs de cada aba
 const GIDS = {
-  EPR:                   '596180045',
-  COMPRESSOR:            '1613428792',
-  EMBARCACOES:           '458665463',
-  CILINDROS:             '1422380462',
-  MS_MA_MP_SS:           '1154868919',
-  DESENCARCERADORES:     '7781778',
-  EQUIP_DIVERSOS:        '1892367676',
-  PAS_DE_DEA:            '1660387307',
-  REPAROS:               '302627638',
+  EPR:                   requirePublicConfig(publicConfig.logisticaGids.EPR, 'REACT_APP_LOGISTICA_GID_EPR'),
+  COMPRESSOR:            requirePublicConfig(publicConfig.logisticaGids.COMPRESSOR, 'REACT_APP_LOGISTICA_GID_COMPRESSOR'),
+  EMBARCACOES:           requirePublicConfig(publicConfig.logisticaGids.EMBARCACOES, 'REACT_APP_LOGISTICA_GID_EMBARCACOES'),
+  CILINDROS:             requirePublicConfig(publicConfig.logisticaGids.CILINDROS, 'REACT_APP_LOGISTICA_GID_CILINDROS'),
+  MS_MA_MP_SS:           requirePublicConfig(publicConfig.logisticaGids.MS_MA_MP_SS, 'REACT_APP_LOGISTICA_GID_MS_MA_MP_SS'),
+  DESENCARCERADORES:     requirePublicConfig(publicConfig.logisticaGids.DESENCARCERADORES, 'REACT_APP_LOGISTICA_GID_DESENCARCERADORES'),
+  EQUIP_DIVERSOS:        requirePublicConfig(publicConfig.logisticaGids.EQUIP_DIVERSOS, 'REACT_APP_LOGISTICA_GID_EQUIP_DIVERSOS'),
+  PAS_DE_DEA:            requirePublicConfig(publicConfig.logisticaGids.PAS_DE_DEA, 'REACT_APP_LOGISTICA_GID_PAS_DE_DEA'),
+  REPAROS:               requirePublicConfig(publicConfig.logisticaGids.REPAROS, 'REACT_APP_LOGISTICA_GID_REPAROS'),
 };
 
 // ─── FETCH GENÉRICO ──────────────────────────────────────────────────────────

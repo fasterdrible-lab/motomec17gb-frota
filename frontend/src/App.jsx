@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Frota from './pages/Frota';
 import Manutencao from './pages/Manutencao';
@@ -17,12 +18,37 @@ import PasDeaReparos from './pages/PasDeaReparos';
 import './styles/App.css';
 
 function App() {
+  const [autenticado, setAutenticado] = useState(!!localStorage.getItem('token'));
+
+  useEffect(() => {
+    const onStorage = () => setAutenticado(!!localStorage.getItem('token'));
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  function handleLogin() {
+    setAutenticado(true);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('token');
+    setAutenticado(false);
+  }
+
+  if (!autenticado) {
+    return (
+      <BrowserRouter basename="/motomec17gb-frota">
+        <Login onLogin={handleLogin} />
+      </BrowserRouter>
+    );
+  }
+
   return (
     <BrowserRouter basename="/motomec17gb-frota">
       <div className="app-layout">
         <Sidebar />
         <div className="main-content">
-          <Header />
+          <Header onLogout={handleLogout} />
           <div className="page-container">
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

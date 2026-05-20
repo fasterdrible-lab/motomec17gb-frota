@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { publicConfig, requirePublicConfig } from '../config/publicConfig';
 
-const SHEET_ID = '1q6wy9iO4aRDKMBPzxR9cISE7pCmUuIaYSRBdhUNlM4Q';
+const SHEET_ID = requirePublicConfig(publicConfig.frotaSheetId, 'REACT_APP_FROTA_SHEET_ID');
 
 async function fetchSheetData(sheetName) {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
