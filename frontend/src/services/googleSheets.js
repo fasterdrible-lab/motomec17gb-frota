@@ -139,9 +139,13 @@ export async function getTarefasCompletas() {
       responsavel: getCell(r, 3),
       status: getCell(r, 4) || '',
     }))
-    .filter(t => {
+    .map(t => {
       const s = String(t.status).toUpperCase();
-      return s.includes('PENDENTE') || s.includes('ANDAMENTO');
+      let statusKey = '';
+      if (s.includes('CONCLU') || s.includes('FINAL')) statusKey = 'CONCLUIDA';
+      else if (s.includes('ANDAM')) statusKey = 'ANDAMENTO';
+      else if (s.includes('PENDENTE')) statusKey = 'PENDENTE';
+      return { ...t, statusKey };
     });
 }
 

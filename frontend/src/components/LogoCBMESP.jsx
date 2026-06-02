@@ -1,6 +1,6 @@
 import React from "react";
 
-const logo17gb = `${process.env.PUBLIC_URL || ""}/assets/logo17gb.png`;
+const logo17gb = `${import.meta.env.BASE_URL}assets/logo17gb.png`;
 
 function LogoCBMESP({ size = 40 }) {
   return (

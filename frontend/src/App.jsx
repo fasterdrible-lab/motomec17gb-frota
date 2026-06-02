@@ -11,6 +11,7 @@ import Gastos from './pages/Gastos';
 import Tarefas from './pages/Tarefas';
 import Abastecimentos from './pages/Abastecimentos';
 import Relatorios from './pages/Relatorios';
+import RelatorioLogistica from './pages/RelatorioLogistica';
 import Configuracoes from './pages/Configuracoes';
 import Logistica from './pages/Logistica';
 import MatOperacionais from './pages/MatOperacionais';
@@ -19,6 +20,7 @@ import './styles/App.css';
 
 function App() {
   const [autenticado, setAutenticado] = useState(!!localStorage.getItem('token'));
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   useEffect(() => {
     const onStorage = () => setAutenticado(!!localStorage.getItem('token'));
@@ -28,11 +30,13 @@ function App() {
 
   function handleLogin() {
     setAutenticado(true);
+    setSidebarVisible(false);
   }
 
   function handleLogout() {
     localStorage.removeItem('token');
     setAutenticado(false);
+    setSidebarVisible(false);
   }
 
   if (!autenticado) {
@@ -45,10 +49,14 @@ function App() {
 
   return (
     <BrowserRouter basename="/motomec17gb-frota">
-      <div className="app-layout">
-        <Sidebar />
+      <div className={`app-layout ${sidebarVisible ? 'app-layout-sidebar-open' : 'app-layout-sidebar-hidden'}`}>
+        {sidebarVisible && <Sidebar onClose={() => setSidebarVisible(false)} />}
         <div className="main-content">
-          <Header onLogout={handleLogout} />
+          <Header
+            onLogout={handleLogout}
+            sidebarVisible={sidebarVisible}
+            onToggleSidebar={() => setSidebarVisible(value => !value)}
+          />
           <div className="page-container">
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -59,11 +67,13 @@ function App() {
               <Route path="/gastos" element={<Gastos />} />
               <Route path="/tarefas" element={<Tarefas />} />
               <Route path="/abastecimentos" element={<Abastecimentos />} />
-              <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/relatorios" element={<Navigate to="/relatorios/motomec" replace />} />
+              <Route path="/relatorios/motomec" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/logistica" element={<Logistica />} />
               <Route path="/logistica/mat-operacionais" element={<MatOperacionais />} />
               <Route path="/logistica/pas-dea-reparos" element={<PasDeaReparos />} />
+              <Route path="/logistica/relatorio" element={<RelatorioLogistica />} />
             </Routes>
           </div>
         </div>

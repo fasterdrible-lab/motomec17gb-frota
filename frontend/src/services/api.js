@@ -39,6 +39,11 @@ export async function cadastrar({ nome, email, password, cargo, unidade }) {
   return res.data;
 }
 
+export async function solicitarRecuperacaoSenha(email) {
+  const res = await api.post('/api/auth/recuperar-senha', { email });
+  return res.data;
+}
+
 export async function getMe() {
   const res = await api.get('/api/auth/me');
   return res.data;
@@ -121,7 +126,7 @@ export async function getDadosRelatorio() {
 }
 
 // Usuários
-export const getUsuarios = () => api.get('/api/usuarios/');
+export const getUsuarios = (status) => api.get('/api/usuarios/', { params: status ? { status } : {} });
 export const createUsuario = (data) => api.post('/api/usuarios/', data);
 
 // --- Funções de baixo nível existentes ---
@@ -163,5 +168,6 @@ export const getRelatorioAnual = (ano) => api.get(`/api/relatorios/anual?ano=${a
 
 // Usuários (baixo nível)
 export const updateUsuario = (id, data) => api.put(`/api/usuarios/${id}`, data);
+export const deleteUsuario = (id) => api.delete(`/api/usuarios/${id}`);
 
 export default api;

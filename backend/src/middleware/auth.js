@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { env } = require('../config/env');
+const userService = require('../services/userService');
 
 /**
  * Middleware para validar JWT e extrair dados do usuário
@@ -28,9 +29,17 @@ function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
-    req.user = decoded;
+    req.user = userService.getActiveUserForRequest(decoded.id);
     next();
   } catch (err) {
+    if (err.code === 'USER_PENDING' || err.code === 'USER_INACTIVE' || err.code === 'INVALID_CREDENTIALS') {
+      return res.status(err.status || 403).json({
+        detail: err.message,
+        code: err.code,
+        requestId: req.headers['x-request-id'] || null,
+      });
+    }
+
     const detail = err.name === 'TokenExpiredError' 
       ? 'Token expirado.' 
       : 'Token invalido.';
@@ -43,4 +52,16 @@ function authMiddleware(req, res, next) {
   }
 }
 
-module.exports = { authMiddleware };
+function requireAdmin(req, res, next) {
+  if (req.user?.perfil !== 'admin') {
+    return res.status(403).json({
+      detail: 'Acesso permitido apenas para administradores.',
+      code: 'ADMIN_REQUIRED',
+      requestId: req.headers['x-request-id'] || null,
+    });
+  }
+
+  return next();
+}
+
+module.exports = { authMiddleware, requireAdmin };

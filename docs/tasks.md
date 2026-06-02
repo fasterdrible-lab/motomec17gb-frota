@@ -286,9 +286,146 @@ Cenarios:
 - Erro: arquivo salvo em encoding incorreto.
 - Edge cases: icones/emojis tambem podem estar corrompidos; preferir lucide-react quando houver icone equivalente.
 
+## Issue 011 - Corrigir cadastro e aprovacao de usuarios
+
+Status: `[done]`
+
+Objetivo:
+
+- Fazer o cadastro publico salvar usuarios como `pendente`.
+- Bloquear login de usuarios pendentes ou inativos.
+- Criar gerenciamento administrativo de usuarios na tela Configuracoes.
+
+Busca de reutilizacao:
+
+- `frontend/src/pages/Login.jsx` ja possui alternancia entre login e cadastro.
+- `frontend/src/pages/Configuracoes.jsx` ja possuia uma area inicial de usuarios.
+- `frontend/src/services/api.js` ja possuia funcoes para `/api/usuarios`.
+- `backend/src/services/authService.js` ja emitia JWT e foi mantido como camada de autenticacao.
+
+Arquivos planejados/executados:
+
+- `docs/spec.md`
+- `docs/tasks.md`
+- `docs/backend-contract.md`
+- `backend/src/services/userService.js`
+- `backend/src/services/authService.js`
+- `backend/src/middleware/auth.js`
+- `backend/src/routes/users.js`
+- `backend/src/app.js`
+- `frontend/src/services/api.js`
+- `frontend/src/config/publicConfig.js`
+- `frontend/src/pages/Login.jsx`
+- `frontend/src/pages/Configuracoes.jsx`
+- `frontend/src/styles/App.css`
+
+Banco de dados:
+
+- Nenhuma migracao nesta etapa.
+- O repositorio atual usa mock em memoria no backend; a persistencia real deve substituir `userService` quando o banco for introduzido.
+- Senhas sao armazenadas no mock como hash com `crypto.scryptSync`, nao em texto puro.
+
+Dependencias externas:
+
+- Nenhuma dependencia nova.
+
+Cenarios:
+
+- Sucesso: cadastro publico retorna usuario pendente; admin lista usuarios, filtra por status, libera acesso, altera perfil, inativa e exclui usuarios.
+- Erro: email duplicado retorna 409; pendente/inativo recebe 403 no login; nao admin recebe 403 nas rotas administrativas.
+- Edge cases: administrador nao pode excluir, inativar ou remover o admin da propria conta; token antigo passa por validacao contra o status atual do usuario no backend.
+
+## Issue 012 - Recuperacao e visibilidade de senha
+
+Status: `[done]`
+
+Objetivo:
+
+- Permitir que o usuario solicite recuperacao de senha sem expor se o email existe.
+- Permitir que administradores redefinam senha de usuarios na tela Configuracoes.
+- Mostrar ou ocultar a senha digitada no login/cadastro para reduzir erro de digitacao.
+
+Busca de reutilizacao:
+
+- `frontend/src/pages/Login.jsx` ja concentrava login e cadastro.
+- `frontend/src/pages/Configuracoes.jsx` ja concentrava gerenciamento administrativo de usuarios.
+- `frontend/src/services/api.js` ja possuia o cliente Axios com token JWT.
+- O backend FastAPI ja possuia rotas protegidas por `require_admin` e hash de senha com `pwd_context`.
+
+Arquivos planejados/executados:
+
+- `docs/spec.md`
+- `docs/tasks.md`
+- `_deploy_repo_codex/backend/app/api/auth.py`
+- `_deploy_repo_codex/backend/app/api/usuarios.py`
+- `_deploy_repo_codex/backend/app/database.py`
+- `_deploy_repo_codex/backend/app/schemas/usuario_schema.py`
+- `frontend/src/services/api.js`
+- `frontend/src/pages/Login.jsx`
+- `frontend/src/pages/Configuracoes.jsx`
+
+Banco de dados:
+
+- Nenhuma migracao.
+- A senha redefinida atualiza somente `senha_hash`.
+
+Dependencias externas:
+
+- Nenhuma dependencia nova.
+- Recuperacao por link de email fica fora do escopo porque o ambiente atual nao tem servico de email/transacao configurado.
+
+Cenarios:
+
+- Sucesso: usuario solicita recuperacao e recebe orientacao clara; admin redefine a senha; usuario ativo entra com a nova senha.
+- Erro: email invalido, senha menor que 6 caracteres, permissao insuficiente ou API indisponivel.
+- Edge cases: resposta de recuperacao nao revela existencia do email; usuario pendente continua bloqueado ate liberacao administrativa.
+
+## Issue 013 - Integrar Frota com Manutencao por prefixo
+
+Status: `[done]`
+
+Objetivo:
+
+- Tornar cada card da Frota clicavel.
+- Redirecionar para `/manutencao?prefixo=...` levando o prefixo e o objeto completo da viatura.
+- Carregar automaticamente os detalhes da viatura na Manutencao quando a URL tiver prefixo.
+- Filtrar a tabela de manutencao pelo prefixo selecionado.
+- Preparar pesquisa de servicos realizados, troca de oleo, pneus e bateria.
+
+Busca de reutilizacao:
+
+- `frontend/src/pages/Frota.jsx` ja montava os cards e filtros da frota.
+- `frontend/src/pages/Manutencao.jsx` ja carregava manutencoes e abas de status.
+- `frontend/src/services/googleSheets.js` ja possuia a leitura de manutencoes.
+- A leitura detalhada da frota foi isolada em `frontend/src/services/frotaService.js` para evitar duplicacao entre Frota e Manutencao.
+
+Arquivos planejados/executados:
+
+- `docs/spec.md`
+- `docs/tasks.md`
+- `frontend/src/services/frotaService.js`
+- `frontend/src/pages/Frota.jsx`
+- `frontend/src/pages/Manutencao.jsx`
+- `frontend/src/components/DetalhesViaturaManutencao.jsx`
+
+Banco de dados:
+
+- Nenhuma migracao.
+- A integracao usa as abas existentes `FROTA`, `1SGB` e `2SGB`.
+
+Dependencias externas:
+
+- Nenhuma dependencia nova.
+
+Cenarios:
+
+- Sucesso: clique no card abre manutencao com o prefixo, exibe detalhes e filtra a tabela.
+- Erro: falha ao carregar planilha mostra erro de carregamento.
+- Edge cases: acesso direto por URL, prefixo inexistente, campos ainda nao existentes na planilha exibidos como `Nao informado`.
+
 ## Issue 008 - Padronizar estados de carregamento e erro
 
-Status: `[todo]`
+Status: `[done]`
 
 Objetivo:
 
@@ -318,23 +455,99 @@ Cenarios:
 - Erro: componente generico nao cobre caso especifico.
 - Edge cases: telas com paineis laterais e carregamento parcial.
 
-## Issue 009 - Auditoria de dependencias
+Arquivos criados/modificados nesta etapa:
 
-Status: `[todo]`
+- `frontend/src/components/PageState.jsx`
+- `frontend/src/pages/Frota.jsx`
+- `frontend/src/styles/App.css`
+- `docs/spec.md`
+- `docs/tasks.md`
+- `docs/CURRENT_STATE.md`
+- `docs/ARCHITECTURE.md`
+
+Resumo:
+
+- Estados de loading, erro e vazio da pagina `Frota` passaram a usar o componente reutilizavel `PageState`.
+- O botao de atualizar foi desabilitado enquanto o carregamento esta em andamento.
+- Proxima tarefa recomendada: Issue 009 - Auditoria de dependencias.
+
+## Issue 014 - Migrar bundler de CRA para Vite
+
+Status: `[done]`
 
 Objetivo:
 
-- Investigar 38 vulnerabilidades reportadas pelo `npm install`.
+- Eliminar as 29 vulnerabilidades presas no `react-scripts@5`.
+- Reduzir o tempo de build e de servidor de desenvolvimento.
+- Modernizar o toolchain do frontend.
+
+Busca de reutilizacao:
+
+- `frontend/src/config/publicConfig.js` ja centralizava todas as variaveis de ambiente, tornando a troca de prefixo cirurgica.
+- `frontend/public/` mantida como pasta de assets estaticos.
+
+Arquivos criados/modificados:
+
+- `frontend/package.json`: removido `react-scripts`; adicionado `vite@^8`, `@vitejs/plugin-react@^6`; scripts atualizados; deploy aponta para `dist/` em vez de `build/`.
+- `frontend/vite.config.js`: criado com plugin React, base `/motomec17gb-frota/`, porta 3000.
+- `frontend/index.html`: movido de `public/index.html` para a raiz; adicionado `<script type="module" src="/src/index.jsx">`.
+- `frontend/public/index.html`: removido (substituido pelo novo `index.html` na raiz).
+- `frontend/src/index.js`: renomeado para `index.jsx` (Vite exige extensao .jsx para arquivos com JSX).
+- `frontend/src/config/publicConfig.js`: `process.env[name]` trocado por `import.meta.env[name]`; `process.env.NODE_ENV` por `import.meta.env.DEV`; prefixo `REACT_APP_` trocado por `VITE_`.
+- `frontend/.env.example`: prefixos `REACT_APP_` trocados por `VITE_`.
+- `frontend/.env.production`: prefixos `REACT_APP_` trocados por `VITE_`.
+- `frontend/src/components/Header.jsx`: `process.env.PUBLIC_URL` trocado por `import.meta.env.BASE_URL`.
+- `frontend/src/pages/Login.jsx`: mesma troca.
+- `frontend/src/components/LogoCBMESP.jsx`: mesma troca.
+- `frontend/Dockerfile`: variavel `REACT_APP_API_URL` trocada por `VITE_API_URL`; pasta `build/` trocada por `dist/`; imagens atualizadas para `node:22-alpine` e `nginx:1.27-alpine`.
+
+Banco de dados:
+
+- Nenhuma alteracao.
+
+Dependencias externas:
+
+- Nenhuma nova dependencia de runtime.
+
+Resultado:
+
+- 0 vulnerabilidades npm (era 43).
+- Build de producao: 448ms (era ~60s).
+- Servidor de desenvolvimento: porta 3000, HMR nativo do Vite.
+
+## Issue 009 - Auditoria de dependencias
+
+Status: `[done]`
+
+Objetivo:
+
+- Investigar vulnerabilidades reportadas pelo `npm audit`.
+- Aplicar atualizacoes seguras e documentar as que nao podem ser corrigidas sem breaking change.
 
 Busca de reutilizacao:
 
 - Usar `npm audit` e classificar quais vulnerabilidades vem de `react-scripts`.
 
-Arquivos planejados:
+Resultado:
 
-- Possivelmente `frontend/package.json`
-- Possivelmente `frontend/package-lock.json`
-- `docs/status.md`
+- Ponto de partida: 43 vulnerabilidades (9 baixas, 13 moderadas, 21 altas).
+- Apos `axios` atualizado de `1.6.5` para `1.15.2+` (instalado `1.16.1`) e `npm audit fix`: 29 vulnerabilidades (9 baixas, 7 moderadas, 13 altas).
+- Reducao: 14 vulnerabilidades eliminadas.
+
+Vulnerabilidades remanescentes (29) — todas presas dentro da cadeia de `react-scripts@5.0.1`:
+
+- `nth-check`, `postcss`, `serialize-javascript` (via svgo/workbox/rollup): build-time apenas; `--force` instalaria `react-scripts@0.0.0` que quebra o build inteiramente.
+- `uuid`, `sockjs`, `webpack-dev-server`: servidor de desenvolvimento local; nao afeta o bundle de producao.
+- `@tootallnate/once`, `underscore`, `yaml`: tooling de jest e bfj dentro do CRA; nao afeta producao.
+- Risco real: baixo. Nenhuma dessas dependencias executa no navegador do usuario em producao.
+- Mitigacao recomendada futura: migrar de Create React App para Vite (issue separada).
+
+Arquivos modificados nesta etapa:
+
+- `frontend/package.json`: versao do axios atualizada para `^1.15.2`.
+- `frontend/package-lock.json`: atualizado pelo `npm audit fix`.
+- `docs/tasks.md`
+- `docs/CURRENT_STATE.md`
 
 Banco de dados:
 
@@ -347,5 +560,5 @@ Dependencias externas:
 Cenarios:
 
 - Sucesso: vulnerabilidades classificadas e atualizacoes seguras aplicadas.
-- Erro: `npm audit fix --force` gera breaking changes.
-- Edge cases: Create React App antigo pode manter vulnerabilidades transitivas sem correcao simples.
+- Erro: `npm audit fix --force` gera breaking changes — nao executado.
+- Edge cases: Create React App antigo mantem vulnerabilidades transitivas sem correcao simples; aceitas como risco documentado.

@@ -31,7 +31,7 @@ function Relatorios() {
     const { frotaStatus, manutencoes, alertas, tarefas, geradoEm } = dados;
     const linhas = [
       '='.repeat(60),
-      `RELATÓRIO DE FROTA — 17º GRUPAMENTO DE BOMBEIROS / CBMESP`,
+      `RELATÓRIO MOTOMEC — 17º GRUPAMENTO DE BOMBEIROS / CBMESP`,
       `Gerado em: ${geradoEm.toLocaleString('pt-BR')}`,
       '='.repeat(60),
       '',
@@ -65,7 +65,7 @@ function Relatorios() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio-frota-${geradoEm.toISOString().slice(0, 10)}.txt`;
+    a.download = `relatorio-motomec-${geradoEm.toISOString().slice(0, 10)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -81,7 +81,7 @@ function Relatorios() {
   return (
     <div>
       <div className="dash-action-bar">
-        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>📄 Relatórios</h2>
+        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>📄 Relatório MOTOMEC</h2>
         <button className="btn-sincronizar" onClick={() => loadData(true)} disabled={syncing}>
           {syncing ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
         </button>

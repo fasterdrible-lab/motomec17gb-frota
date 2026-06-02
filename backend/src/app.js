@@ -3,6 +3,7 @@ const cors = require('cors');
 const { env } = require('./config/env');
 const healthRoutes = require('./routes/health');
 const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
 
 function createApp() {
   const app = express();
@@ -13,6 +14,7 @@ function createApp() {
 
   app.use('/api/health', healthRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/usuarios', userRoutes);
 
   app.use((req, res) => {
     res.status(404).json({

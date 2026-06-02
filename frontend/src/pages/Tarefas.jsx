@@ -8,10 +8,10 @@ const STATUS_COLORS = {
   '': { bg: '#f3f4f6', color: '#6b7280', border: '#9ca3af' },
 };
 
-function getStatusKey(s) {
-  const u = String(s).toUpperCase();
+function getStatusKey(task) {
+  const u = String(task?.statusKey || task?.status || '').toUpperCase();
   if (u.includes('CONCLU')) return 'CONCLUIDA';
-  if (u.includes('ANDAMENTO')) return 'ANDAMENTO';
+  if (u.includes('ANDAM')) return 'ANDAMENTO';
   if (u.includes('PENDENTE')) return 'PENDENTE';
   return '';
 }
@@ -40,7 +40,7 @@ export default function Tarefas() {
   useEffect(() => { loadTarefas(); }, [loadTarefas]);
 
   const filtradas = tarefas.filter(t => {
-    const sk = getStatusKey(t.status);
+    const sk = getStatusKey(t);
     if (filtroStatus === 'PENDENTE' && sk !== 'PENDENTE' && sk !== '') return false;
     if (filtroStatus === 'ANDAMENTO' && sk !== 'ANDAMENTO') return false;
     if (filtroStatus === 'CONCLUIDA' && sk !== 'CONCLUIDA') return false;
@@ -57,10 +57,11 @@ export default function Tarefas() {
 
   const total = tarefas.length;
   const pendentes = tarefas.filter(t => {
-    const sk = getStatusKey(t.status);
+    const sk = getStatusKey(t);
     return sk === 'PENDENTE' || sk === '';
   }).length;
-  const concluidas = tarefas.filter(t => getStatusKey(t.status) === 'CONCLUIDA').length;
+  const andamento = tarefas.filter(t => getStatusKey(t) === 'ANDAMENTO').length;
+  const concluidas = tarefas.filter(t => getStatusKey(t) === 'CONCLUIDA').length;
 
   return (
     <div style={{ padding: '0 0 32px' }}>
@@ -86,10 +87,11 @@ export default function Tarefas() {
         </div>
 
         {/* Contadores */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
           {[
             { label: 'Total de Tarefas', value: total, color: '#2563eb' },
             { label: 'Pendentes', value: pendentes, color: '#d97706' },
+            { label: 'Andamento', value: andamento, color: '#2563eb' },
             { label: 'Concluídas', value: concluidas, color: '#16a34a' },
           ].map(c => (
             <div key={c.label} style={{
@@ -151,7 +153,7 @@ export default function Tarefas() {
                     </td>
                   </tr>
                 ) : filtradas.map((t, i) => {
-                  const sk = getStatusKey(t.status);
+                  const sk = getStatusKey(t);
                   const sc = STATUS_COLORS[sk] || STATUS_COLORS[''];
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
@@ -166,7 +168,7 @@ export default function Tarefas() {
                           padding: '3px 10px', borderRadius: 12,
                           fontSize: '0.78rem', fontWeight: 600,
                         }}>
-                          {t.status || 'SEM STATUS'}
+                          {sk || 'SEM STATUS'}
                         </span>
                       </td>
                     </tr>

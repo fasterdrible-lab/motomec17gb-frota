@@ -80,6 +80,12 @@ Saida 200:
 }
 ```
 
+Regras de acesso:
+
+- Usuario `pendente` recebe 403 `USER_PENDING` no login.
+- Usuario `inativo` recebe 403 `USER_INACTIVE` no login e nas rotas protegidas.
+- O backend revalida status e perfil do usuario a cada rota protegida, evitando confiar apenas no JWT antigo.
+
 ## Dashboard
 
 ### GET `/api/dashboard/macro`
@@ -341,9 +347,30 @@ Saida 200:
 
 Restricao: perfil administrativo.
 
+Query:
+
+- `status`: opcional, aceita `pendente`, `ativo` ou `inativo`.
+
+Resposta:
+
+```json
+[
+  {
+    "id": 1,
+    "nome": "Admin Teste",
+    "email": "admin@cbmesp.sp.gov.br",
+    "cargo": "Comandante",
+    "unidade": "17GB",
+    "perfil": "admin",
+    "status": "ativo",
+    "createdAt": "2026-05-19T12:00:00.000Z"
+  }
+]
+```
+
 ### POST `/api/usuarios`
 
-Restricao: cadastro publico somente se a politica permitir; preferir aprovacao administrativa.
+Restricao: cadastro publico previo. O usuario sempre nasce com `status: "pendente"` e `perfil: "operador"`.
 
 Entrada:
 
@@ -356,6 +383,41 @@ Entrada:
   "unidade": "17GB"
 }
 ```
+
+Resposta 201:
+
+```json
+{
+  "detail": "Cadastro recebido. Aguarde a liberacao de um administrador.",
+  "user": {
+    "id": 3,
+    "nome": "Usuario",
+    "email": "usuario@cbmesp.sp.gov.br",
+    "cargo": "",
+    "unidade": "17GB",
+    "perfil": "operador",
+    "status": "pendente",
+    "createdAt": "2026-05-21T12:00:00.000Z"
+  }
+}
+```
+
+### PUT `/api/usuarios/{id}`
+
+Restricao: perfil administrativo.
+
+Entrada parcial:
+
+```json
+{
+  "perfil": "visualizador",
+  "status": "ativo"
+}
+```
+
+### DELETE `/api/usuarios/{id}`
+
+Restricao: perfil administrativo. Nao permite excluir a propria conta.
 
 ## Persistencia sugerida
 

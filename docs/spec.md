@@ -25,22 +25,27 @@ Componentes:
 
 - Cabecalho com logos do 17GB e CBMESP.
 - Alternancia entre login e cadastro.
+- Alternancia entre login, cadastro e recuperacao de senha.
 - Formulario de email/senha.
 - Campos extras de cadastro: nome, confirmacao de senha, cargo e unidade.
+- Botoes para mostrar ou ocultar a senha digitada no login e no cadastro.
 - Mensagens de erro, sucesso e loading.
 
 Comportamentos:
 
 - Login chama `login(email, password)` em `frontend/src/services/api.js`.
 - Cadastro chama `cadastrar(...)` em `frontend/src/services/api.js`.
+- Cadastro publico salva o usuario com status `pendente` e perfil inicial `operador`.
 - Em sucesso de login, grava `access_token` no `localStorage` e libera o layout autenticado.
+- Login e bloqueado pelo backend quando o usuario esta `pendente` ou `inativo`.
+- Recuperacao de senha registra uma solicitacao com resposta generica e orienta o usuario a procurar um administrador.
 - Em erro, exibe mensagem amigavel.
 
 Cenarios:
 
 - Sucesso: usuario autenticado recebe token valido.
 - Erro: credenciais invalidas, API indisponivel, cadastro rejeitado.
-- Edge cases: senha curta, senha e confirmacao diferentes, token expirado, usuario sem permissao.
+- Edge cases: senha curta, senha e confirmacao diferentes, email duplicado, usuario aguardando liberacao, token expirado, usuario sem permissao, tentativa de descobrir se um email existe pela recuperacao.
 
 ### Layout autenticado
 
@@ -106,18 +111,20 @@ Componentes:
 - Busca textual.
 - Filtros por tipo e status.
 - Cards de viatura.
+- Estados reutilizaveis de loading, erro e vazio via `frontend/src/components/PageState.jsx`.
 
 Comportamentos:
 
 - Busca dados das abas `FROTA`, `1SGB` e `2SGB` diretamente no Google Sheets.
 - Cruza prefixo da frota com KM/status das abas SGB.
 - Filtra por prefixo, placa, modelo, marca e posto.
+- Cada card e clicavel e envia o usuario para `/manutencao?prefixo=PREFIXO`, preservando o objeto da viatura no estado de navegacao.
 
 Cenarios:
 
 - Sucesso: lista de viaturas carregada e filtravel.
 - Erro: falha ao buscar planilhas.
-- Edge cases: prefixo duplicado, prefixo ausente, status desconhecido, KM vazio.
+- Edge cases: prefixo duplicado, prefixo ausente, status desconhecido, KM vazio, navegacao direta para manutencao sem estado de rota.
 
 ### Manutencao
 
@@ -126,6 +133,8 @@ Arquivo atual: `frontend/src/pages/Manutencao.jsx`
 Componentes:
 
 - Abas/filtros por status.
+- Painel `DetalhesViaturaManutencao` quando houver prefixo selecionado.
+- Area de pesquisa por servicos realizados, troca de oleo, pneus e bateria.
 - Tabela de manutencoes.
 - Estados de loading e erro.
 
@@ -133,12 +142,16 @@ Comportamentos:
 
 - Consulta manutencoes via `frontend/src/services/googleSheets.js`.
 - Classifica itens como vencidos ou pendentes.
+- Le o parametro `prefixo` da URL.
+- Busca a viatura correspondente na base de frota quando acessada diretamente por `/manutencao?prefixo=XXX`.
+- Filtra automaticamente a tabela para exibir somente manutencoes do prefixo selecionado.
+- Mostra `Viatura não encontrada` quando o prefixo informado nao existir.
 
 Cenarios:
 
 - Sucesso: manutencoes agrupadas por status.
 - Erro: falha no carregamento.
-- Edge cases: limites de KM ausentes, status textual divergente, item sem prefixo.
+- Edge cases: limites de KM ausentes, status textual divergente, item sem prefixo, prefixo de URL inexistente, campos cadastrais ainda ausentes na planilha.
 
 ### Alertas
 
@@ -252,20 +265,29 @@ Arquivo atual: `frontend/src/pages/Configuracoes.jsx`
 
 Componentes:
 
-- Gestao de usuarios.
+- Secao `Gerenciamento de Usuarios`.
+- Tabela de usuarios com nome, email, perfil, status, data de cadastro e acoes.
+- Filtro por status.
 - Status de integracoes.
 - Variaveis esperadas.
 
 Comportamentos:
 
-- Consulta e cria usuarios via `frontend/src/services/api.js`.
+- Consulta usuario autenticado via `/api/auth/me`.
+- Exibe gerenciamento de usuarios apenas para administradores.
+- Admin lista usuarios via `GET /api/usuarios`.
+- Admin filtra usuarios por status `pendente`, `ativo` ou `inativo`.
+- Admin libera acesso alterando status para `ativo`.
+- Admin altera perfil do usuario.
+- Admin redefine senha de usuario a partir do painel protegido.
+- Admin inativa usuario ou exclui cadastro.
 - Exibe integracoes e variaveis esperadas.
 
 Cenarios:
 
-- Sucesso: usuarios listados/criados pelo backend.
-- Erro: API indisponivel ou permissao negada.
-- Edge cases: usuario duplicado, dados obrigatorios ausentes, permissao insuficiente.
+- Sucesso: usuarios listados e administrados pelo backend.
+- Erro: API indisponivel, permissao negada, usuario inexistente.
+- Edge cases: usuario duplicado, dados obrigatorios ausentes, senha curta em redefinicao, administrador tentando excluir a propria conta, permissao insuficiente.
 
 ### Logistica
 
@@ -301,6 +323,7 @@ Cenarios:
 - `frontend/src/components/Header.jsx`: topo autenticado.
 - `frontend/src/components/AlertCard.jsx`: card de alerta com acao de marcar como lido.
 - `frontend/src/components/ViaturaCard.jsx`: card reutilizavel de viatura.
+- `frontend/src/components/PageState.jsx`: loading, empty e error state reutilizavel com acao de retry.
 - `frontend/src/components/LogoCBMESP.jsx`: logo/marca.
 - `frontend/src/components/LogisticaComponents.jsx`: badges, tabelas e cards de logistica.
 

@@ -8,6 +8,14 @@ function Abastecimentos() {
   const [busca, setBusca] = useState('');
 
   const fmtMoeda = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const parseDate = (value) => {
+    if (!value) return 0;
+    const text = String(value).trim();
+    const matchBr = text.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (matchBr) return new Date(Number(matchBr[3]), Number(matchBr[2]) - 1, Number(matchBr[1])).getTime();
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+  };
 
   const load = useCallback(async (isManual = false) => {
     if (isManual) setSyncing(true);
@@ -33,7 +41,7 @@ function Abastecimentos() {
       String(a.placa).toLowerCase().includes(b) ||
       String(a.posto).toLowerCase().includes(b)
     );
-  });
+  }).sort((a, b) => parseDate(b.data) - parseDate(a.data));
 
   const totalLitros = filtrados.reduce((s, a) => s + (a.litros || 0), 0);
   const totalValor = filtrados.reduce((s, a) => s + (a.valorTotal || 0), 0);
@@ -99,6 +107,9 @@ function Abastecimentos() {
         )}
 
         <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8, fontSize: '0.82rem', color: '#6b7280' }}>
+            Exibindo os abastecimentos mais recentes primeiro.
+          </div>
           <input
             value={busca}
             onChange={e => setBusca(e.target.value)}
