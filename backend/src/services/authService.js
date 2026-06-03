@@ -12,7 +12,7 @@ function generateToken(user) {
   };
 
   return jwt.sign(payload, env.jwtSecret, {
-    expiresIn: env.jwtExpiresIn,
+    expiresIn: Number(env.jwtExpiresIn),
   });
 }
 
