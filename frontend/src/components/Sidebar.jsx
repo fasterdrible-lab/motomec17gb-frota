@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { X } from 'lucide-react';
 
 const submenuMotomec = [
   { path: '/frota', icon: '🚗', label: 'Frota' },
@@ -27,33 +26,9 @@ function Sidebar({ onClose }) {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand" style={{ justifyContent: 'space-between' }}>
-        <div>
-          <div className="sidebar-title">SITE</div>
-          <div className="sidebar-subtitle">17º Grupamento</div>
-        </div>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Ocultar menu lateral"
-            title="Ocultar menu lateral"
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.2)',
-              background: 'rgba(255,255,255,0.08)',
-              color: 'white',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <X size={18} />
-          </button>
-        )}
+      <div className="sidebar-brand">
+        <div className="sidebar-title">Painel de Gestão</div>
+        <div className="sidebar-subtitle">17º Grupamento</div>
       </div>
 
       <nav className="sidebar-nav">
