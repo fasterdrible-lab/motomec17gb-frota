@@ -8,7 +8,7 @@ const integrations = [
 ];
 
 const envVars = [
-  { name: 'REACT_APP_API_URL', desc: 'API URL do backend' },
+  { name: 'VITE_API_URL', desc: 'API URL do backend' },
   { name: 'DB_URL', desc: 'URL do banco PostgreSQL' },
   { name: 'SECRET_KEY', desc: 'Chave secreta JWT' },
   { name: 'TELEGRAM_BOT_TOKEN', desc: 'Token do bot Telegram' },
@@ -56,10 +56,10 @@ function Configuracoes() {
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
-  const loadUsuarios = useCallback(async () => {
+  const loadUsuarios = useCallback(async (filter) => {
     setLoadingUsers(true);
     try {
-      const res = await getUsuarios();
+      const res = await getUsuarios(filter || '');
       setUsuarios(res.data || []);
       setError('');
     } catch (e) {

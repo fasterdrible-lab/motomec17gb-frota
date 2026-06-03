@@ -25,17 +25,12 @@ api.interceptors.response.use(
 
 // Autenticação
 export async function login(email, password) {
-  const params = new URLSearchParams();
-  params.append('username', email);
-  params.append('password', password);
-  const res = await api.post('/api/auth/login', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  });
+  const res = await api.post('/api/auth/login', { email, password });
   return res.data;
 }
 
-export async function cadastrar({ nome, email, password, cargo, unidade }) {
-  const res = await api.post('/api/usuarios/', { nome, email, password, cargo, unidade });
+export async function cadastrar(payload) {
+  const res = await api.post('/api/usuarios/', payload);
   return res.data;
 }
 
@@ -127,7 +122,6 @@ export async function getDadosRelatorio() {
 
 // Usuários
 export const getUsuarios = (status) => api.get('/api/usuarios/', { params: status ? { status } : {} });
-export const createUsuario = (data) => api.post('/api/usuarios/', data);
 
 // --- Funções de baixo nível existentes ---
 
