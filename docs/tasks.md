@@ -471,9 +471,9 @@ Resumo:
 - O botao de atualizar foi desabilitado enquanto o carregamento esta em andamento.
 - Proxima tarefa recomendada: Issue 009 - Auditoria de dependencias.
 
-## Issue 015 - Corrigir dominio e SSL na VPS
+## Issue 015 - Corrigir dominio, SSL e deploy na VPS
 
-Status: `[next]`
+Status: `[done]`
 
 Objetivo:
 
@@ -486,39 +486,80 @@ Contexto levantado:
 
 - VPS: 204.168.180.25 (Ubuntu 24.04, Hetzner Helsinki), gerenciado pelo Coolify.
 - nginx em `/etc/nginx/sites-enabled/motomec17gb-frota` cobre raiz e www, roteando para porta 8080 (frontend) e 8001 (api).
-- Container `motomec17gb-frontend-1` rodando build CRA de 11 dias atras (antigo, pre-Vite).
-- Container `motomec17gb-backend-1` rodando backend Python uvicorn legado na porta 8001.
-- DNS Cloudflare: registros `@` e `www` adicionados apontando para 204.168.180.25, proxy desativado (DNS only) aguardando certbot.
+- DNS gerenciado pelo Cloudflare (nameservers delegados no registro.br).
+- Projeto clonado na VPS em `/opt/motomec17gb-frota`.
+- Secrets do backend salvos em `/opt/motomec17gb-frota/.env.backend` (fora do git, chmod 600).
 
 Causa raiz do dominio servindo HEXAGON:
 
 - nginx do MOTOMEC escutava apenas porta 80.
 - Cloudflare com proxy laranja envia HTTPS (porta 443) ao servidor.
-- Na porta 443 so o HEXAGON tinha certificado configurado; nginx servia HEXAGON como fallback.
+- Na porta 443 so o HEXAGON tinha certificado; nginx servia HEXAGON como fallback.
 
-Passos de execucao:
+Execucao realizada:
 
-1. Na VPS (proxy Cloudflare desativado): `certbot --nginx -d motomec17gb-frota.com.br -d www.motomec17gb-frota.com.br`
-2. Cloudflare: reativar proxy laranja em `@` e `www`.
-3. Testar `https://motomec17gb-frota.com.br`.
-4. Redeploy do frontend com imagem Vite (nova Dockerfile + vite build).
-5. Deploy do backend Node.js substituindo o container Python.
+1. Cloudflare: adicionado registro `@` A → 204.168.180.25 (proxy desativado).
+2. Cloudflare: registro `www` alterado para proxy desativado.
+3. VPS: `certbot --nginx -d motomec17gb-frota.com.br -d www.motomec17gb-frota.com.br` — certificado emitido com sucesso.
+4. Cloudflare: proxy reativado (laranja) em `@` e `www`.
+5. VPS: `git clone` do repositorio em `/opt/motomec17gb-frota`.
+6. VPS: build do frontend Vite com `docker build -t motomec17gb-frontend --build-arg VITE_API_URL=https://motomec17gb-frota.com.br ./frontend`.
+7. VPS: container `motomec17gb-frontend-1` substituido pelo novo build Vite na porta 8080.
+8. VPS: build do backend Node.js com `docker build -t motomec17gb-backend-node ./backend`.
+9. VPS: container `motomec17gb-backend-1` (Python/uvicorn) substituido pelo Node.js/Express na porta 8001.
+10. JWT_SECRET gerado com `openssl rand -hex 32` e salvo em `/opt/motomec17gb-frota/.env.backend`.
+
+Arquivos criados/modificados:
+
+- `backend/Dockerfile`: criado para build do backend Node.js (node:22-alpine, porta 8000, healthcheck).
+- `backend/src/routes/auth.js`: criado (ausente causava crash — POST /login, POST /recuperar-senha, GET /me).
+- `frontend/src/services/api.js`: login corrigido de form-urlencoded para JSON; duplicata createUsuario removida.
+- `frontend/src/pages/Configuracoes.jsx`: REACT_APP_API_URL corrigido para VITE_API_URL; loadUsuarios passa filtro ao backend.
 
 Banco de dados:
 
-- Nenhuma migracao nesta etapa.
+- Nenhuma migracao. Backend Node.js usa mock em memoria; persistencia real e Issue futura.
 
 Dependencias externas:
 
 - Acesso SSH a VPS.
 - Certbot instalado na VPS.
-- Cloudflare DNS com proxy desativado durante emissao do certificado.
+- Docker na VPS.
 
 Cenarios:
 
-- Sucesso: HTTPS funciona, MOTOMEC serve o app correto, logo no dominio customizado.
+- Sucesso: HTTPS funciona, MOTOMEC serve o app correto no dominio customizado com backend Node.js.
 - Erro: certbot falha se DNS ainda nao propagou ou proxy Cloudflare estiver ativo.
-- Edge cases: renovacao automatica do certificado (cron do certbot); redeploy sem downtime.
+- Edge cases: renovacao automatica do certificado (cron do certbot ja configurado); JWT_SECRET deve ser preservado em `.env.backend`.
+
+## Issue 016 - Persistencia real de usuarios no backend
+
+Status: `[todo]`
+
+Objetivo:
+
+- Substituir o mock em memoria do `backend/src/services/userService.js` por persistencia real em banco de dados.
+- Usuarios cadastrados devem sobreviver ao restart do container.
+
+Busca de reutilizacao:
+
+- `backend/src/services/userService.js` ja encapsula toda a logica de usuarios; apenas a camada de dados precisa mudar.
+- MySQL ja disponivel na VPS (`motomec17gb-db-backup-1`, porta 3306).
+
+Arquivos planejados:
+
+- `backend/src/db/connection.js`: cliente MySQL.
+- `backend/src/services/userService.js`: substituir array em memoria por queries SQL.
+- `backend/database/schema.sql`: schema da tabela de usuarios.
+- `.env.backend` na VPS: adicionar `DATABASE_URL`.
+
+Banco de dados:
+
+- Tabela `usuarios` com campos: id, nome, email, senha_hash, cargo, unidade, perfil, status, created_at.
+
+Dependencias externas:
+
+- MySQL rodando na VPS (container `motomec17gb-db-backup-1`).
 
 ## Issue 014 - Migrar bundler de CRA para Vite
 
