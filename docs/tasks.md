@@ -471,6 +471,55 @@ Resumo:
 - O botao de atualizar foi desabilitado enquanto o carregamento esta em andamento.
 - Proxima tarefa recomendada: Issue 009 - Auditoria de dependencias.
 
+## Issue 015 - Corrigir dominio e SSL na VPS
+
+Status: `[next]`
+
+Objetivo:
+
+- Emitir certificado SSL para `motomec17gb-frota.com.br` e `www.motomec17gb-frota.com.br` via certbot.
+- Reativar proxy Cloudflare apos emissao do certificado.
+- Redeploy do frontend com build Vite atual.
+- Substituir backend Python legado pelo backend Node.js/Express.
+
+Contexto levantado:
+
+- VPS: 204.168.180.25 (Ubuntu 24.04, Hetzner Helsinki), gerenciado pelo Coolify.
+- nginx em `/etc/nginx/sites-enabled/motomec17gb-frota` cobre raiz e www, roteando para porta 8080 (frontend) e 8001 (api).
+- Container `motomec17gb-frontend-1` rodando build CRA de 11 dias atras (antigo, pre-Vite).
+- Container `motomec17gb-backend-1` rodando backend Python uvicorn legado na porta 8001.
+- DNS Cloudflare: registros `@` e `www` adicionados apontando para 204.168.180.25, proxy desativado (DNS only) aguardando certbot.
+
+Causa raiz do dominio servindo HEXAGON:
+
+- nginx do MOTOMEC escutava apenas porta 80.
+- Cloudflare com proxy laranja envia HTTPS (porta 443) ao servidor.
+- Na porta 443 so o HEXAGON tinha certificado configurado; nginx servia HEXAGON como fallback.
+
+Passos de execucao:
+
+1. Na VPS (proxy Cloudflare desativado): `certbot --nginx -d motomec17gb-frota.com.br -d www.motomec17gb-frota.com.br`
+2. Cloudflare: reativar proxy laranja em `@` e `www`.
+3. Testar `https://motomec17gb-frota.com.br`.
+4. Redeploy do frontend com imagem Vite (nova Dockerfile + vite build).
+5. Deploy do backend Node.js substituindo o container Python.
+
+Banco de dados:
+
+- Nenhuma migracao nesta etapa.
+
+Dependencias externas:
+
+- Acesso SSH a VPS.
+- Certbot instalado na VPS.
+- Cloudflare DNS com proxy desativado durante emissao do certificado.
+
+Cenarios:
+
+- Sucesso: HTTPS funciona, MOTOMEC serve o app correto, logo no dominio customizado.
+- Erro: certbot falha se DNS ainda nao propagou ou proxy Cloudflare estiver ativo.
+- Edge cases: renovacao automatica do certificado (cron do certbot); redeploy sem downtime.
+
 ## Issue 014 - Migrar bundler de CRA para Vite
 
 Status: `[done]`
