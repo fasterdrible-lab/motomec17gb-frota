@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 
 const submenuMotomec = [
   { path: '/frota', icon: '🚗', label: 'Frota' },
@@ -26,9 +27,31 @@ function Sidebar({ onClose }) {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand">
+      <div className="sidebar-brand" style={{ justifyContent: 'space-between' }}>
         <div className="sidebar-title">Painel de Gestão</div>
-        <div className="sidebar-subtitle">17º Grupamento</div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Ocultar menu lateral"
+            title="Ocultar menu lateral"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'rgba(255,255,255,0.08)',
+              color: 'white',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
       </div>
 
       <nav className="sidebar-nav">

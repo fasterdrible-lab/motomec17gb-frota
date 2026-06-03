@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 const logo17gb = `${import.meta.env.BASE_URL}assets/logo17gb.png`;
 const logocb = `${import.meta.env.BASE_URL}assets/logocb.png`;
@@ -36,7 +36,7 @@ function Header({ onLogout, sidebarVisible, onToggleSidebar }) {
             flexShrink: 0,
           }}
         >
-          {sidebarVisible ? <X size={20} /> : <Menu size={20} />}
+          <Menu size={20} />
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
