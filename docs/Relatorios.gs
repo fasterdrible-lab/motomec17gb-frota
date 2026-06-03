@@ -19,12 +19,35 @@
 
 // ─── Mapeamento de colunas (índice 1 = coluna A) ──────────
 
+// ── FROTA: ajustar conforme cabecalho real da aba FROTA ──
 var REL_COL_FROTA  = { PREFIXO: 1, PLACA: 2, MODELO: 3, MARCA: 4, FIPE: 5 };
-var REL_COL_SGB    = { PREFIXO: 1, KM: 2, STATUS: 3, OLEO_KM: 4, OLEO_DATA: 5, FREIO: 6, BATERIA: 7 };
+
+// ── 1SGB / 2SGB: confirmado via screenshot 2026-06-03 ────
+var REL_COL_SGB = {
+  PREFIXO:   1,   // A — PREFIXO
+  PLACA:     2,   // B — PLACA
+  KM:        3,   // C — KM ATUAL
+  OLEO_KM:   8,   // H — STATUS: ÓLEO KM
+  OLEO_DATA: 9,   // I — STATUS: ÓLEO TEMPO
+  FREIO:     10,  // J — STATUS: REVISÃO FREIO
+  BATERIA:   11,  // K — STATUS: BATERIA
+  STATUS:    16,  // P — STATUS OPERACIONAL
+};
+
+// ── RIV_2026: ajustar conforme cabecalho real ────────────
 var REL_COL_RIV    = { PREFIXO: 1, DATA: 3, DESCRICAO: 4, VALOR: 7 };
+
+// ── ABAST. VTR: ajustar conforme cabecalho real ──────────
 var REL_COL_ABAST  = { PREFIXO: 6, PLACA: 7, DATA: 8, KM: 9, LITROS: 10, VALOR_TOTAL: 11, VALOR_LITRO: 12 };
+
+// ── GASTOS: ajustar conforme cabecalho real ──────────────
 var REL_COL_GASTOS = { PREFIXO: 1, TOTAL: 2 };
-var REL_COL_TAREF  = { DESCRICAO: 1, STATUS: 2 };
+
+// ── TAREFAS: confirmado via screenshot 2026-06-03 ────────
+var REL_COL_TAREF = {
+  DESCRICAO: 3,   // C — DESCRIÇÃO
+  STATUS:    5,   // E — STATUS
+};
 
 // ─── Menu ─────────────────────────────────────────────────
 
