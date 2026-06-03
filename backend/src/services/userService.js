@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { pool } = require('../db/connection');
 
 const VALID_PERFIS = ['admin', 'operador', 'visualizador'];
 const VALID_STATUSES = ['pendente', 'ativo', 'inativo'];
@@ -11,42 +12,17 @@ function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
 function verifyPassword(password, storedHash) {
   const [salt, hash] = String(storedHash || '').split(':');
   if (!salt || !hash) return false;
-
   const candidate = crypto.scryptSync(String(password), salt, 64);
   const stored = Buffer.from(hash, 'hex');
   return stored.length === candidate.length && crypto.timingSafeEqual(stored, candidate);
 }
 
-/**
- * Mock de usuarios para desenvolvimento.
- * Em producao, esta responsabilidade deve ir para uma camada de persistencia.
- */
-const users = [
-  {
-    id: 1,
-    nome: 'Admin Teste',
-    email: 'admin@cbmesp.sp.gov.br',
-    passwordHash: hashPassword('admin123'),
-    cargo: 'Comandante',
-    unidade: '17GB',
-    perfil: 'admin',
-    status: 'ativo',
-    createdAt: '2026-05-19T12:00:00.000Z',
-  },
-  {
-    id: 2,
-    nome: 'Operador Teste',
-    email: 'operador@cbmesp.sp.gov.br',
-    passwordHash: hashPassword('operador123'),
-    cargo: 'Sd BM',
-    unidade: '17GB',
-    perfil: 'operador',
-    status: 'ativo',
-    createdAt: '2026-05-19T12:05:00.000Z',
-  },
-];
-
-let nextId = 3;
+function createHttpError(status, code, message) {
+  const err = new Error(message);
+  err.status = status;
+  err.code = code;
+  return err;
+}
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -71,124 +47,132 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function createHttpError(status, code, message) {
-  const err = new Error(message);
-  err.status = status;
-  err.code = code;
-  return err;
-}
-
-function sanitizeUser(user) {
-  if (!user) return null;
+function sanitizeUser(row) {
+  if (!row) return null;
   return {
-    id: user.id,
-    nome: user.nome,
-    email: user.email,
-    cargo: user.cargo,
-    unidade: user.unidade,
-    perfil: user.perfil,
-    status: user.status,
-    createdAt: user.createdAt,
+    id: row.id,
+    nome: row.nome,
+    email: row.email,
+    cargo: row.cargo ?? null,
+    unidade: row.unidade ?? null,
+    perfil: row.perfil,
+    status: row.status,
+    createdAt: row.created_at instanceof Date
+      ? row.created_at.toISOString()
+      : row.created_at,
   };
 }
 
-function findUserByEmail(email) {
-  const normalizedEmail = normalizeEmail(email);
-  return users.find(user => user.email === normalizedEmail) || null;
+function assertUserCanAuthenticate(user) {
+  if (!user) {
+    throw createHttpError(401, 'INVALID_CREDENTIALS', 'Email ou senha incorretos.');
+  }
+  if (user.status === 'pendente') {
+    throw createHttpError(403, 'USER_PENDING', 'Cadastro aguardando liberacao do administrador.');
+  }
+  if (user.status === 'inativo') {
+    throw createHttpError(403, 'USER_INACTIVE', 'Usuario inativo. Solicite suporte ao administrador.');
+  }
 }
 
-function findUserById(id) {
-  const numericId = Number(id);
-  return users.find(user => user.id === numericId) || null;
+async function findUserByEmail(email) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM usuarios WHERE email = ? LIMIT 1',
+    [normalizeEmail(email)]
+  );
+  return rows[0] || null;
 }
 
-function validateRequiredUserFields({ nome, email, password }) {
-  const normalizedEmail = normalizeEmail(email);
-  const normalizedName = String(nome || '').trim();
-  const normalizedPassword = String(password || '');
+async function findUserById(id) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM usuarios WHERE id = ? LIMIT 1',
+    [Number(id)]
+  );
+  return rows[0] || null;
+}
 
-  if (!normalizedName || !normalizedEmail || !normalizedPassword) {
+async function createPendingUser(payload) {
+  const email = normalizeEmail(payload.email);
+  const nome = String(payload.nome || '').trim();
+  const password = String(payload.password || '');
+
+  if (!nome || !email || !password) {
     throw createHttpError(400, 'MISSING_FIELDS', 'Nome, email e senha sao obrigatorios.');
   }
-
-  if (normalizedName.length < 3) {
+  if (nome.length < 3) {
     throw createHttpError(400, 'INVALID_NAME', 'Informe o nome completo do usuario.');
   }
-
-  if (!isValidEmail(normalizedEmail)) {
+  if (!isValidEmail(email)) {
     throw createHttpError(400, 'INVALID_EMAIL', 'Informe um email valido.');
   }
-
-  if (normalizedPassword.length < 6) {
+  if (password.length < 6) {
     throw createHttpError(400, 'INVALID_PASSWORD', 'A senha deve ter pelo menos 6 caracteres.');
   }
 
-  if (findUserByEmail(normalizedEmail)) {
+  const existing = await findUserByEmail(email);
+  if (existing) {
     throw createHttpError(409, 'EMAIL_ALREADY_EXISTS', 'Ja existe um usuario cadastrado com este email.');
   }
 
-  return {
-    nome: normalizedName,
-    email: normalizedEmail,
-    password: normalizedPassword,
-  };
+  const cargo = normalizeText(payload.cargo);
+  const unidade = normalizeText(payload.unidade);
+  const senhaHash = hashPassword(password);
+
+  const [result] = await pool.execute(
+    `INSERT INTO usuarios (nome, email, senha_hash, cargo, unidade, perfil, status)
+     VALUES (?, ?, ?, ?, ?, 'operador', 'pendente')`,
+    [nome, email, senhaHash, cargo, unidade]
+  );
+
+  return sanitizeUser(await findUserById(result.insertId));
 }
 
-function createPendingUser(payload) {
-  const baseUser = validateRequiredUserFields(payload);
-
-  const user = {
-    id: nextId,
-    nome: baseUser.nome,
-    email: baseUser.email,
-    passwordHash: hashPassword(baseUser.password),
-    cargo: normalizeText(payload.cargo),
-    unidade: normalizeText(payload.unidade),
-    perfil: 'operador',
-    status: 'pendente',
-    createdAt: new Date().toISOString(),
-  };
-
-  nextId += 1;
-  users.push(user);
-  return sanitizeUser(user);
-}
-
-function listUsers(filters = {}) {
+async function listUsers(filters = {}) {
   const status = filters.status ? normalizeStatus(filters.status) : null;
 
   if (filters.status && !status) {
     throw createHttpError(400, 'INVALID_STATUS', 'Status de filtro invalido.');
   }
 
-  return users
-    .filter(user => !status || user.status === status)
-    .map(sanitizeUser);
+  let sql = 'SELECT * FROM usuarios';
+  const params = [];
+  if (status) {
+    sql += ' WHERE status = ?';
+    params.push(status);
+  }
+  sql += ' ORDER BY created_at ASC';
+
+  const [rows] = await pool.execute(sql, params);
+  return rows.map(sanitizeUser);
 }
 
-function updateUser(id, payload, actorId) {
-  const user = findUserById(id);
-
+async function updateUser(id, payload, actorId) {
+  const user = await findUserById(id);
   if (!user) {
     throw createHttpError(404, 'USER_NOT_FOUND', 'Usuario nao encontrado.');
   }
 
   const isSelfUpdate = Number(id) === Number(actorId);
+  const updates = [];
+  const values = [];
 
   if (payload.nome !== undefined) {
     const nome = String(payload.nome || '').trim();
     if (nome.length < 3) {
       throw createHttpError(400, 'INVALID_NAME', 'Informe o nome completo do usuario.');
     }
-    user.nome = nome;
+    updates.push('nome = ?');
+    values.push(nome);
   }
 
   if (payload.cargo !== undefined) {
-    user.cargo = normalizeText(payload.cargo);
+    updates.push('cargo = ?');
+    values.push(normalizeText(payload.cargo));
   }
 
   if (payload.unidade !== undefined) {
-    user.unidade = normalizeText(payload.unidade);
+    updates.push('unidade = ?');
+    values.push(normalizeText(payload.unidade));
   }
 
   if (payload.perfil !== undefined || payload.role !== undefined) {
@@ -199,7 +183,8 @@ function updateUser(id, payload, actorId) {
     if (isSelfUpdate && perfil !== 'admin') {
       throw createHttpError(400, 'CANNOT_DEMOTE_SELF', 'Administrador nao pode remover o proprio perfil admin.');
     }
-    user.perfil = perfil;
+    updates.push('perfil = ?');
+    values.push(perfil);
   }
 
   if (payload.status !== undefined) {
@@ -210,66 +195,68 @@ function updateUser(id, payload, actorId) {
     if (isSelfUpdate && status !== 'ativo') {
       throw createHttpError(400, 'CANNOT_DISABLE_SELF', 'Administrador nao pode inativar a propria conta.');
     }
-    user.status = status;
+    updates.push('status = ?');
+    values.push(status);
   }
 
-  return sanitizeUser(user);
+  if (payload.password !== undefined) {
+    const password = String(payload.password || '');
+    if (password.length < 6) {
+      throw createHttpError(400, 'INVALID_PASSWORD', 'A senha deve ter pelo menos 6 caracteres.');
+    }
+    updates.push('senha_hash = ?');
+    values.push(hashPassword(password));
+  }
+
+  if (updates.length === 0) {
+    return sanitizeUser(user);
+  }
+
+  values.push(Number(id));
+  await pool.execute(
+    `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
+    values
+  );
+
+  return sanitizeUser(await findUserById(id));
 }
 
-function deleteUser(id, actorId) {
-  const numericId = Number(id);
-
-  if (numericId === Number(actorId)) {
+async function deleteUser(id, actorId) {
+  if (Number(id) === Number(actorId)) {
     throw createHttpError(400, 'CANNOT_DELETE_SELF', 'Administrador nao pode excluir a propria conta.');
   }
 
-  const index = users.findIndex(user => user.id === numericId);
-  if (index === -1) {
-    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuario nao encontrado.');
-  }
-
-  const [removed] = users.splice(index, 1);
-  return sanitizeUser(removed);
-}
-
-function assertUserCanAuthenticate(user) {
-  if (!user) {
-    throw createHttpError(401, 'INVALID_CREDENTIALS', 'Email ou senha incorretos.');
-  }
-
-  if (user.status === 'pendente') {
-    throw createHttpError(403, 'USER_PENDING', 'Cadastro aguardando liberacao do administrador.');
-  }
-
-  if (user.status === 'inativo') {
-    throw createHttpError(403, 'USER_INACTIVE', 'Usuario inativo. Solicite suporte ao administrador.');
-  }
-}
-
-function validateCredentials(email, password) {
-  const user = findUserByEmail(email);
-
-  if (!user || !verifyPassword(password, user.passwordHash)) {
-    throw createHttpError(401, 'INVALID_CREDENTIALS', 'Email ou senha incorretos.');
-  }
-
-  assertUserCanAuthenticate(user);
-  return user;
-}
-
-function getUser(id) {
-  const user = findUserById(id);
-
+  const user = await findUserById(id);
   if (!user) {
     throw createHttpError(404, 'USER_NOT_FOUND', 'Usuario nao encontrado.');
   }
 
+  await pool.execute('DELETE FROM usuarios WHERE id = ?', [Number(id)]);
   return sanitizeUser(user);
 }
 
-function getActiveUserForRequest(id) {
-  const user = findUserById(id);
-  assertUserCanAuthenticate(user);
+async function validateCredentials(email, password) {
+  const user = await findUserByEmail(email);
+
+  if (!user || !verifyPassword(password, user.senha_hash)) {
+    throw createHttpError(401, 'INVALID_CREDENTIALS', 'Email ou senha incorretos.');
+  }
+
+  assertUserCanAuthenticate(sanitizeUser(user));
+  return user;
+}
+
+async function getUser(id) {
+  const user = await findUserById(id);
+  if (!user) {
+    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuario nao encontrado.');
+  }
+  return sanitizeUser(user);
+}
+
+async function getActiveUserForRequest(id) {
+  const user = await findUserById(id);
+  assertUserCanAuthenticate(user ? sanitizeUser(user) : null);
   return sanitizeUser(user);
 }
 

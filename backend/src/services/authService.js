@@ -16,9 +16,9 @@ function generateToken(user) {
   });
 }
 
-function login(email, password) {
-  const user = userService.validateCredentials(email, password);
-  const access_token = generateToken(user);
+async function login(email, password) {
+  const user = await userService.validateCredentials(email, password);
+  const access_token = generateToken(userService.sanitizeUser(user));
 
   return {
     access_token,
@@ -27,7 +27,7 @@ function login(email, password) {
   };
 }
 
-function getUser(userId) {
+async function getUser(userId) {
   return userService.getUser(userId);
 }
 

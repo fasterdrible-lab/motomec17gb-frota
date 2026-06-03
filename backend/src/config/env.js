@@ -17,6 +17,11 @@ const env = {
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '3600',
+  dbHost: process.env.DB_HOST || 'localhost',
+  dbPort: Number(process.env.DB_PORT || 3306),
+  dbName: process.env.DB_NAME || 'motomec17gb_frota',
+  dbUser: process.env.DB_USER || 'root',
+  dbPassword: process.env.DB_PASSWORD || '',
 };
 
 module.exports = { env };

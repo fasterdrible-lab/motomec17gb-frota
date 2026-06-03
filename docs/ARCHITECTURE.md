@@ -1,4 +1,6 @@
-# Architecture - MOTOMEC 17GB Frota
+# Architecture — MOTOMEC 17GB Frota
+
+Atualizado em: 2026-06-03
 
 ## Infraestrutura de producao
 
@@ -6,26 +8,23 @@
 
 Servidor principal gerenciado pelo Coolify. Todos os servicos rodam em Docker.
 
-| Container | Imagem | Porta interna | Funcao |
-|---|---|---|---|
-| motomec17gb-frontend-1 | motomec17gb-frontend | 8080→80 | Frontend (build atual, pendente redeploy Vite) |
-| motomec17gb-backend-1 | motomec17gb-backend | 8001→8000 | Backend Python/uvicorn (legado, pendente troca Node.js) |
-| motomec17gb-db-backup-1 | mysql:8.0 | 3306 | Banco de dados MySQL |
-| hexagon-dashboard-web | hexagon-dashboard-web | 3100 | HEXAGON Dashboard frontend |
-| hexagon-dashboard-api | hexagon-dashboard-api | 4100 | HEXAGON Dashboard API |
-| hexagon-dashboard-postgres | postgres:16-alpine | — | Banco do HEXAGON |
-| hexagon-dashboard-redis | redis:7-alpine | — | Cache do HEXAGON |
-| meu-postgres | postgres:16 | 5432 | Postgres compartilhado |
+| Container                  | Imagem                       | Porta interna | Funcao                                        |
+|----------------------------|------------------------------|---------------|-----------------------------------------------|
+| motomec17gb-frontend-1     | motomec17gb-frontend         | 8080          | Frontend Vite 8 + nginx 1.27                  |
+| motomec17gb-backend-1      | motomec17gb-backend-node     | 8001          | Backend Node.js 22 / Express (mock em memoria)|
+| motomec17gb-db-backup-1    | mysql:8.0                    | 3306          | MySQL — schema ainda nao criado               |
+| hexagon-dashboard-web      | hexagon-dashboard-web        | 3100          | HEXAGON Dashboard frontend                    |
+| hexagon-dashboard-api      | hexagon-dashboard-api        | 4100          | HEXAGON Dashboard API                         |
+| hexagon-dashboard-postgres | postgres:16-alpine           | —             | Banco do HEXAGON                              |
+| hexagon-dashboard-redis    | redis:7-alpine               | —             | Cache do HEXAGON                              |
+| meu-postgres               | postgres:16                  | 5432          | Postgres compartilhado                        |
 
 ### Nginx (host, /etc/nginx/sites-enabled/)
 
-| Config | Dominio | Destino |
-|---|---|---|
-| motomec17gb-frota | motomec17gb-frota.com.br, www.motomec17gb-frota.com.br | porta 8080 (frontend), 8001 (api) |
-| hexagondashboard.com.br | hexagondashboard.com.br | porta 3100 (web), 4100 (api) |
-| saleia | — | — |
-| av3d-api | — | — |
-| second-brain | — | — |
+| Config              | Dominio                                              | Destino                             |
+|---------------------|------------------------------------------------------|-------------------------------------|
+| motomec17gb-frota   | motomec17gb-frota.com.br, www.motomec17gb-frota.com.br | porta 8080 (frontend), 8001 (api) |
+| hexagondashboard.com.br | hexagondashboard.com.br                         | porta 3100 (web), 4100 (api)        |
 
 Rotas do nginx para o MOTOMEC:
 - `GET /` → 302 para `/motomec17gb-frota/dashboard`
@@ -35,32 +34,72 @@ Rotas do nginx para o MOTOMEC:
 ### DNS e SSL
 
 - Dominio registrado em **registro.br**, nameservers delegados ao **Cloudflare**.
-- Registros DNS atuais (DNS only, sem proxy):
-  - `@` A → 204.168.180.25
-  - `www` A → 204.168.180.25
-- SSL: pendente emissao de certificado Let's Encrypt via certbot para `motomec17gb-frota.com.br` e `www.motomec17gb-frota.com.br`.
-- Apos o certbot, reativar proxy Cloudflare (icone laranja) nos dois registros.
+- Registros DNS: `@` e `www` A → 204.168.180.25, proxy Cloudflare ativo (laranja).
+- SSL: Let's Encrypt via certbot, renovacao automatica ativa (configurada em Issue 015).
+- Secrets do backend: `/opt/motomec17gb-frota/.env.backend` na VPS (chmod 600, fora do git).
 
-### Causa raiz do dominio servindo HEXAGON
+### Redeploy do backend
 
-O nginx do MOTOMEC escutava apenas porta 80. O Cloudflare com proxy laranja envia HTTPS (443) ao servidor. Na porta 443 so existia o bloco do HEXAGON (unico com certificado SSL). Nginx usava HEXAGON como fallback para dominios sem bloco 443 configurado.
+```bash
+docker build -t motomec17gb-backend-node ./backend
+docker stop motomec17gb-backend-1 && docker rm motomec17gb-backend-1
+docker run -d --name motomec17gb-backend-1 \
+  --env-file /opt/motomec17gb-frota/.env.backend \
+  -p 8001:8000 motomec17gb-backend-node
+```
+
+**Importante:** sempre usar `--env-file` para preservar JWT_SECRET.
 
 ## Camadas do codigo
 
-- `frontend/src/pages/`: paginas principais da aplicacao.
-- `frontend/src/components/`: componentes reutilizaveis de UI.
-- `frontend/src/services/`: acesso a dados e integracoes.
-- `backend/src/`: API Node.js/Express (pendente deploy na VPS).
-- `docs/`: spec, tarefas e estado atual do projeto.
+```
+motomec17gb-frota-main/
+  frontend/
+    index.html                       # entry point Vite
+    vite.config.js                   # base = /motomec17gb-frota/, porta 3000
+    src/
+      index.jsx                      # bootstrap React
+      App.jsx                        # rotas BrowserRouter
+      config/publicConfig.js         # variaveis VITE_* centralizadas
+      pages/                         # Dashboard, Frota, Manutencao, Alertas,
+                                     # Gastos, Tarefas, Abastecimentos,
+                                     # Relatorios, Configuracoes, Logistica,
+                                     # MatOperacionais, PasDeaReparos, Login
+      components/                    # Sidebar, Header, PageState, ViaturaCard,
+                                     # AlertCard, DetalhesViaturaManutencao,
+                                     # LogoCBMESP, LogisticaComponents
+      services/
+        api.js                       # cliente Axios para backend REST
+        googleSheets.js              # leitura direta de planilhas (frota/manutencao)
+        logisticaSheets.js           # leitura direta de planilhas (logistica)
+        frotaService.js              # leitura de frota isolada (reutilizada por Manutencao)
+    Dockerfile                       # node:22-alpine build + nginx:1.27-alpine serve
+  backend/
+    src/
+      server.js                      # listen na porta 8000
+      app.js                         # Express + CORS + rotas
+      config/env.js                  # leitura segura de .env
+      middleware/auth.js             # verificacao JWT
+      routes/
+        health.js                    # GET /api/health
+        auth.js                      # POST /api/auth/login, GET /api/auth/me
+        users.js                     # CRUD /api/usuarios (admin)
+      services/
+        authService.js               # gera JWT, delega ao userService
+        userService.js               # MOCK em memoria — Issue 016 substitui por MySQL
+    Dockerfile                       # node:22-alpine, porta 8000
+  docs/                              # spec, tasks, CURRENT_STATE, ARCHITECTURE
+```
 
 ## Padroes estabelecidos
 
-- Estados de loading, erro e vazio centralizados em `frontend/src/components/PageState.jsx`.
-- Variaveis de ambiente publicas centralizadas em `frontend/src/config/publicConfig.js` com prefixo `VITE_`.
-- Bundler: Vite 8 (`frontend/vite.config.js`), base `/motomec17gb-frota/`, porta dev 3000.
+- Loading / erro / vazio: `PageState.jsx` com prop `type` (loading | error | empty).
+- Variaveis de ambiente: prefixo `VITE_`, centralizadas em `config/publicConfig.js`.
+- Erros da API: `{ detail, code, requestId }` com HTTP semântico.
+- Hash de senha: `crypto.scryptSync` com salt aleatorio (formato `salt:hash`).
 
-## Diretriz
+## Diretriz arquitetural
 
-- Regra de negocio sensivel continua fora do frontend.
-- O frontend fica responsavel por exibir dados, estados e acoes do usuario.
-- Backend Node.js/Express (`backend/src/`) deve substituir o backend Python legado na proxima janela de deploy.
+- Regra de negocio e credenciais ficam no backend; frontend so exibe dados autorizados.
+- Leitura direta de Google Sheets no frontend e temporaria — deve migrar para backend por modulo.
+- Proxima camada de dados: MySQL via `mysql2/promise` (Issue 016).

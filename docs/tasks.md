@@ -534,7 +534,7 @@ Cenarios:
 
 ## Issue 016 - Persistencia real de usuarios no backend
 
-Status: `[todo]`
+Status: `[done]` — codigo implementado; deploy na VPS pendente (ver CURRENT_STATE.md)
 
 Objetivo:
 

@@ -4,9 +4,9 @@ const userService = require('../services/userService');
 
 const router = express.Router();
 
-router.post('/', (req, res, next) => {
+router.post('/', async (req, res, next) => {
   try {
-    const user = userService.createPendingUser(req.body || {});
+    const user = await userService.createPendingUser(req.body || {});
     return res.status(201).json({
       detail: 'Cadastro recebido. Aguarde a liberacao de um administrador.',
       user,
@@ -19,18 +19,18 @@ router.post('/', (req, res, next) => {
 router.use(authMiddleware);
 router.use(requireAdmin);
 
-router.get('/', (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
-    const users = userService.listUsers({ status: req.query.status });
+    const users = await userService.listUsers({ status: req.query.status });
     return res.json(users);
   } catch (err) {
     return next(err);
   }
 });
 
-router.put('/:id', (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
-    const user = userService.updateUser(req.params.id, req.body || {}, req.user.id);
+    const user = await userService.updateUser(req.params.id, req.body || {}, req.user.id);
     return res.json({
       detail: 'Usuario atualizado com sucesso.',
       user,
@@ -40,9 +40,9 @@ router.put('/:id', (req, res, next) => {
   }
 });
 
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
-    const user = userService.deleteUser(req.params.id, req.user.id);
+    const user = await userService.deleteUser(req.params.id, req.user.id);
     return res.json({
       detail: 'Usuario excluido com sucesso.',
       user,

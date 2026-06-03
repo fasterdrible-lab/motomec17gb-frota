@@ -1,45 +1,55 @@
-# Current State - MOTOMEC 17GB Frota
+# Current State — MOTOMEC 17GB Frota
 
-## Baseline atual (2026-06-03)
+Atualizado em: 2026-06-03
 
-### Concluido
+## Status geral
 
-- Issue 009: auditoria de dependencias; `axios` atualizado; 43 → 0 vulnerabilidades npm.
-- Issue 014: migracao de CRA para Vite 8; build em 448ms; 0 vulnerabilidades.
-- Issue 015: dominio, SSL e deploy completos na VPS.
-  - DNS Cloudflare corrigido: registros `@` e `www` apontando para 204.168.180.25.
-  - Certificado SSL Let's Encrypt emitido via certbot para raiz e www.
-  - Frontend Vite deployado na VPS (container `motomec17gb-frontend-1`, porta 8080).
-  - Backend Node.js/Express deployado na VPS (container `motomec17gb-backend-1`, porta 8001).
-  - Backend Python/uvicorn legado substituido.
-  - Projeto clonado em `/opt/motomec17gb-frota` na VPS.
-  - Secrets do backend em `/opt/motomec17gb-frota/.env.backend` (chmod 600, fora do git).
-- Bugs corrigidos:
-  - `backend/src/routes/auth.js` criado (ausente causava crash do backend Node.js).
-  - `api.js` login corrigido: de form-urlencoded (Python) para JSON (Node.js).
-  - `Configuracoes.jsx`: label REACT_APP_API_URL corrigido para VITE_API_URL.
-  - `loadUsuarios` agora passa filtro de status ao backend.
-  - Duplicata `createUsuario` removida de `api.js`.
+Aplicacao em producao em https://motomec17gb-frota.com.br.
+Proxima tarefa: **Issue 016 — persistencia MySQL de usuarios**.
 
-### Stack atual na VPS
+## Stack em producao
 
-| Camada | Container | Porta | Imagem |
-|---|---|---|---|
-| Frontend | motomec17gb-frontend-1 | 8080 | motomec17gb-frontend (Vite 8 + nginx:1.27) |
-| Backend | motomec17gb-backend-1 | 8001 | motomec17gb-backend-node (Node.js 22) |
-| Banco (futuro) | motomec17gb-db-backup-1 | 3306 | mysql:8.0 |
+| Camada      | Container                  | Porta  | Imagem                           |
+|-------------|----------------------------|--------|----------------------------------|
+| Frontend    | motomec17gb-frontend-1     | 8080   | Vite 8 + nginx 1.27-alpine       |
+| Backend     | motomec17gb-backend-1      | 8001   | Node.js 22 / Express             |
+| Banco       | motomec17gb-db-backup-1    | 3306   | mysql:8.0 (existente, sem schema)|
 
-### Dominio
+Nginx no host roteia:
+- `GET /motomec17gb-frota/*` → porta 8080
+- `GET /api/*` → porta 8001
 
-- `https://motomec17gb-frota.com.br` → Cloudflare → VPS 204.168.180.25 → nginx → porta 8080/8001
-- Certificado SSL: Let's Encrypt via certbot (renovacao automatica configurada)
+SSL: Let's Encrypt via certbot, renovacao automatica ativa. Cloudflare proxy ativado (laranja).
 
-## Proxima tarefa recomendada
+## Projeto no servidor
 
-- Issue 016: substituir mock em memoria do `userService` por persistencia real no MySQL.
+- Repositorio clonado em `/opt/motomec17gb-frota` na VPS 204.168.180.25.
+- Secrets em `/opt/motomec17gb-frota/.env.backend` (chmod 600, fora do git).
+- Redeploy: `docker build` + `docker run --env-file /opt/motomec17gb-frota/.env.backend`.
 
-## Pendencias
+## O que funciona hoje
 
-- Usuarios perdem dados ao restartar o backend (mock em memoria).
-- Dashboard ainda consome planilhas diretamente; aguarda endpoint `/api/dashboard/macro`.
-- Redeploy na VPS: usar `--env-file /opt/motomec17gb-frota/.env.backend` para preservar JWT_SECRET.
+- Login, cadastro (pendente), recuperar senha, toggle show/hide senha.
+- Gerenciamento de usuarios no Configuracoes (admin pode listar, ativar, alterar perfil, redefinir senha, excluir).
+- JWT valido com validacao de status no backend a cada requisicao autenticada.
+- Todas as paginas de conteudo carregam dados via Google Sheets diretamente do frontend.
+- Frota → clique no card → Manutencao com prefixo e detalhes da viatura.
+- States de loading/erro/vazio padronizados via `PageState.jsx`.
+
+## Issues pendentes
+
+| Issue | Status      | Descricao                                             |
+|-------|-------------|-------------------------------------------------------|
+| 016   | `[done]`    | Persistencia real de usuarios no MySQL — implementado, aguarda deploy na VPS |
+| 005   | `[blocked]` | Dashboard migrar para backend (depende de endpoint)   |
+| 017+  | `[todo]`    | Migrar demais paginas de Google Sheets para backend   |
+
+## Issue 016 — estado pos-implementacao
+
+Codigo concluido. Aguarda deploy na VPS. Passos necessarios na VPS:
+
+1. `git pull` em `/opt/motomec17gb-frota`
+2. Descobrir credenciais do MySQL: `docker exec motomec17gb-db-backup-1 env | grep MYSQL`
+3. Rodar schema: `docker exec -i motomec17gb-db-backup-1 mysql -u<USER> -p<PASS> < backend/database/schema.sql`
+4. Adicionar ao `.env.backend`: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+5. Rebuild e restart do backend com `--env-file /opt/motomec17gb-frota/.env.backend`

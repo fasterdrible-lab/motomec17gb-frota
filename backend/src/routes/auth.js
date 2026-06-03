@@ -4,7 +4,7 @@ const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/login', (req, res, next) => {
+router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
 
@@ -16,7 +16,7 @@ router.post('/login', (req, res, next) => {
       });
     }
 
-    const result = authService.login(String(email).trim().toLowerCase(), password);
+    const result = await authService.login(String(email).trim().toLowerCase(), password);
     return res.json(result);
   } catch (err) {
     return next(err);

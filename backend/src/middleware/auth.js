@@ -2,13 +2,9 @@ const jwt = require('jsonwebtoken');
 const { env } = require('../config/env');
 const userService = require('../services/userService');
 
-/**
- * Middleware para validar JWT e extrair dados do usuário
- * Esperado header: Authorization: Bearer <token>
- */
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader) {
     return res.status(401).json({
       detail: 'Token nao fornecido.',
@@ -27,10 +23,21 @@ function authMiddleware(req, res, next) {
     });
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, env.jwtSecret);
-    req.user = userService.getActiveUserForRequest(decoded.id);
-    next();
+    decoded = jwt.verify(token, env.jwtSecret);
+  } catch (err) {
+    const detail = err.name === 'TokenExpiredError' ? 'Token expirado.' : 'Token invalido.';
+    return res.status(401).json({
+      detail,
+      code: 'UNAUTHORIZED',
+      requestId: req.headers['x-request-id'] || null,
+    });
+  }
+
+  try {
+    req.user = await userService.getActiveUserForRequest(decoded.id);
+    return next();
   } catch (err) {
     if (err.code === 'USER_PENDING' || err.code === 'USER_INACTIVE' || err.code === 'INVALID_CREDENTIALS') {
       return res.status(err.status || 403).json({
@@ -39,16 +46,7 @@ function authMiddleware(req, res, next) {
         requestId: req.headers['x-request-id'] || null,
       });
     }
-
-    const detail = err.name === 'TokenExpiredError' 
-      ? 'Token expirado.' 
-      : 'Token invalido.';
-    
-    return res.status(401).json({
-      detail,
-      code: 'UNAUTHORIZED',
-      requestId: req.headers['x-request-id'] || null,
-    });
+    return next(err);
   }
 }
 
@@ -60,7 +58,6 @@ function requireAdmin(req, res, next) {
       requestId: req.headers['x-request-id'] || null,
     });
   }
-
   return next();
 }
 
