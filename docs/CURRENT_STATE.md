@@ -1,11 +1,11 @@
 # Current State — MOTOMEC 17GB Frota
 
-Atualizado em: 2026-06-03
+Atualizado em: 2026-06-08
 
 ## Status geral
 
 Aplicacao em producao em https://motomec17gb-frota.com.br.
-Proximo passo recomendado: ajustar colunas restantes do `Relatorios.gs` (FROTA, RIV_2026, ABAST. VTR, GASTOS).
+Proximo passo recomendado: redeploy do backend e frontend na VPS com as variaveis `GOOGLE_SHEETS_ID` e `TAREFAS_GID` adicionadas ao `.env.backend`.
 
 ---
 
@@ -61,7 +61,7 @@ SSL: Let's Encrypt via certbot, renovacao automatica ativa. Cloudflare proxy ati
 - Botao X removido do header (agora sempre mostra icone hamburger ≡)
 - Botao `ChevronLeft` (‹) adicionado dentro do sidebar para ocultar o menu
 
-### Google Apps Script — Relatorios.gs [CRIADO, aguarda ajuste de colunas]
+### Google Apps Script — Relatorios.gs [ATUALIZADO COM COLUNAS REAIS — 2026-06-03 sessao 2]
 
 Arquivo: `docs/Relatorios.gs` (colar no Apps Script da planilha)
 
@@ -73,37 +73,92 @@ Funcionalidades implementadas:
 - **Relatorio Executivo**: rankings top 10, alertas consolidados, tarefas, viaturas sem abastecimento
 - Exportacao Excel e PDF para o Google Drive
 
-**Colunas confirmadas ate agora:**
+**Colunas confirmadas (via screenshot 2026-06-03):**
 
-| Aba       | Coluna | Campo                  | Indice |
-|-----------|--------|------------------------|--------|
-| TAREFAS   | A      | PREFIXO                | 1      |
-| TAREFAS   | B      | PLACA                  | 2      |
-| TAREFAS   | C      | DESCRICAO              | 3      |
-| TAREFAS   | D      | RESPONSAVEL            | 4      |
-| TAREFAS   | E      | STATUS                 | 5      |
-| 1SGB/2SGB | A      | PREFIXO                | 1      |
-| 1SGB/2SGB | B      | PLACA                  | 2      |
-| 1SGB/2SGB | C      | KM ATUAL               | 3      |
-| 1SGB/2SGB | D      | PROX TROCA OLEO (KM)   | 4      |
-| 1SGB/2SGB | E      | PROX TROCA OLEO (TEMPO)| 5      |
-| 1SGB/2SGB | F      | REVISAO FREIO (KM)     | 6      |
-| 1SGB/2SGB | G      | DATA VENC BATERIA      | 7      |
-| 1SGB/2SGB | H      | STATUS: OLEO KM        | 8      |
-| 1SGB/2SGB | I      | STATUS: OLEO TEMPO     | 9      |
-| 1SGB/2SGB | J      | STATUS: REVISAO FREIO  | 10     |
-| 1SGB/2SGB | K      | STATUS: BATERIA        | 11     |
-| 1SGB/2SGB | L      | DATA LAVAGEM           | 12     |
-| 1SGB/2SGB | M      | PNEUS DATA TROCA       | 13     |
-| 1SGB/2SGB | N      | DATA TROCA EMBREAGEM   | 14     |
-| 1SGB/2SGB | P      | STATUS OPERACIONAL     | 16     |
+| Aba       | Coluna | Campo                   | Indice |
+|-----------|--------|-------------------------|--------|
+| FROTA     | A      | PREFIXO                 | 1      |
+| FROTA     | C      | FIPE ESTIMADO           | 3      |
+| FROTA     | G      | PLACA                   | 7      |
+| FROTA     | H      | MARCA                   | 8      |
+| FROTA     | I      | MODELO                  | 9      |
+| RIV_2026  | A      | VTR (= PREFIXO)         | 1      |
+| RIV_2026  | B      | NEO                     | 2      |
+| RIV_2026  | C      | DATA                    | 3      |
+| RIV_2026  | D      | KM                      | 4      |
+| RIV_2026  | E      | SERVICOS                | 5      |
+| RIV_2026  | F      | EMPRESA                 | 6      |
+| RIV_2026  | G      | VALOR                   | 7      |
+| TAREFAS   | A      | PREFIXO                 | 1      |
+| TAREFAS   | B      | PLACA                   | 2      |
+| TAREFAS   | C      | DESCRICAO               | 3      |
+| TAREFAS   | D      | RESPONSAVEL             | 4      |
+| TAREFAS   | E      | STATUS (PENDENTE/FINALIZADA) | 5 |
+| 2SGB      | A      | PREFIXO                 | 1      |
+| 2SGB      | B      | PLACA                   | 2      |
+| 2SGB      | C      | KM ATUAL                | 3      |
+| 2SGB      | H      | STATUS: OLEO KM         | 8      |
+| 2SGB      | I      | STATUS: OLEO TEMPO      | 9      |
+| 2SGB      | J      | STATUS: REVISAO FREIO   | 10     |
+| 2SGB      | K      | STATUS: BATERIA         | 11     |
+| 2SGB      | P      | STATUS OPERACIONAL      | 16     |
+| 1SGB      | A      | VTR (= PREFIXO)         | 1      |
+| 1SGB      | B      | PLACA                   | 2      |
+| 1SGB      | C      | KM ATUAL                | 3      |
+| 1SGB      | D      | VTR EM GARANTIA (extra) | 4      |
+| 1SGB      | I      | STATUS: OLEO KM         | 9      |
+| 1SGB      | J      | STATUS: OLEO TEMPO      | 10     |
+| 1SGB      | K      | STATUS: REVISAO FREIO   | 11     |
+| 1SGB      | L      | STATUS: BATERIA         | 12     |
+| 1SGB      | P      | STATUS OPERACIONAL      | 16     |
 
-**Colunas ainda nao confirmadas:** FROTA, RIV_2026, ABAST. VTR, GASTOS.
+**IMPORTANTE — 1SGB tem coluna extra "VTR EM GARANTIA" em D, deslocando todos os indices de status.**
+O script usa `REL_COL_1SGB` e `REL_COL_2SGB` separados para tratar isso corretamente.
+
+| ABAST. VTR | A      | Carimbo (form)           | 1      |
+| ABAST. VTR | F      | PREFIXO DA VIATURA       | 6      |
+| ABAST. VTR | G      | CONFIRME A PLACA         | 7      |
+| ABAST. VTR | H      | DATA                     | 8      |
+| ABAST. VTR | I      | HODOMETRO (KM)           | 9      |
+| ABAST. VTR | J      | VOLUME (litros)          | 10     |
+| ABAST. VTR | K      | VALOR TOTAL              | 11     |
+| GASTOS     | A      | PREFIXO                  | 1      |
+| GASTOS     | B      | VALORFIPE                | 2      |
+| GASTOS     | C      | GASTOTOTAL(2026)         | 3      |
+| GASTOS     | D      | %FIPE                    | 4      |
+| GASTOS     | E      | STATUS                   | 5      |
+
+**Observacao:** ABAST. VTR e um Google Form — colunas A-E sao metadados do form (carimbo, email, posto, nome, unidade). Dados da viatura comecam em F.
+
+**Todas as colunas confirmadas. Relatorios.gs esta pronto para uso.**
+
+---
+
+## O que foi implementado nesta sessao (2026-06-08)
+
+### Issue 017 — Endpoint backend /api/dashboard [CONCLUIDO — deploy pendente]
+
+- `backend/src/services/sheetsService.js` criado: porta toda a logica de agregacao do `googleSheets.js` para Node.js (CommonJS, fetch nativo Node 22).
+- `backend/src/routes/dashboard.js` criado: GET `/api/dashboard/macro`, `/api/dashboard/abastecimentos`, `/api/dashboard/tarefas` (protegidos por JWT).
+- `backend/src/app.js` atualizado: rota `/api/dashboard` registrada.
+- `backend/src/config/env.js` atualizado: campos `sheetsId` e `tarefasGid`.
+- `backend/.env.example` atualizado: `GOOGLE_SHEETS_ID` e `TAREFAS_GID`.
+
+### Issue 005 — Dashboard migrado para backend [CONCLUIDO — deploy pendente]
+
+- `frontend/src/pages/Dashboard.jsx`: import trocado de `googleSheets.js` para `api.js`; todas as 3 chamadas de planilha agora usam o backend.
+- `frontend/src/services/api.js`: funcoes `getDashboardMacro`, `getDashboardAbastecimentos`, `getDashboardTarefas` adicionadas.
 
 ---
 
 ## Pendencias
 
-- Confirmar colunas de FROTA, RIV_2026, ABAST. VTR e GASTOS para ajustar `Relatorios.gs`
-- Dashboard ainda consome planilhas diretamente (Issue 005, blocked)
-- Redeploy do frontend pendente para refletir mudancas de UI do Sidebar/Header
+- **Deploy na VPS (prioritario):**
+  1. Adicionar ao `/opt/motomec17gb-frota/.env.backend`:
+     ```
+     GOOGLE_SHEETS_ID=1q6wy9iO4aRDKMBPzxR9cISE7pCmUuIaYSRBdhUNlM4Q
+     TAREFAS_GID=1988288811
+     ```
+  2. Rebuild e redeploy do backend (`docker build` + `docker run --env-file`).
+  3. Rebuild e redeploy do frontend (`docker build` + substituir container).
+- `Relatorios.gs` CONCLUIDO — todas as colunas confirmadas e mapeadas.

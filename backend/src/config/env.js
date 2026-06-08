@@ -22,6 +22,8 @@ const env = {
   dbName: process.env.DB_NAME || 'motomec17gb_frota',
   dbUser: process.env.DB_USER || 'root',
   dbPassword: process.env.DB_PASSWORD || '',
+  sheetsId: process.env.GOOGLE_SHEETS_ID || '',
+  tarefasGid: process.env.TAREFAS_GID || '',
 };
 
 module.exports = { env };

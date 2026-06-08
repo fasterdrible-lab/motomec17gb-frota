@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getDashboardMacro, getTarefasCompletas, getAbastecimentos } from '../services/googleSheets';
+import { getDashboardMacro, getDashboardAbastecimentos, getDashboardTarefas } from '../services/api';
 import '../styles/Dashboard.css';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -65,7 +65,7 @@ function Dashboard() {
       setDados(data);
       setUltimaSync(new Date());
     } catch (e) {
-      setError('Erro ao buscar dados da planilha. Verifique a conexão.');
+      setError('Erro ao buscar dados do servidor. Verifique a conexão.');
     } finally {
       setLoading(false);
       setSyncing(false);
@@ -102,7 +102,7 @@ function Dashboard() {
             setShowAbastPanel(true);
             if (abastecimentos.length === 0) {
               setAbastLoading(true);
-              getAbastecimentos()
+              getDashboardAbastecimentos()
                 .then(setAbastecimentos)
                 .catch(err => console.error('Erro ao carregar abastecimentos:', err))
                 .finally(() => setAbastLoading(false));
@@ -119,7 +119,7 @@ function Dashboard() {
         )}
       </div>
 
-      {loading && <div className="dash-loading">⏳ Carregando dados da planilha...</div>}
+      {loading && <div className="dash-loading">⏳ Carregando dados do servidor...</div>}
 
       {error && !loading && (
         <div className="dash-error">
@@ -159,7 +159,7 @@ function Dashboard() {
               onClick={() => {
                 setShowTarefasPanel(true);
                 if (tarefasDetalhadas.length === 0) {
-                  getTarefasCompletas().then(setTarefasDetalhadas).catch(err => console.error('Erro ao carregar tarefas:', err));
+                  getDashboardTarefas().then(setTarefasDetalhadas).catch(err => console.error('Erro ao carregar tarefas:', err));
                 }
               }}
               style={{ cursor: 'pointer' }}

@@ -45,6 +45,21 @@ export async function getMe() {
 }
 
 // Dashboard
+export async function getDashboardMacro() {
+  const res = await api.get('/api/dashboard/macro');
+  return res.data;
+}
+
+export async function getDashboardAbastecimentos() {
+  const res = await api.get('/api/dashboard/abastecimentos');
+  return res.data;
+}
+
+export async function getDashboardTarefas() {
+  const res = await api.get('/api/dashboard/tarefas');
+  return res.data;
+}
+
 export async function getStatusOperacional() {
   const res = await api.get('/api/frota/status-operacional');
   return res.data;

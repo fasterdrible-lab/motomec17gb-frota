@@ -144,32 +144,24 @@ Cenarios:
 
 ## Issue 005 - Migrar Dashboard para backend
 
-Status: `[blocked]`
+Status: `[done]` — desbloqueado e concluido via Issue 017.
 
 Objetivo:
 
 - Fazer `Dashboard.jsx` consumir apenas dados agregados do backend.
 
-Busca de reutilizacao:
+Arquivos modificados:
 
-- `frontend/src/services/api.js`
-- `frontend/src/pages/Dashboard.jsx`
-- Estrutura visual atual dos cards.
-
-Arquivos planejados:
-
-- `frontend/src/pages/Dashboard.jsx`
-- `frontend/src/services/api.js`
-- Backend ainda inexistente neste repositorio.
+- `frontend/src/pages/Dashboard.jsx`: import trocado de `googleSheets.js` para `api.js`; chamadas `getDashboardMacro`, `getDashboardAbastecimentos`, `getDashboardTarefas`.
+- `frontend/src/services/api.js`: funcoes `getDashboardMacro`, `getDashboardAbastecimentos`, `getDashboardTarefas` adicionadas apontando para `/api/dashboard/*`.
 
 Banco de dados:
 
-- Sem alteracao no frontend.
-- Backend deve fornecer agregados ou ler fonte externa de forma controlada.
+- Nenhuma alteracao. O backend busca dados do Google Sheets e os agrega.
 
 Dependencias externas:
 
-- Endpoint `/api/dashboard/macro` ou equivalente.
+- Issue 017 (endpoint backend) concluida primeiro.
 
 Cenarios:
 
@@ -652,3 +644,46 @@ Cenarios:
 - Sucesso: vulnerabilidades classificadas e atualizacoes seguras aplicadas.
 - Erro: `npm audit fix --force` gera breaking changes — nao executado.
 - Edge cases: Create React App antigo mantem vulnerabilidades transitivas sem correcao simples; aceitas como risco documentado.
+
+## Issue 017 - Implementar endpoint /api/dashboard no backend
+
+Status: `[done]`
+
+Objetivo:
+
+- Criar endpoint backend que agrega dados do Google Sheets e os serve ao frontend.
+- Mover a logica de leitura de planilhas do frontend para o backend.
+- Desbloquear Issue 005 (migracao do Dashboard).
+
+Busca de reutilizacao:
+
+- Logica de `frontend/src/services/googleSheets.js` portada para Node.js CommonJS.
+- `backend/src/middleware/auth.js` reutilizado para proteger as rotas.
+
+Arquivos criados/modificados:
+
+- `backend/src/services/sheetsService.js`: funcoes `getDashboardMacro`, `getAbastecimentos`, `getTarefasCompletas` com toda a logica de agregacao de dados do Google Sheets.
+- `backend/src/routes/dashboard.js`: GET `/api/dashboard/macro`, GET `/api/dashboard/abastecimentos`, GET `/api/dashboard/tarefas` (todas com authMiddleware).
+- `backend/src/app.js`: rota `/api/dashboard` registrada.
+- `backend/src/config/env.js`: campos `sheetsId` e `tarefasGid` adicionados.
+- `backend/.env.example`: variaveis `GOOGLE_SHEETS_ID` e `TAREFAS_GID` documentadas.
+
+Banco de dados:
+
+- Nenhuma alteracao. Dados ainda vem do Google Sheets via API publica gviz.
+
+Dependencias externas:
+
+- `fetch` nativo do Node 22 (sem dependencia nova).
+- `GOOGLE_SHEETS_ID` e `TAREFAS_GID` devem ser adicionados ao `.env.backend` na VPS.
+
+Cenarios:
+
+- Sucesso: `GET /api/dashboard/macro` retorna objeto com frota, alertas, tarefas, gastos, OS, abastecimentos e FCD.
+- Erro: planilha inacessivel retorna 500 com mensagem descritiva.
+- Edge cases: usuario nao autenticado recebe 401; tarefas sem GID configurado retornam dados vazios graciosamente.
+
+Deploy pendente:
+
+- Adicionar ao `.env.backend` na VPS: `GOOGLE_SHEETS_ID=1q6wy9iO4aRDKMBPzxR9cISE7pCmUuIaYSRBdhUNlM4Q` e `TAREFAS_GID=1988288811`.
+- Rebuild e redeploy do backend e frontend na VPS.
