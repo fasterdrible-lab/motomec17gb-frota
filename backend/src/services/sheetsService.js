@@ -140,7 +140,8 @@ async function getFCDResumo() {
 }
 
 async function getDashboardMacro() {
-  const [sgb1, sgb2, tarefasData, gastosResult, osResult, abastData, fcdResumo] = await Promise.all([
+  const [frotaData, sgb1, sgb2, tarefasData, gastosResult, osResult, abastData, fcdResumo] = await Promise.all([
+    fetchSheetData('FROTA'),
     fetchSheetData('1SGB'),
     fetchSheetData('2SGB'),
     fetchSheetData('TAREFAS', env.tarefasGid).catch(() => null),
@@ -150,22 +151,38 @@ async function getDashboardMacro() {
     getFCDResumo().catch(() => ({ total: 0, hoje: 0 })),
   ]);
 
-  const frotaRows = [
-    ...(sgb1.table?.rows || []),
-    ...(sgb2.table?.rows || []),
-  ].filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0)));
+  // FROTA é a fonte de verdade para contagem total
+  const frotaRows = (frotaData.table?.rows || []).filter(r => {
+    const p = String(getCell(r, 0)).toUpperCase().trim();
+    return p && p !== 'PREFIXO' && !isSyncRow(p);
+  });
 
+  // Mapa prefixo → dados do SGB (status + alertas)
+  const sgbRows = [
+    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
+    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
+  ];
+  const sgbMap = {};
+  sgbRows.forEach(r => {
+    const p = String(getCell(r, 0)).toUpperCase().trim();
+    sgbMap[p] = r;
+  });
+
+  // Contar status usando FROTA como base, SGB para status (sem status = operando)
   let operando = 0, baixadas = 0, reserva = 0;
   frotaRows.forEach(r => {
-    const s = String(getCell(r, 15)).toUpperCase();
+    const p = String(getCell(r, 0)).toUpperCase().trim();
+    const sgbRow = sgbMap[p];
+    const s = sgbRow ? String(getCell(sgbRow, 15)).toUpperCase() : '';
     if (s.includes('BAIXA')) baixadas++;
     else if (s.includes('RESERVA')) reserva++;
     else operando++;
   });
 
+  // Alertas continuam calculados a partir das linhas SGB (que têm os dados de KM/bateria/lavagem)
   const hoje = new Date();
   let totalAlertas = 0;
-  frotaRows.forEach(r => {
+  sgbRows.forEach(r => {
     const kmAtual = parseFloat(getCell(r, 2)) || 0;
     const bateria = String(getCell(r, 11)).toUpperCase();
     if (bateria.includes('VENCIDO') || bateria.includes('A VENCER')) totalAlertas++;
@@ -201,17 +218,19 @@ async function getDashboardMacro() {
       .filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))).length;
   }
 
+  // Viatura mais velha: usar colunas do FROTA (col 10 = anoFab, col 11 = anoModelo)
   let viaturasMaisVelha = { prefixo: '—', ano: '—' };
   let menorAno = Infinity;
   frotaRows.forEach(r => {
     const prefixo = getCell(r, 0);
-    const ano = extractYear(getCell(r, 5)) || extractYear(getCell(r, 3));
+    const ano = extractYear(getCell(r, 11)) || extractYear(getCell(r, 10));
     if (ano > MIN_VALID_YEAR && ano < menorAno) {
       menorAno = ano;
       viaturasMaisVelha = { prefixo, ano };
     }
   });
 
+  // Tipos de viatura: usar FROTA (prefixo já limpo)
   const tiposViatura = {};
   frotaRows.forEach(r => {
     const prefixo = String(getCell(r, 0));
