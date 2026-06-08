@@ -3,8 +3,9 @@
 const { env } = require('../config/env');
 
 const MS_PER_DAY = 86400000;
-const KM_THRESHOLD_WARNING = 5000;
-const WASHING_WARNING_DAYS = 12;
+const KM_THRESHOLD_WARNING = 5000;   // = ALERTA_KM_AVISO no Apps Script
+const LAVAGEM_DIAS = 15;              // = LAVAGEM_DIAS no Apps Script
+const ALERTA_DIAS_AVISO = 3;         // = ALERTA_DIAS_AVISO no Apps Script
 const MIN_VALID_YEAR = 1900;
 
 async function fetchSheetData(sheetName, gid = null) {
@@ -168,35 +169,62 @@ async function getDashboardMacro() {
     sgbMap[p] = r;
   });
 
+  // Prefixos com status incorreto na planilha — override até correção manual na aba 2SGB col P
+  const STATUS_OVERRIDES = { 'UR-17208': '', 'UR-17211': '' };
+
   // Contar status usando FROTA como base, SGB para status (sem status = operando)
   let operando = 0, baixadas = 0, reserva = 0;
   frotaRows.forEach(r => {
     const p = String(getCell(r, 0)).toUpperCase().trim();
     const sgbRow = sgbMap[p];
-    const s = sgbRow ? String(getCell(sgbRow, 15)).toUpperCase() : '';
+    const rawS = sgbRow ? String(getCell(sgbRow, 15)).toUpperCase() : '';
+    const s = p in STATUS_OVERRIDES ? STATUS_OVERRIDES[p] : rawS;
     if (s.includes('BAIXA')) baixadas++;
     else if (s.includes('RESERVA')) reserva++;
     else operando++;
   });
 
-  // Alertas continuam calculados a partir das linhas SGB (que têm os dados de KM/bateria/lavagem)
+  // Alertas — mesma lógica do Apps Script (calcularAlertas)
+  // Cols I(8)/J(9)/K(10)/L(11) = status pré-computados pelo Apps Script (VENCIDO/A VENCER/OK)
+  // Cols M(12)/N(13)/O(14) = valores brutos (data lavagem, km pneu, km embreagem)
   const hoje = new Date();
   let totalAlertas = 0;
   sgbRows.forEach(r => {
     const kmAtual = parseFloat(getCell(r, 2)) || 0;
-    const bateria = String(getCell(r, 11)).toUpperCase();
-    if (bateria.includes('VENCIDO') || bateria.includes('A VENCER')) totalAlertas++;
+
+    // I — Óleo KM (col 8, pré-computado pelo Apps Script)
+    const sOleoKm = String(getCell(r, 8)).toUpperCase();
+    if (sOleoKm.includes('VENCIDO') || sOleoKm.includes('A VENCER')) totalAlertas++;
+
+    // J — Óleo Tempo (col 9, pré-computado)
+    const sOleoTempo = String(getCell(r, 9)).toUpperCase();
+    if (sOleoTempo.includes('VENCIDO') || sOleoTempo.includes('A VENCER')) totalAlertas++;
+
+    // K — Freio (col 10, pré-computado)
+    const sFreio = String(getCell(r, 10)).toUpperCase();
+    if (sFreio.includes('VENCIDO') || sFreio.includes('A VENCER')) totalAlertas++;
+
+    // L — Bateria (col 11, pré-computado)
+    const sBateria = String(getCell(r, 11)).toUpperCase();
+    if (sBateria.includes('VENCIDO') || sBateria.includes('A VENCER')) totalAlertas++;
+
+    // M — Lavagem (col 12, data bruta): alerta quando df <= ALERTA_DIAS_AVISO ou vencido
     const lavagem = getCell(r, 12);
     if (lavagem) {
       const parts = String(lavagem).split('/');
       if (parts.length === 3) {
         const dataLav = new Date(parts[2], parts[1] - 1, parts[0]);
-        const dias = Math.floor((hoje - dataLav) / MS_PER_DAY);
-        if (dias >= WASHING_WARNING_DAYS) totalAlertas++;
+        const diasPassados = Math.floor((hoje - dataLav) / MS_PER_DAY);
+        const diasFaltando = LAVAGEM_DIAS - diasPassados;
+        if (diasFaltando <= ALERTA_DIAS_AVISO) totalAlertas++;
       }
     }
+
+    // N — Pneu (col 13, km bruto)
     const kmPneu = parseFloat(getCell(r, 13)) || 0;
     if (kmPneu > 0 && (kmAtual >= kmPneu || kmPneu - kmAtual <= KM_THRESHOLD_WARNING)) totalAlertas++;
+
+    // O — Embreagem (col 14, km bruto)
     const kmEmb = parseFloat(getCell(r, 14)) || 0;
     if (kmEmb > 0 && (kmAtual >= kmEmb || kmEmb - kmAtual <= KM_THRESHOLD_WARNING)) totalAlertas++;
   });

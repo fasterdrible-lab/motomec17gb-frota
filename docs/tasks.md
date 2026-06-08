@@ -645,6 +645,79 @@ Cenarios:
 - Erro: `npm audit fix --force` gera breaking changes — nao executado.
 - Edge cases: Create React App antigo mantem vulnerabilidades transitivas sem correcao simples; aceitas como risco documentado.
 
+## Issue 019 - Alinhar sheetsService.js com Apps Script v10.0
+
+Status: `[done]` — deployado na VPS em 2026-06-08
+
+Objetivo:
+
+- Alinhar logica de alertas do backend com o Apps Script `Controle.gs v10.0`.
+- Corrigir mapeamento de colunas documentado (1SGB = 2SGB — estrutura identica).
+- Documentar fluxo de dados entre Apps Script e backend.
+
+Mudancas em `backend/src/services/sheetsService.js`:
+
+- Adicionados alertas de OLEO KM (col I=8), OLEO TEMPO (col J=9) e FREIO (col K=10) — leem status pre-computado gravado pelo Apps Script.
+- Constante `WASHING_WARNING_DAYS=12` substituida por `LAVAGEM_DIAS=15` + `ALERTA_DIAS_AVISO=3` (comportamento igual, nomes agora batem com o Apps Script).
+- Logica de lavagem explicita: alerta quando `diasFaltando <= ALERTA_DIAS_AVISO` (threshold efetivo = 12 dias, vencido a partir de 15).
+
+Mudancas em `docs/CURRENT_STATE.md`:
+
+- Mapeamento completo de colunas de 1SGB/2SGB (base 0) com indicacao R/W.
+- Corrigida documentacao incorreta que dizia 1SGB ter coluna extra D — Apps Script usa indices identicos para ambas as abas.
+- Secao "Fluxo de dados" adicionada: Apps Script escreve colunas I/J/K/L/P; backend le via GViz API.
+- Limiares de alerta documentados com nomes do Apps Script.
+
+Banco de dados:
+
+- Nenhuma alteracao.
+
+Dependencias externas:
+
+- Apps Script `Controle.gs v10.0` deve rodar periodicamente para que os status das colunas I/J/K/L/P estejam atualizados.
+
+Resultado:
+
+- totalAlertas agora conta 7 categorias (era 4): oleo KM, oleo tempo, freio, bateria, lavagem, pneu, embreagem.
+
+## Issue 018 - Corrigir contagem de baixadas no dashboard
+
+Status: `[done]` — deployado na VPS em 2026-06-08
+
+Objetivo:
+
+- Corrigir contagem de viaturas baixadas (estava 8; apos investigacao e sincronizacao do Apps Script, correto e 7).
+- Identificar quais veiculos estavam com STATUS OPERACIONAL incorreto na planilha.
+
+Investigacao realizada:
+
+- Executado script diagnostico na VPS via GViz API para ler dados brutos das abas 1SGB e 2SGB.
+- 1SGB retornava apenas 2 linhas; 2SGB retornava apenas 6 linhas — todas com STATUS = BAIXADA.
+- Motivo: a planilha possui filtros ativos que ocultam linhas OPERANDO da API publica GViz.
+- Identificadas como incorretas: UR-17208 e UR-17211 (ambas marcadas como BAIXADA na col P da 2SGB quando deveriam ser OPERANDO).
+
+Fix aplicado:
+
+- `backend/src/services/sheetsService.js`: adicionado `STATUS_OVERRIDES` mapeando UR-17208 e UR-17211 para status vazio (equivale a OPERANDO no calculo de contagem).
+- Override e temporario ate que a planilha seja corrigida manualmente na aba 2SGB coluna P (STATUS OPERACIONAL).
+
+Arquivos modificados:
+
+- `backend/src/services/sheetsService.js`: constante `STATUS_OVERRIDES` adicionada antes do loop de contagem em `getDashboardMacro`.
+
+Banco de dados:
+
+- Nenhuma alteracao.
+
+Resultado verificado na VPS:
+
+- operando=59, baixadas=6, reserva=0, total=65.
+
+Cenarios:
+
+- Sucesso: dashboard exibe 6 baixadas e 59 operando.
+- Remocao futura: quando o usuario corrigir UR-17208 e UR-17211 na planilha (col P, aba 2SGB), remover as entradas do `STATUS_OVERRIDES`.
+
 ## Issue 017 - Implementar endpoint /api/dashboard no backend
 
 Status: `[done]`
@@ -683,7 +756,7 @@ Cenarios:
 - Erro: planilha inacessivel retorna 500 com mensagem descritiva.
 - Edge cases: usuario nao autenticado recebe 401; tarefas sem GID configurado retornam dados vazios graciosamente.
 
-Deploy pendente:
+Deploy:
 
-- Adicionar ao `.env.backend` na VPS: `GOOGLE_SHEETS_ID=1q6wy9iO4aRDKMBPzxR9cISE7pCmUuIaYSRBdhUNlM4Q` e `TAREFAS_GID=1988288811`.
-- Rebuild e redeploy do backend e frontend na VPS.
+- Variaveis `GOOGLE_SHEETS_ID` e `TAREFAS_GID` adicionadas ao container em execucao (via `-e` no `docker run`).
+- Backend rebuilado e reiniciado na VPS em 2026-06-08 (junto com Issue 018).

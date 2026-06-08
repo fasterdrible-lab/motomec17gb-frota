@@ -19,11 +19,40 @@
 
 // ─── Mapeamento de colunas (índice 1 = coluna A) ──────────
 
-// ── FROTA: ajustar conforme cabecalho real da aba FROTA ──
-var REL_COL_FROTA  = { PREFIXO: 1, PLACA: 2, MODELO: 3, MARCA: 4, FIPE: 5 };
+// ── FROTA: confirmado via screenshot 2026-06-03 ──────────
+// A=PREFIXO, B=CÓDIGO, C=FIPE ESTIMADO, D=OPMCB, E=POSTO,
+// F=PROPRIETARIO, G=PLACA, H=MARCA, I=MODELO, J=TIPO,
+// K=ANO FABRICAÇÃO, L=ANO MODELO, ...
+var REL_COL_FROTA = { PREFIXO: 1, PLACA: 7, MODELO: 9, MARCA: 8, FIPE: 3 };
 
-// ── 1SGB / 2SGB: confirmado via screenshot 2026-06-03 ────
-var REL_COL_SGB = {
+// ── 1SGB: confirmado via screenshot 2026-06-03 ───────────
+// A=VTR(prefixo), B=PLACA, C=KM ATUAL, D=VTR EM GARANTIA,
+// E=PRÓX TROCA ÓLEO KM, F=PRÓX TROCA ÓLEO TEMPO,
+// G=REVISÃO FREIO KM, H=DATA VENC BATERIA,
+// I=STATUS ÓLEO KM, J=STATUS ÓLEO TEMPO,
+// K=STATUS REVISÃO FREIO, L=STATUS BATERIA,
+// M=DATA LAVAGEM, N=PNEUS KM PRÓX TROCA,
+// O=KM TROCA EMBREAGEM, P=STATUS OPERACIONAL
+var REL_COL_1SGB = {
+  PREFIXO:   1,   // A — VTR (= PREFIXO)
+  PLACA:     2,   // B — PLACA
+  KM:        3,   // C — KM ATUAL
+  OLEO_KM:   9,   // I — STATUS: ÓLEO KM
+  OLEO_DATA: 10,  // J — STATUS: ÓLEO TEMPO
+  FREIO:     11,  // K — STATUS: REVISÃO FREIO
+  BATERIA:   12,  // L — STATUS: BATERIA
+  STATUS:    16,  // P — STATUS OPERACIONAL
+};
+
+// ── 2SGB: confirmado via screenshot 2026-06-03 ───────────
+// A=PREFIXO, B=PLACA, C=KM ATUAL,
+// D=PRÓX TROCA ÓLEO KM, E=PRÓX TROCA ÓLEO TEMPO,
+// F=REVISÃO FREIO KM, G=DATA VENC BATERIA,
+// H=STATUS ÓLEO KM, I=STATUS ÓLEO TEMPO,
+// J=STATUS REVISÃO FREIO, K=STATUS BATERIA,
+// L=DATA LAVAGEM, M=PNEUS DATA TROCA,
+// N=DATA TROCA EMBREAGEM, O=(vazia), P=STATUS OPERACIONAL
+var REL_COL_2SGB = {
   PREFIXO:   1,   // A — PREFIXO
   PLACA:     2,   // B — PLACA
   KM:        3,   // C — KM ATUAL
@@ -31,19 +60,27 @@ var REL_COL_SGB = {
   OLEO_DATA: 9,   // I — STATUS: ÓLEO TEMPO
   FREIO:     10,  // J — STATUS: REVISÃO FREIO
   BATERIA:   11,  // K — STATUS: BATERIA
-  STATUS:    16,  // P — STATUS OPERACIONAL
+  STATUS:    16,  // P — STATUS OPERACIONAL (coluna O vazia entre N e P)
 };
 
-// ── RIV_2026: ajustar conforme cabecalho real ────────────
-var REL_COL_RIV    = { PREFIXO: 1, DATA: 3, DESCRICAO: 4, VALOR: 7 };
+// ── RIV_2026: confirmado via screenshot 2026-06-03 ───────
+// A=VTR(prefixo), B=NEO, C=DATA, D=KM, E=SERVIÇOS, F=EMPRESA, G=VALOR
+var REL_COL_RIV = { PREFIXO: 1, DATA: 3, DESCRICAO: 5, VALOR: 7 };
 
-// ── ABAST. VTR: ajustar conforme cabecalho real ──────────
+// ── ABAST. VTR: confirmado via screenshot 2026-06-03 ─────
+// É um Google Form — colunas A-E são metadados do formulário:
+// A=Carimbo, B=Email, C=Posto, D=Nome guerra, E=Unidade,
+// F=PREFIXO DA VIATURA, G=CONFIRME A PLACA,
+// H=DATA, I=HODÔMETRO (km), J=VOLUME (litros), K=VALOR TOTAL
 var REL_COL_ABAST  = { PREFIXO: 6, PLACA: 7, DATA: 8, KM: 9, LITROS: 10, VALOR_TOTAL: 11, VALOR_LITRO: 12 };
 
-// ── GASTOS: ajustar conforme cabecalho real ──────────────
-var REL_COL_GASTOS = { PREFIXO: 1, TOTAL: 2 };
+// ── GASTOS: confirmado via screenshot 2026-06-03 ─────────
+// A=PREFIXO, B=VALORFIPE, C=GASTOTOTAL(2026), D=%FIPE, E=STATUS
+var REL_COL_GASTOS = { PREFIXO: 1, TOTAL: 3 };
 
 // ── TAREFAS: confirmado via screenshot 2026-06-03 ────────
+// A=PREFIXO, B=PLACA, C=DESCRIÇÃO, D=RESPONSÁVEL, E=STATUS
+// Status válidos: PENDENTE, FINALIZADA (não CONCLUIDA)
 var REL_COL_TAREF = {
   DESCRICAO: 3,   // C — DESCRIÇÃO
   STATUS:    5,   // E — STATUS
@@ -437,7 +474,7 @@ function _gerarRelatorioExecutivo_(ss) {
   var emAndamento = tarefas.filter(function(t){ return _relNorm_(t.status) === 'EM ANDAMENTO'; }).length;
   var concluidas  = tarefas.filter(function(t){
     var s = _relNorm_(t.status);
-    return s === 'CONCLUIDA' || s === 'CONCLUIDO'; }).length;
+    return s === 'CONCLUIDA' || s === 'CONCLUIDO' || s === 'FINALIZADA' || s === 'FINALIZADO'; }).length;
 
   // Rankings
   var rankCusto = frota.slice().sort(function(a, b) {
@@ -576,24 +613,42 @@ function _relLerFrota_(ss) {
   var d2     = _relGetAba_(ss, '2SGB').getDataRange().getValues();
 
   var sgbMap = {};
-  [{dados: d1, unidade: '1SGB'}, {dados: d2, unidade: '2SGB'}].forEach(function(sgb) {
-    for (var i = 1; i < sgb.dados.length; i++) {
-      var r   = sgb.dados[i];
-      var prf = _relNorm_(String(r[REL_COL_SGB.PREFIXO - 1] || ''));
-      if (!prf) continue;
-      sgbMap[prf] = {
-        km:      _relParseKm_(r[REL_COL_SGB.KM     - 1]),
-        status:  _relNorm_(String(r[REL_COL_SGB.STATUS  - 1] || '')),
-        unidade: sgb.unidade,
-        alertas: {
-          oleoKm:  String(r[REL_COL_SGB.OLEO_KM  - 1] || ''),
-          oleoData:String(r[REL_COL_SGB.OLEO_DATA - 1] || ''),
-          freio:   String(r[REL_COL_SGB.FREIO     - 1] || ''),
-          bateria: String(r[REL_COL_SGB.BATERIA   - 1] || ''),
-        },
-      };
-    }
-  });
+
+  // 1SGB usa REL_COL_1SGB (tem coluna extra VTR EM GARANTIA em D)
+  for (var i = 1; i < d1.length; i++) {
+    var r1  = d1[i];
+    var p1  = _relNorm_(String(r1[REL_COL_1SGB.PREFIXO - 1] || ''));
+    if (!p1) continue;
+    sgbMap[p1] = {
+      km:      _relParseKm_(r1[REL_COL_1SGB.KM     - 1]),
+      status:  _relNorm_(String(r1[REL_COL_1SGB.STATUS  - 1] || '')),
+      unidade: '1SGB',
+      alertas: {
+        oleoKm:  String(r1[REL_COL_1SGB.OLEO_KM  - 1] || ''),
+        oleoData:String(r1[REL_COL_1SGB.OLEO_DATA - 1] || ''),
+        freio:   String(r1[REL_COL_1SGB.FREIO     - 1] || ''),
+        bateria: String(r1[REL_COL_1SGB.BATERIA   - 1] || ''),
+      },
+    };
+  }
+
+  // 2SGB usa REL_COL_2SGB (sem a coluna extra)
+  for (var j = 1; j < d2.length; j++) {
+    var r2  = d2[j];
+    var p2  = _relNorm_(String(r2[REL_COL_2SGB.PREFIXO - 1] || ''));
+    if (!p2) continue;
+    sgbMap[p2] = {
+      km:      _relParseKm_(r2[REL_COL_2SGB.KM     - 1]),
+      status:  _relNorm_(String(r2[REL_COL_2SGB.STATUS  - 1] || '')),
+      unidade: '2SGB',
+      alertas: {
+        oleoKm:  String(r2[REL_COL_2SGB.OLEO_KM  - 1] || ''),
+        oleoData:String(r2[REL_COL_2SGB.OLEO_DATA - 1] || ''),
+        freio:   String(r2[REL_COL_2SGB.FREIO     - 1] || ''),
+        bateria: String(r2[REL_COL_2SGB.BATERIA   - 1] || ''),
+      },
+    };
+  }
 
   var resultado = [];
   for (var i = 1; i < dFrota.length; i++) {
