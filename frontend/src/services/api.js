@@ -76,18 +76,14 @@ export async function getAlertas() {
 }
 
 // Frota
-export async function getFrotaCompleta() {
-  const res = await api.get('/api/frota/');
-  return res.data.map(v => ({
-    prefixo: v.prefixo,
-    placa: v.placa,
-    kmAtual: v.km_atual,
-    modelo: v.modelo,
-    marca: v.marca,
-    ano: v.ano ? String(v.ano) : '',
-    status: v.status,
-    sgb: v.unidade || '',
-  }));
+export async function getFrotaDetalhada() {
+  const res = await api.get('/api/frota/detalhada');
+  return res.data;
+}
+
+export function findViaturaByPrefixo(viaturas, prefixo) {
+  const wanted = String(prefixo || '').trim().toUpperCase();
+  return viaturas.find(v => String(v.prefixo || '').trim().toUpperCase() === wanted) || null;
 }
 
 // Manutenção
@@ -139,13 +135,6 @@ export async function getDadosRelatorio() {
 export const getUsuarios = (status) => api.get('/api/usuarios/', { params: status ? { status } : {} });
 
 // --- Funções de baixo nível existentes ---
-
-// Frota
-export const getFrota = () => api.get('/api/frota/');
-export const getViatura = (id) => api.get(`/api/frota/${id}`);
-export const createViatura = (data) => api.post('/api/frota/', data);
-export const updateViatura = (id, data) => api.put(`/api/frota/${id}`, data);
-export const deleteViatura = (id) => api.delete(`/api/frota/${id}`);
 
 // Manutenção
 export const getManutencoesPendentes = () => api.get('/api/manutencao/pendentes');

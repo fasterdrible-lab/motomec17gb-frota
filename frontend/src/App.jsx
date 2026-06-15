@@ -16,6 +16,7 @@ import Configuracoes from './pages/Configuracoes';
 import Logistica from './pages/Logistica';
 import MatOperacionais from './pages/MatOperacionais';
 import PasDeaReparos from './pages/PasDeaReparos';
+import Patrimonio from './pages/Patrimonio';
 import './styles/App.css';
 
 function App() {
@@ -74,8 +75,21 @@ function App() {
               <Route path="/logistica/mat-operacionais" element={<MatOperacionais />} />
               <Route path="/logistica/pas-dea-reparos" element={<PasDeaReparos />} />
               <Route path="/logistica/relatorio" element={<RelatorioLogistica />} />
+              <Route path="/logistica/patrimonio" element={<Navigate to="/logistica/patrimonio/prefeitura" replace />} />
+              <Route path="/logistica/patrimonio/:modo" element={<Patrimonio />} />
             </Routes>
           </div>
+          <footer style={{
+            borderTop: '1px solid #e5e7eb',
+            background: '#f9fafb',
+            padding: '10px 28px',
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            color: '#9ca3af',
+            flexShrink: 0,
+          }}>
+            Copyright &copy; 2026 <strong style={{ color: '#6b7280' }}>NEX-ALS TECNOLOGIA</strong>. Todos os direitos reservados.
+          </footer>
         </div>
       </div>
     </BrowserRouter>

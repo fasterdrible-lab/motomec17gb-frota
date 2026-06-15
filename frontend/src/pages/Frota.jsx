@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageState from '../components/PageState';
-import { getFrotaDetalhada } from '../services/frotaService';
+import { getFrotaDetalhada } from '../services/api';
 
 function getStatusColor(status) {
   const s = String(status).toUpperCase();

@@ -8,6 +8,9 @@ const LAVAGEM_DIAS = 15;              // = LAVAGEM_DIAS no Apps Script
 const ALERTA_DIAS_AVISO = 3;         // = ALERTA_DIAS_AVISO no Apps Script
 const MIN_VALID_YEAR = 1900;
 
+// Override temporário até correção manual na aba 2SGB col P
+const STATUS_OVERRIDES = { 'UR-17208': '', 'UR-17211': '' };
+
 async function fetchSheetData(sheetName, gid = null) {
   const base = `https://docs.google.com/spreadsheets/d/${env.sheetsId}/gviz/tq?tqx=out:json`;
   const url = gid
@@ -28,6 +31,13 @@ function isSyncRow(val) {
 
 function getCell(row, idx) {
   return row.c && row.c[idx] && row.c[idx].v != null ? row.c[idx].v : '';
+}
+
+function getCellFormatted(row, idx) {
+  if (!row.c || !row.c[idx]) return '';
+  const cell = row.c[idx];
+  if (cell.v == null) return '';
+  return cell.f != null ? String(cell.f) : String(cell.v);
 }
 
 function parseCusto(val) {
@@ -168,9 +178,6 @@ async function getDashboardMacro() {
     const p = String(getCell(r, 0)).toUpperCase().trim();
     sgbMap[p] = r;
   });
-
-  // Prefixos com status incorreto na planilha — override até correção manual na aba 2SGB col P
-  const STATUS_OVERRIDES = { 'UR-17208': '', 'UR-17211': '' };
 
   // Contar status usando FROTA como base, SGB para status (sem status = operando)
   let operando = 0, baixadas = 0, reserva = 0;
@@ -364,4 +371,108 @@ async function getTarefasCompletas() {
     });
 }
 
-module.exports = { getDashboardMacro, getAbastecimentos, getTarefasCompletas };
+function mapSgbDetalhado(rows, sgb) {
+  return rows.reduce((acc, row) => {
+    const prefixo = getCell(row, 0);
+    if (!prefixo || isSyncRow(prefixo)) return acc;
+    acc[String(prefixo).toUpperCase().trim()] = {
+      sgb,
+      km: getCellFormatted(row, 2),
+      vtrGarantia: getCellFormatted(row, 3),
+      proximaTrocaOleoKm: getCellFormatted(row, 4),
+      proximaTrocaOleoTempo: getCellFormatted(row, 5),
+      revisaoFreioKm: getCellFormatted(row, 6),
+      vencimentoBateria: getCellFormatted(row, 7),
+      statusOleoKm: getCellFormatted(row, 8),
+      statusOleoTempo: getCellFormatted(row, 9),
+      statusFreio: getCellFormatted(row, 10),
+      statusBateria: getCellFormatted(row, 11),
+      dataLavagemLubrificacao: getCellFormatted(row, 12),
+      pneusProximaTroca: getCellFormatted(row, 13),
+      embreagemProximaTroca: getCellFormatted(row, 14),
+      status: getCellFormatted(row, 15),
+    };
+    return acc;
+  }, {});
+}
+
+async function getFrotaDetalhada() {
+  const [frotaData, sgb1Data, sgb2Data] = await Promise.all([
+    fetchSheetData('FROTA'),
+    fetchSheetData('1SGB'),
+    fetchSheetData('2SGB'),
+  ]);
+
+  const sgbMap = {
+    ...mapSgbDetalhado(
+      (sgb1Data.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
+      '1SGB'
+    ),
+    ...mapSgbDetalhado(
+      (sgb2Data.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
+      '2SGB'
+    ),
+  };
+
+  const frotaRows = (frotaData.table?.rows || []).filter(r => {
+    const p = String(getCell(r, 0)).toUpperCase().trim();
+    return p && p !== 'PREFIXO' && !isSyncRow(p);
+  });
+
+  return frotaRows.map(r => {
+    const prefixo = getCellFormatted(r, 0);
+    const p = String(prefixo).toUpperCase().trim();
+    const sgb = sgbMap[p] || {};
+    const rawStatus = sgb.status || '';
+    const status = p in STATUS_OVERRIDES ? STATUS_OVERRIDES[p] : rawStatus;
+    const marca = getCellFormatted(r, 7);
+    const modelo = getCellFormatted(r, 8);
+    const anoFab = getCellFormatted(r, 10);
+    const anoModelo = getCellFormatted(r, 11);
+
+    return {
+      prefixo,
+      codigoFipe: getCellFormatted(r, 1),
+      fipeEstimado: getCellFormatted(r, 2),
+      opmcb: getCellFormatted(r, 3),
+      posto: getCellFormatted(r, 4),
+      proprietario: getCellFormatted(r, 5),
+      placa: getCellFormatted(r, 6),
+      marca,
+      modelo,
+      marcaModelo: [marca, modelo].filter(Boolean).join(' '),
+      tipo: getCellFormatted(r, 9),
+      anoFab,
+      anoModelo,
+      ano: anoModelo || anoFab,
+      combustivel: getCellFormatted(r, 12),
+      km: sgb.km || '',
+      status: status || 'Operacional',
+      sgb: sgb.sgb || '',
+      vtrGarantia: sgb.vtrGarantia || '',
+      proximaTrocaOleoKm: sgb.proximaTrocaOleoKm || '',
+      proximaTrocaOleoTempo: sgb.proximaTrocaOleoTempo || '',
+      revisaoFreioKm: sgb.revisaoFreioKm || '',
+      vencimentoBateria: sgb.vencimentoBateria || '',
+      statusOleoKm: sgb.statusOleoKm || '',
+      statusOleoTempo: sgb.statusOleoTempo || '',
+      statusFreio: sgb.statusFreio || '',
+      statusBateria: sgb.statusBateria || '',
+      dataLavagemLubrificacao: sgb.dataLavagemLubrificacao || '',
+      pneusProximaTroca: sgb.pneusProximaTroca || '',
+      embreagemProximaTroca: sgb.embreagemProximaTroca || '',
+      chassi: '',
+      numeroMotor: '',
+      patrimonio: '',
+      dataInclusaoFrota: '',
+      tipoOleo: '',
+      medidaPneu: '',
+      tipoBateriaAmperagem: '',
+      tipoOleoTransmissao: '',
+      tipoOleoMotor: '',
+      numeracaoRadio: '',
+    };
+  });
+}
+
+module.exports = { getDashboardMacro, getAbastecimentos, getTarefasCompletas, getFrotaDetalhada };

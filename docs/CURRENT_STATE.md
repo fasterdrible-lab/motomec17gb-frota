@@ -1,11 +1,11 @@
 # Current State — MOTOMEC 17GB Frota
 
-Atualizado em: 2026-06-08 (sessao 2)
+Atualizado em: 2026-06-12
 
 ## Status geral
 
 Aplicacao em producao em https://motomec17gb-frota.com.br.
-Proximo passo recomendado: redeploy do backend e frontend na VPS com as variaveis `GOOGLE_SHEETS_ID` e `TAREFAS_GID` adicionadas ao `.env.backend`.
+Proximo passo recomendado: redeploy do backend na VPS para ativar `GET /api/frota/detalhada` (Issue 020) e, em seguida, rebuild do frontend com o import atualizado.
 
 ---
 
@@ -196,6 +196,24 @@ Apos o Apps Script sincronizar, MOB-17108 foi adicionada como nova BAIXADA na 1S
 
 - Backend com `sheetsService.js` e rotas `/api/dashboard/*` esta em execucao na VPS (confirmado pelo dashboard retornando dados corretos).
 - Frontend (`Dashboard.jsx`) chamando o backend em vez da planilha diretamente (confirmado pelo funcionamento em producao).
+
+---
+
+## O que foi implementado nesta sessao (2026-06-12)
+
+### Issue 020 — Migrar Frota para backend [CONCLUIDA — deploy pendente]
+
+- Constante `STATUS_OVERRIDES` elevada para nivel de modulo em `sheetsService.js` (antes estava inline em `getDashboardMacro`).
+- Helper `getCellFormatted(row, idx)` adicionado ao `sheetsService.js`: retorna `cell.f ?? cell.v` (valor formatado para exibicao).
+- Funcao `mapSgbDetalhado(rows, sgb)` adicionada: monta o mapa de dados SGB para cruzamento com FROTA.
+- Funcao `getFrotaDetalhada()` adicionada ao `sheetsService.js`: busca FROTA + 1SGB + 2SGB em paralelo, cruza por prefixo, aplica STATUS_OVERRIDES, retorna array identico ao que `frotaService.js` produzia no frontend.
+- `backend/src/routes/frota.js` criado: `GET /api/frota/detalhada` protegido por JWT.
+- `backend/src/app.js`: rota `/api/frota` registrada.
+- `frontend/src/services/api.js`: `getFrotaDetalhada()` e `findViaturaByPrefixo()` adicionados apontando para `/api/frota/detalhada`; stubs legados `getFrota/getViatura/createViatura/updateViatura/deleteViatura` removidos.
+- `frontend/src/pages/Frota.jsx`: import trocado de `frotaService` para `api`.
+- `frontend/src/pages/Manutencao.jsx`: import trocado de `frotaService` para `api`.
+
+**Resultado:** `frotaService.js` nao e mais usado por nenhuma pagina ativa. Pode ser removido em issue futura de limpeza.
 
 ---
 

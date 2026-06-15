@@ -67,7 +67,7 @@ function Logistica() {
   const abasMatOp = (matOp?.abas || []).filter(a => ABAS_MAT_OP.includes(a.aba));
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: '24px 28px' }}>
 
       {/* CABEÇALHO */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
@@ -98,7 +98,7 @@ function Logistica() {
       </div>
 
       {/* KPIs GLOBAIS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 14, marginBottom: 24 }}>
         <KPICard icon="📦" label="Total de Equipamentos" value={totais.total} sub="Mat. Operacionais" />
         <KPICard icon="✅" label="Operando"  value={totais.op}  sub={`${pctGeral}% disponibilidade`} variant="success" />
         <KPICard icon="❌" label="Baixados"  value={totais.bx}  sub={`${100 - pctGeral}% indisponíveis`} variant={totais.bx > 20 ? 'danger' : 'warning'} />
@@ -107,84 +107,86 @@ function Logistica() {
         <KPICard icon="⚙️" label="Compressores" value={`${abasPorNome('COMPRESSOR').op}/${abasPorNome('COMPRESSOR').total}`} sub="operacionais" variant="info" />
       </div>
 
-      {/* DESTAQUE PAS DE DEA E REPAROS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{
-          background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10,
-          padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-        }}>
-          <div>
-            <div style={{ fontSize: '1.5rem' }}>🫀</div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: C.dark, lineHeight: 1 }}>{pasDea.total}</div>
-            <div style={{ fontSize: '0.8rem', color: C.mid, marginTop: 4, fontWeight: 500 }}>PAS DE DEA solicitadas</div>
-          </div>
-          <Link to="/logistica/pas-dea-reparos" style={{
-            padding: '8px 14px', background: '#1565C0', color: '#fff',
-            borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
-          }}>Ver detalhes →</Link>
-        </div>
+      {/* CARDS MACRO: PAS DE DEA · REPAROS · ALERTAS · DISPONIBILIDADE */}
+      {(() => {
+        const alertas = [
+          thVencendo > 0 && { txt: `${thVencendo} cilíndros com TH vencendo em 2026`, crit: true },
+          (abasPorNome('COMPRESSOR').bx || 0) >= 3 && { txt: `Compressores: ${abasPorNome('COMPRESSOR').op}/${abasPorNome('COMPRESSOR').total} operando`, crit: true },
+          (abasPorNome('EPR').bx || 0) > 0 && { txt: `EPR: ${abasPorNome('EPR').bx} unidades baixadas`, crit: false },
+        ].filter(Boolean);
+        const pctColor = pctGeral >= 90 ? C.green : pctGeral >= 70 ? C.yellow : C.red2;
 
-        <div style={{
-          background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10,
-          padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-        }}>
-          <div>
-            <div style={{ fontSize: '1.5rem' }}>🛠️</div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: C.dark, lineHeight: 1 }}>
-              {reparos.total}
-              {reparos.bx > 0 && (
-                <span style={{ fontSize: '0.85rem', color: C.red2, marginLeft: 8, fontWeight: 700 }}>
-                  ({reparos.bx} baixados)
-                </span>
-              )}
+        const cardBase = {
+          borderRadius: 10,
+          padding: '18px 20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        };
+        const btnBase = {
+          flexShrink: 0, padding: '7px 14px',
+          borderRadius: 8, fontSize: '0.78rem', fontWeight: 600,
+          textDecoration: 'none', whiteSpace: 'nowrap', border: 'none', cursor: 'pointer',
+        };
+        const infoBlock = { fontSize: '0.8rem', color: C.mid, marginTop: 6, fontWeight: 500 };
+
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
+
+            {/* PAS DE DEA */}
+            <div style={{ ...cardBase, background: '#eff6ff', borderLeft: '4px solid #1565C0' }}>
+              <div>
+                <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>🫀</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: C.dark, lineHeight: 1 }}>{pasDea.total}</div>
+                <div style={infoBlock}>PAS DE DEA solicitadas</div>
+              </div>
+              <Link to="/logistica/pas-dea-reparos" style={{ ...btnBase, background: '#1565C0', color: '#fff' }}>Ver →</Link>
             </div>
-            <div style={{ fontSize: '0.8rem', color: C.mid, marginTop: 4, fontWeight: 500 }}>Reparos em andamento</div>
-          </div>
-          <Link to="/logistica/pas-dea-reparos" style={{
-            padding: '8px 14px', background: C.orange, color: '#fff',
-            borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
-          }}>Ver detalhes →</Link>
-        </div>
-      </div>
 
-      {/* ALERTAS PRIORITÁRIOS */}
-      {(thVencendo > 0 || totais.bx > 0) && (
-        <div style={{
-          background: '#fffbeb', border: '1px solid #FFC107', borderRadius: 10,
-          padding: '16px 20px', marginBottom: 24,
-        }}>
-          <div style={{ color: '#E65100', fontSize: '0.9rem', fontWeight: 700, marginBottom: 10 }}>⚠️ Alertas Prioritários</div>
-          {[
-            thVencendo > 0 && { txt: `🫁 ${thVencendo} cilíndros com Teste Hidrostático (TH) vencendo em 2026 — agendar revisão.`, crit: true },
-            (abasPorNome('COMPRESSOR').bx || 0) >= 3 && { txt: `⚙️ Compressores: apenas ${abasPorNome('COMPRESSOR').op} de ${abasPorNome('COMPRESSOR').total} operando — risco para reabastecimento.`, crit: true },
-            (abasPorNome('EPR').bx || 0) > 0 && { txt: `🛡️ EPR: ${abasPorNome('EPR').bx} unidades baixadas — verificar manutenção.`, crit: false },
-          ].filter(Boolean).map((a, i) => (
-            <div key={i} style={{
-              background: '#fff', borderLeft: `4px solid ${a.crit ? C.red2 : C.yellow}`,
-              padding: '9px 14px', marginBottom: 7, borderRadius: '0 6px 6px 0', fontSize: '0.83rem',
-            }}>
-              {a.txt}
+            {/* REPAROS */}
+            <div style={{ ...cardBase, background: '#fff7ed', borderLeft: `4px solid ${C.orange}` }}>
+              <div>
+                <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>🛠️</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: C.dark, lineHeight: 1 }}>
+                  {reparos.total}
+                  {reparos.bx > 0 && <span style={{ fontSize: '0.78rem', color: C.red2, marginLeft: 6, fontWeight: 700 }}>({reparos.bx} bx)</span>}
+                </div>
+                <div style={infoBlock}>Reparos em andamento</div>
+              </div>
+              <Link to="/logistica/pas-dea-reparos" style={{ ...btnBase, background: C.orange, color: '#fff' }}>Ver →</Link>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* BARRA DE DISPONIBILIDADE GERAL */}
-      <div style={{
-        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
-        padding: '16px 20px', marginBottom: 24,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: C.dark }}>Disponibilidade Geral</span>
-          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: pctGeral >= 90 ? C.green : pctGeral >= 70 ? C.yellow : C.red2 }}>
-            {pctGeral}%
-          </span>
-        </div>
-        <ProgressBar pct={pctGeral} />
-        <div style={{ fontSize: '0.75rem', color: C.mid, marginTop: 6 }}>
-          {totais.op} operando · {totais.bx} baixados · {totais.total} total
-        </div>
-      </div>
+            {/* ALERTAS */}
+            <div style={{ ...cardBase, background: alertas.length > 0 ? '#fffbeb' : '#f0fdf4', borderLeft: `4px solid ${alertas.length > 0 ? '#FFC107' : C.green}` }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>{alertas.length > 0 ? '⚠️' : '✅'}</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: alertas.length > 0 ? '#E65100' : C.green, lineHeight: 1 }}>{alertas.length}</div>
+                <div style={infoBlock}>Alertas prioritários</div>
+                {alertas[0] && (
+                  <div style={{ fontSize: '0.7rem', color: alertas[0].crit ? C.red2 : '#92400e', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {alertas[0].txt}{alertas.length > 1 ? ` +${alertas.length - 1}` : ''}
+                  </div>
+                )}
+              </div>
+              <Link to="/logistica/mat-operacionais" style={{ ...btnBase, background: alertas.length > 0 ? '#E65100' : C.green, color: '#fff' }}>Ver →</Link>
+            </div>
+
+            {/* DISPONIBILIDADE GERAL */}
+            <div style={{ ...cardBase, background: '#fff', borderLeft: `4px solid ${pctColor}` }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>📊</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: pctColor, lineHeight: 1 }}>{pctGeral}%</div>
+                <div style={infoBlock}>Disponibilidade Geral</div>
+                <div style={{ marginTop: 6 }}><ProgressBar pct={pctGeral} /></div>
+              </div>
+              <Link to="/logistica/mat-operacionais" style={{ ...btnBase, background: pctColor, color: '#fff' }}>Ver →</Link>
+            </div>
+
+          </div>
+        );
+      })()}
 
       {/* RESUMO POR CATEGORIA */}
       <div style={{ marginBottom: 24 }}>

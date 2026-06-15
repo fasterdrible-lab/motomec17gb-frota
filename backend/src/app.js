@@ -5,6 +5,7 @@ const healthRoutes = require('./routes/health');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const dashboardRoutes = require('./routes/dashboard');
+const frotaRoutes = require('./routes/frota');
 
 function createApp() {
   const app = express();
@@ -17,6 +18,7 @@ function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/usuarios', userRoutes);
   app.use('/api/dashboard', dashboardRoutes);
+  app.use('/api/frota', frotaRoutes);
 
   app.use((req, res) => {
     res.status(404).json({

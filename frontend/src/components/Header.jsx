@@ -1,10 +1,15 @@
 import React from 'react';
-import { Menu } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Menu } from 'lucide-react';
 
 const logo17gb = `${import.meta.env.BASE_URL}assets/logo17gb.png`;
 const logocb = `${import.meta.env.BASE_URL}assets/logocb.png`;
 
 function Header({ onLogout, sidebarVisible, onToggleSidebar }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const showBack = location.pathname !== '/dashboard';
+
   return (
     <div>
       <div
@@ -17,27 +22,55 @@ function Header({ onLogout, sidebarVisible, onToggleSidebar }) {
           gap: 16,
         }}
       >
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          aria-label={sidebarVisible ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
-          title={sidebarVisible ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            border: '1px solid rgba(255,255,255,0.35)',
-            background: 'rgba(255,255,255,0.12)',
-            color: 'white',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-        >
-          <Menu size={20} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            aria-label={sidebarVisible ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
+            title={sidebarVisible ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              border: '1px solid rgba(255,255,255,0.35)',
+              background: 'rgba(255,255,255,0.12)',
+              color: 'white',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <Menu size={20} />
+          </button>
+
+          {showBack && (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              aria-label="Voltar"
+              title="Voltar"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.35)',
+                background: 'rgba(255,255,255,0.12)',
+                color: 'white',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.28)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
           <img

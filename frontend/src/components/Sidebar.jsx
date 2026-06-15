@@ -16,14 +16,31 @@ function Sidebar({ onClose }) {
   const location = useLocation();
   const isMotomecActive = submenuMotomec.some(item => location.pathname === item.path) || location.pathname === '/dashboard';
   const isLogisticaActive = location.pathname.startsWith('/logistica');
+  const isPatrimonioActive = location.pathname.startsWith('/logistica/patrimonio');
+
   const [motomecOpen, setMotomecOpen] = useState(isMotomecActive);
   const [logisticaOpen, setLogisticaOpen] = useState(isLogisticaActive);
+  const [patrimonioOpen, setPatrimonioOpen] = useState(isPatrimonioActive);
 
   useEffect(() => {
-    if (isLogisticaActive) {
-      setLogisticaOpen(true);
-    }
+    if (isLogisticaActive) setLogisticaOpen(true);
   }, [isLogisticaActive]);
+
+  useEffect(() => {
+    if (isPatrimonioActive) setPatrimonioOpen(true);
+  }, [isPatrimonioActive]);
+
+  const subItemStyle = {
+    paddingLeft: 36,
+    fontSize: '0.8rem',
+    opacity: 0.85,
+  };
+
+  const subSubItemStyle = {
+    paddingLeft: 52,
+    fontSize: '0.77rem',
+    opacity: 0.78,
+  };
 
   return (
     <aside className="sidebar">
@@ -55,9 +72,10 @@ function Sidebar({ onClose }) {
       </div>
 
       <nav className="sidebar-nav">
+        {/* MOTOMEC */}
         <div
           className={`sidebar-item sidebar-main-item ${isMotomecActive ? 'active' : ''}`}
-          onClick={() => setMotomecOpen(value => !value)}
+          onClick={() => setMotomecOpen(v => !v)}
           style={{ cursor: 'pointer', userSelect: 'none' }}
         >
           <span className="sidebar-icon">📊</span>
@@ -87,6 +105,7 @@ function Sidebar({ onClose }) {
           </div>
         )}
 
+        {/* LOGÍSTICA */}
         <div className={`sidebar-item sidebar-main-item ${isLogisticaActive ? 'active' : ''}`} style={{ paddingRight: 12 }}>
           <NavLink
             to="/logistica"
@@ -106,9 +125,8 @@ function Sidebar({ onClose }) {
           </NavLink>
           <button
             type="button"
-            onClick={() => setLogisticaOpen(value => !value)}
+            onClick={() => setLogisticaOpen(v => !v)}
             aria-label={logisticaOpen ? 'Ocultar subitens de logistica' : 'Mostrar subitens de logistica'}
-            title={logisticaOpen ? 'Ocultar subitens de logistica' : 'Mostrar subitens de logistica'}
             style={{
               marginLeft: 8,
               width: 28,
@@ -133,23 +151,73 @@ function Sidebar({ onClose }) {
             <NavLink
               to="/logistica/mat-operacionais"
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
-              style={{ paddingLeft: 36, fontSize: '0.8rem', opacity: 0.85 }}
+              style={subItemStyle}
             >
               <span className="sidebar-icon">📦</span>
               <span>Mat. Operacionais</span>
             </NavLink>
+
             <NavLink
               to="/logistica/pas-dea-reparos"
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
-              style={{ paddingLeft: 36, fontSize: '0.8rem', opacity: 0.85 }}
+              style={subItemStyle}
             >
               <span className="sidebar-icon">🫀</span>
               <span>PAS/DEA &amp; Reparos</span>
             </NavLink>
+
+            {/* PATRIMÔNIO (colapsável) */}
+            <div
+              className={`sidebar-item sidebar-sub-item ${isPatrimonioActive ? 'active' : ''}`}
+              style={{ ...subItemStyle, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center' }}
+              onClick={() => setPatrimonioOpen(v => !v)}
+            >
+              <span className="sidebar-icon">🏛️</span>
+              <span style={{ flex: 1 }}>Patrimônio</span>
+              <span style={{ fontSize: '0.7rem', opacity: 0.7, marginRight: 4 }}>{patrimonioOpen ? '▲' : '▼'}</span>
+            </div>
+
+            {patrimonioOpen && (
+              <>
+                <NavLink
+                  to="/logistica/patrimonio/prefeitura"
+                  className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
+                  style={subSubItemStyle}
+                >
+                  <span className="sidebar-icon">🏢</span>
+                  <span>Mat. Prefeitura</span>
+                </NavLink>
+                <NavLink
+                  to="/logistica/patrimonio/estado"
+                  className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
+                  style={subSubItemStyle}
+                >
+                  <span className="sidebar-icon">🏛️</span>
+                  <span>Mat. Estado</span>
+                </NavLink>
+                <NavLink
+                  to="/logistica/patrimonio/inclusao"
+                  className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
+                  style={subSubItemStyle}
+                >
+                  <span className="sidebar-icon">➕</span>
+                  <span>Inclusão</span>
+                </NavLink>
+                <NavLink
+                  to="/logistica/patrimonio/exclusao"
+                  className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
+                  style={subSubItemStyle}
+                >
+                  <span className="sidebar-icon">🗑️</span>
+                  <span>Exclusão</span>
+                </NavLink>
+              </>
+            )}
+
             <NavLink
               to="/logistica/relatorio"
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
-              style={{ paddingLeft: 36, fontSize: '0.8rem', opacity: 0.85 }}
+              style={subItemStyle}
             >
               <span className="sidebar-icon">📄</span>
               <span>Relatório LOGÍSTICA</span>

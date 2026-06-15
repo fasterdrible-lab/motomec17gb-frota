@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import DetalhesViaturaManutencao from '../components/DetalhesViaturaManutencao';
-import { findViaturaByPrefixo, getFrotaDetalhada } from '../services/frotaService';
+import { findViaturaByPrefixo, getFrotaDetalhada } from '../services/api';
 import { getManutencoes } from '../services/googleSheets';
 import '../styles/Dashboard.css';
 

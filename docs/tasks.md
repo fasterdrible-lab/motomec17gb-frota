@@ -760,3 +760,46 @@ Deploy:
 
 - Variaveis `GOOGLE_SHEETS_ID` e `TAREFAS_GID` adicionadas ao container em execucao (via `-e` no `docker run`).
 - Backend rebuilado e reiniciado na VPS em 2026-06-08 (junto com Issue 018).
+
+## Issue 020 - Migrar Frota para backend
+
+Status: `[done]` — codigo implementado; deploy na VPS pendente
+
+Objetivo:
+
+- Mover a leitura de FROTA + 1SGB + 2SGB do frontend para o backend.
+- Eliminar a dependencia do `frotaService.js` nas paginas `Frota.jsx` e `Manutencao.jsx`.
+- Expor `GET /api/frota/detalhada` protegido por JWT.
+
+Busca de reutilizacao:
+
+- `backend/src/services/sheetsService.js` ja tem toda a infraestrutura GViz (fetchSheetData, getCell, formatDateFromRaw, isSyncRow, STATUS_OVERRIDES).
+- `frontend/src/services/api.js` ja tem cliente Axios com interceptor JWT.
+- Logica de `frotaService.js` portada diretamente para o backend.
+
+Arquivos criados/modificados:
+
+- `backend/src/services/sheetsService.js`: constante `STATUS_OVERRIDES` elevada para nivel de modulo; helpers `getCellFormatted` e `mapSgbDetalhado` adicionados; funcao `getFrotaDetalhada` implementada; exportada no `module.exports`.
+- `backend/src/routes/frota.js`: criado; `GET /api/frota/detalhada` com authMiddleware.
+- `backend/src/app.js`: rota `/api/frota` registrada.
+- `frontend/src/services/api.js`: `getFrotaDetalhada` e `findViaturaByPrefixo` adicionados; stubs legados `getFrota/getViatura/createViatura/updateViatura/deleteViatura` removidos.
+- `frontend/src/pages/Frota.jsx`: import de `frotaService` trocado por `api`.
+- `frontend/src/pages/Manutencao.jsx`: import de `frotaService` trocado por `api`.
+
+Banco de dados:
+
+- Nenhuma alteracao. Dados vem do Google Sheets via GViz API no backend.
+
+Dependencias externas:
+
+- `GOOGLE_SHEETS_ID` ja disponivel no `.env.backend` da VPS.
+
+Cenarios:
+
+- Sucesso: `GET /api/frota/detalhada` retorna array de viaturas com todos os campos de FROTA + 1SGB + 2SGB cruzados; Frota.jsx e Manutencao.jsx funcionam identicamente ao anterior mas lendo via backend.
+- Erro: planilha inacessivel retorna 500; usuario nao autenticado recebe 401.
+- Edge cases: STATUS_OVERRIDES aplicado; prefixo ausente no SGB retorna campos vazios graciosamente.
+
+Deploy:
+
+- Mesmo comando de redeploy do backend (ver ARCHITECTURE.md). Nenhuma variavel nova necessaria.

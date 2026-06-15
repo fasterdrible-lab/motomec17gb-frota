@@ -29,14 +29,14 @@ export function KPICard({ icon, label, value, sub, variant = 'default' }) {
     <div style={{
       background: bgs[variant] || C.card,
       borderRadius: 10,
-      padding: '18px 20px',
+      padding: '22px 24px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
       borderLeft: `4px solid ${borders[variant] || C.border}`,
     }}>
-      <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>{icon}</div>
-      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: C.dark, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '0.75rem', color: C.mid, marginTop: 3 }}>{sub}</div>}
-      <div style={{ fontSize: '0.8rem', color: C.mid, marginTop: 6, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: '1.8rem', marginBottom: 6 }}>{icon}</div>
+      <div style={{ fontSize: '2rem', fontWeight: 800, color: C.dark, lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: '0.8rem', color: C.mid, marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontSize: '0.85rem', color: C.mid, marginTop: 8, fontWeight: 500 }}>{label}</div>
     </div>
   );
 }
@@ -101,10 +101,25 @@ export function AbaHeader({ aba }) {
 
 // ─── TABELA GENÉRICA (funciona para qualquer aba) ─────────────────────────────
 export function TabelaAba({ aba }) {
-  const [busca, setBusca] = useState('');
+  const [busca,        setBusca]        = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
+  const [buscaAtiva,   setBuscaAtiva]   = useState(false);
+  const [termoPesq,    setTermoPesq]    = useState('');
+  const [statusPesq,   setStatusPesq]   = useState('');
 
   const fim2026 = new Date('2026-12-31');
+
+  function executarPesquisa() {
+    setTermoPesq(busca);
+    setStatusPesq(filtroStatus);
+    setBuscaAtiva(true);
+  }
+
+  function limparPesquisa() {
+    setBusca(''); setFiltroStatus('');
+    setTermoPesq(''); setStatusPesq('');
+    setBuscaAtiva(false);
+  }
 
   const COLUNAS_FIXAS = {
     'EPR':               ['PATRIMÔNIO', 'TIPO', 'MARCA', 'MODELO', 'STATUS', 'SGB', 'LOCALIZAÇÃO'],
@@ -126,9 +141,9 @@ export function TabelaAba({ aba }) {
 
   const filtrados = aba.rows.filter(r => {
     const txt = Object.values(r).join(' ').toLowerCase();
-    const okBusca  = !busca || txt.includes(busca.toLowerCase());
+    const okBusca  = !termoPesq || txt.includes(termoPesq.toLowerCase());
     const statusField = colunas.find(c => c.toUpperCase().includes('STATUS'));
-    const okStatus = !filtroStatus || !statusField || (r[statusField] || '').toUpperCase() === filtroStatus;
+    const okStatus = !statusPesq || !statusField || (r[statusField] || '').toUpperCase() === statusPesq;
     return okBusca && okStatus;
   });
 
@@ -157,10 +172,8 @@ export function TabelaAba({ aba }) {
           placeholder="Patrimônio, marca, localização..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          style={{
-            padding: '6px 10px', border: '1px solid #CFD8DC',
-            borderRadius: 6, fontSize: '0.8rem', color: C.dark, minWidth: 200,
-          }}
+          onKeyDown={e => e.key === 'Enter' && executarPesquisa()}
+          style={{ padding: '6px 10px', border: '1px solid #CFD8DC', borderRadius: 6, fontSize: '0.8rem', color: C.dark, minWidth: 200 }}
         />
         {temStatus && (
           <>
@@ -171,16 +184,31 @@ export function TabelaAba({ aba }) {
               onChange={e => setFiltroStatus(e.target.value)}
               style={{ padding: '6px 10px', border: '1px solid #CFD8DC', borderRadius: 6, fontSize: '0.8rem' }}
             >
-              <option value="">Todos ({aba.rows.length})</option>
+              <option value="">Todos</option>
               <option value="OPERANDO">✅ Operando</option>
               <option value="BAIXADO">❌ Baixado</option>
             </select>
           </>
         )}
-        <span style={{ fontSize: '0.74rem', color: C.mid }}>{filtrados.length} itens</span>
+        <button onClick={executarPesquisa} style={{ padding: '6px 16px', background: C.red2, color: '#fff', border: 'none', borderRadius: 6, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
+          🔍 Pesquisar
+        </button>
+        {buscaAtiva && (
+          <button onClick={limparPesquisa} style={{ padding: '6px 12px', background: '#f3f4f6', color: C.mid, border: '1px solid #ddd', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer' }}>
+            ✕ Limpar
+          </button>
+        )}
+        {buscaAtiva && <span style={{ fontSize: '0.74rem', color: C.mid }}>{filtrados.length} itens</span>}
       </div>
 
-      {/* Tabela */}
+      {/* Tabela — só exibida após pesquisar */}
+      {!buscaAtiva ? (
+        <div style={{ background: '#fff', border: '1px solid #ddd', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '40px 24px', textAlign: 'center', color: C.mid }}>
+          <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔍</div>
+          <div style={{ fontWeight: 600 }}>Use o campo de busca e clique em Pesquisar</div>
+          <div style={{ fontSize: '0.82rem', marginTop: 4 }}>Você também pode filtrar por Status ou pressionar Enter</div>
+        </div>
+      ) : (
       <div style={{ overflowX: 'auto', border: '1px solid #ddd', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead style={{ background: '#263238', color: '#fff' }}>
@@ -228,6 +256,7 @@ export function TabelaAba({ aba }) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
