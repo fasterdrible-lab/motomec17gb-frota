@@ -1,79 +1,72 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import patrimonioRaw from '../data/patrimonio_estado.json';
 
-// ─── Dados de amostra (substitua por chamada ao backend quando Issue 022 estiver pronta) ───
-const TODOS_ITENS = [
-  { numChapa: 'CH-0042', nome: 'Extintor CO2 5kg',         qtd: 4,  ambiente: 'Garagem',      categoria: 'ESTADO' },
-  { numChapa: 'CH-0043', nome: 'Mangueira 40mm',            qtd: 12, ambiente: '2SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0044', nome: 'Lanterna LED Tática',       qtd: 8,  ambiente: '1SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0045', nome: 'Capacete de Combate',       qtd: 10, ambiente: '1SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0046', nome: 'Luva Proteção Térmica',     qtd: 20, ambiente: '2SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0047', nome: 'Macaco Hidráulico 10t',     qtd: 2,  ambiente: 'Garagem',      categoria: 'ESTADO' },
-  { numChapa: 'CH-0048', nome: 'Extintor Pó Químico 6kg',  qtd: 8,  ambiente: 'Garagem',      categoria: 'ESTADO' },
-  { numChapa: 'CH-0049', nome: 'Corda Semiestática 50m',   qtd: 4,  ambiente: '1SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0050', nome: 'Kit Primeiros Socorros',   qtd: 6,  ambiente: '2SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0051', nome: 'EPR Scott',                 qtd: 6,  ambiente: '1SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0052', nome: 'Compressor de Ar Portátil', qtd: 1,  ambiente: 'Garagem',      categoria: 'ESTADO' },
-  { numChapa: 'CH-0053', nome: 'Cabo de Reboque',           qtd: 3,  ambiente: 'Garagem',      categoria: 'ESTADO' },
-  { numChapa: 'CH-0054', nome: 'Escada Extensível 6m',     qtd: 2,  ambiente: '1SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0055', nome: 'Gerador Portátil 5kW',     qtd: 1,  ambiente: '2SGB',          categoria: 'ESTADO' },
-  { numChapa: 'CH-0060', nome: 'Viatura UR-17208',          qtd: 1,  ambiente: 'Garagem 1SGB', categoria: 'ESTADO' },
-];
+// ─── Helpers de dados ────────────────────────────────────────────────────────
+function parseDivisao(div) {
+  // Remove prefixo "OPM  XXXXXXX  17GB " → ex: "1 SGB EB BRAS CUBAS  SALA DE RESGATE"
+  const m = div.match(/17GB\s+(.*)/);
+  return m ? m[1].trim() : div.trim();
+}
 
-const AMBIENTES = [...new Set(TODOS_ITENS.map(i => i.ambiente))].sort();
+const TODOS_ITENS = patrimonioRaw.map(i => ({ ...i, divisaoLabel: parseDivisao(i.divisao) }));
+
+const DIVISOES = [...new Set(TODOS_ITENS.map(i => i.divisao))]
+  .sort((a, b) => parseDivisao(a).localeCompare(parseDivisao(b)));
 
 const STATUS_COR = {
   ok:           { label: 'Correto',      cor: '#16a34a', bg: '#dcfce7', borda: '#86efac', icon: '✓' },
   deslocado:    { label: 'Deslocado',    cor: '#d97706', bg: '#fef3c7', borda: '#fcd34d', icon: '⚠' },
-  desconhecido: { label: 'Desconhecido', cor: '#dc2626', bg: '#fee2e2', borda: '#fca5a5', icon: '✗' },
+  desconhecido: { label: 'Não cadastrado', cor: '#dc2626', bg: '#fee2e2', borda: '#fca5a5', icon: '✗' },
+  ausente:      { label: 'Ausente',      cor: '#6b7280', bg: '#f3f4f6', borda: '#d1d5db', icon: '○' },
 };
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function Inventario() {
-  const [step, setStep]             = useState('configuracao');
-  const [ambiente, setAmbiente]     = useState('');
+  const [step, setStep]               = useState('configuracao');
+  const [divisaoSel, setDivisaoSel]   = useState('');
   const [responsavel, setResponsavel] = useState('');
-  const [dataHora]                  = useState(() => new Date().toLocaleString('pt-BR'));
-  const [escaneados, setEscaneados] = useState({});
+  const [dataHora]                    = useState(() => new Date().toLocaleString('pt-BR'));
+  const [escaneados, setEscaneados]   = useState({});
   const [flashStatus, setFlashStatus] = useState(null);
+  const [flashNome, setFlashNome]     = useState('');
   const [manualInput, setManualInput] = useState('');
   const [cameraError, setCameraError] = useState('');
   const [cameraAtiva, setCameraAtiva] = useState(false);
+  const [busca, setBusca]             = useState('');
 
-  const videoRef        = useRef(null);
-  const controlsRef     = useRef(null);
-  const lastCodeRef     = useRef('');
-  const processarRef    = useRef(null);
+  const videoRef     = useRef(null);
+  const controlsRef  = useRef(null);
+  const lastCodeRef  = useRef('');
+  const processarRef = useRef(null);
 
-  // Itens esperados no ambiente selecionado
-  const itensEsperados = TODOS_ITENS.filter(i => i.ambiente === ambiente);
+  const itensEsperados = TODOS_ITENS.filter(i => i.divisao === divisaoSel);
 
-  // ─── Lógica de validação ─────────────────────────────────────────────────
+  // ─── Validação ──────────────────────────────────────────────────────────
   function processarScan(codigo) {
-    const cod = codigo.trim().toUpperCase();
-    if (!cod) return;
-    if (cod === lastCodeRef.current) return; // debounce: mesmo código em 2s
+    const cod = codigo.trim();
+    if (!cod || cod === lastCodeRef.current) return;
     lastCodeRef.current = cod;
     setTimeout(() => { lastCodeRef.current = ''; }, 2000);
 
-    const item = TODOS_ITENS.find(i => i.numChapa === cod);
+    const item = TODOS_ITENS.find(i => i.chapa === cod);
     let status;
-    if (!item)                    status = 'desconhecido';
-    else if (item.ambiente === ambiente) status = 'ok';
-    else                          status = 'deslocado';
+    if (!item)                         status = 'desconhecido';
+    else if (item.divisao === divisaoSel) status = 'ok';
+    else                               status = 'deslocado';
 
     setEscaneados(prev => ({
       ...prev,
       [cod]: { item: item || null, status, ts: new Date().toLocaleTimeString('pt-BR'), codigo: cod },
     }));
     setFlashStatus(status);
-    setTimeout(() => setFlashStatus(null), 1200);
+    setFlashNome(item?.descricao ?? 'Item não cadastrado');
+    setTimeout(() => setFlashStatus(null), 1400);
   }
 
-  // sempre aponta para a versão mais recente sem reiniciar o scanner
   processarRef.current = processarScan;
 
-  // ─── Ciclo de vida do scanner ────────────────────────────────────────────
+  // ─── Scanner lifecycle ───────────────────────────────────────────────────
   useEffect(() => {
     if (step !== 'escaneando') return;
     let stopped = false;
@@ -88,19 +81,14 @@ export default function Inventario() {
           videoRef.current,
           (result) => { if (result && !stopped) processarRef.current(result.getText()); }
         );
-        if (!stopped) {
-          controlsRef.current = controls;
-          setCameraAtiva(true);
-        } else {
-          controls.stop();
-        }
+        if (!stopped) { controlsRef.current = controls; setCameraAtiva(true); }
+        else controls.stop();
       } catch {
-        if (!stopped) setCameraError('Câmera não disponível neste dispositivo. Use o campo manual abaixo.');
+        if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
     }
 
     startScanner();
-
     return () => {
       stopped = true;
       controlsRef.current?.stop();
@@ -111,28 +99,32 @@ export default function Inventario() {
 
   // ─── STEP 1 — Configuração ───────────────────────────────────────────────
   if (step === 'configuracao') {
+    const divisaoLabel = divisaoSel ? parseDivisao(divisaoSel) : '';
+
     return (
-      <div style={{ maxWidth: 480, margin: '0 auto', padding: 24 }}>
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: 24 }}>
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#1e3a5f' }}>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#1e3a5f' }}>
             📋 Novo Inventário
           </h2>
-          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.85rem' }}>{dataHora}</p>
+          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.82rem' }}>{dataHora}</p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={labelStyle}>Ambiente a inventariar</label>
-            <select value={ambiente} onChange={e => setAmbiente(e.target.value)} style={inputStyle}>
-              <option value="">Selecione o ambiente…</option>
-              {AMBIENTES.map(a => (
-                <option key={a} value={a}>{a} ({TODOS_ITENS.filter(i => i.ambiente === a).length} itens)</option>
+            <label style={labelStyle}>Divisão / Ambiente</label>
+            <select value={divisaoSel} onChange={e => setDivisaoSel(e.target.value)} style={inputStyle}>
+              <option value="">Selecione a divisão…</option>
+              {DIVISOES.map(d => (
+                <option key={d} value={d}>
+                  {parseDivisao(d)}
+                </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label style={labelStyle}>Responsável</label>
+            <label style={labelStyle}>Responsável pelo inventário</label>
             <input
               type="text"
               value={responsavel}
@@ -142,36 +134,23 @@ export default function Inventario() {
             />
           </div>
 
-          {ambiente && (
-            <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: 14 }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#0369a1', fontWeight: 600 }}>
-                {itensEsperados.length} item(s) cadastrados em &ldquo;{ambiente}&rdquo;
+          {divisaoSel && (
+            <div style={{ background: '#eff6ff', border: '1px solid #bae6fd', borderRadius: 10, padding: 14 }}>
+              <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#1e40af' }}>
+                {itensEsperados.length} itens cadastrados nesta divisão
               </p>
-              <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {itensEsperados.slice(0, 6).map(i => (
-                  <span key={i.numChapa} style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '2px 8px', fontSize: '0.75rem' }}>
-                    {i.numChapa}
-                  </span>
-                ))}
-                {itensEsperados.length > 6 && (
-                  <span style={{ color: '#6b7280', fontSize: '0.75rem', alignSelf: 'center' }}>
-                    +{itensEsperados.length - 6} mais
-                  </span>
-                )}
-              </div>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: '#3b82f6' }}>{divisaoLabel}</p>
             </div>
           )}
 
           <button
-            disabled={!ambiente || !responsavel.trim()}
+            disabled={!divisaoSel || !responsavel.trim()}
             onClick={() => { setEscaneados({}); setStep('escaneando'); }}
             style={{
               ...btnPrimary,
-              opacity: (!ambiente || !responsavel.trim()) ? 0.45 : 1,
-              cursor: (!ambiente || !responsavel.trim()) ? 'not-allowed' : 'pointer',
-              marginTop: 8,
-              padding: '14px 0',
-              fontSize: '1rem',
+              opacity: (!divisaoSel || !responsavel.trim()) ? 0.45 : 1,
+              cursor: (!divisaoSel || !responsavel.trim()) ? 'not-allowed' : 'pointer',
+              padding: '14px 0', fontSize: '1rem', marginTop: 8,
             }}
           >
             Iniciar Scanner →
@@ -183,123 +162,101 @@ export default function Inventario() {
 
   // ─── STEP 2 — Escaneamento ───────────────────────────────────────────────
   if (step === 'escaneando') {
-    const totalEsperado  = itensEsperados.length;
-    const qtdOk          = Object.values(escaneados).filter(e => e.status === 'ok').length;
-    const progressPct    = totalEsperado > 0 ? Math.round((qtdOk / totalEsperado) * 100) : 0;
-    const listaEscaneada = Object.values(escaneados).sort((a, b) => b.ts.localeCompare(a.ts));
+    const totalEsperado = itensEsperados.length;
+    const qtdOk        = Object.values(escaneados).filter(e => e.status === 'ok').length;
+    const pct          = totalEsperado > 0 ? Math.round((qtdOk / totalEsperado) * 100) : 0;
+    const listaEsc     = Object.values(escaneados).sort((a, b) => b.ts.localeCompare(a.ts));
+    const pendentes    = itensEsperados.filter(i => !escaneados[i.chapa] || escaneados[i.chapa].status !== 'ok');
 
     return (
-      <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        {/* Header barra */}
-        <div style={{ background: '#1e3a5f', color: 'white', padding: '12px 20px', borderRadius: '0 0 12px 12px', marginBottom: 16 }}>
+      <div style={{ maxWidth: 580, margin: '0 auto' }}>
+        {/* Cabeçalho de progresso */}
+        <div style={{ background: '#1e3a5f', color: 'white', padding: '12px 20px', borderRadius: '0 0 12px 12px', marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>📍 {ambiente}</span>
-            <span style={{ fontSize: '0.85rem', opacity: 0.85 }}>{qtdOk}/{totalEsperado} verificados</span>
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', opacity: 0.9 }}>
+              {parseDivisao(divisaoSel).substring(0, 50)}{parseDivisao(divisaoSel).length > 50 ? '…' : ''}
+            </span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{qtdOk}/{totalEsperado} · {pct}%</span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 99, height: 6, overflow: 'hidden' }}>
-            <div style={{ width: `${progressPct}%`, height: '100%', background: '#4ade80', transition: 'width 0.3s' }} />
+          <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 99, height: 6 }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#4ade80' : '#60a5fa', borderRadius: 99, transition: 'width 0.4s' }} />
           </div>
         </div>
 
-        <div style={{ padding: '0 16px 16px' }}>
-          {/* Flash de feedback */}
+        <div style={{ padding: '0 14px 20px' }}>
+          {/* Flash */}
           {flashStatus && (
             <div style={{
               background: STATUS_COR[flashStatus].bg,
               border: `2px solid ${STATUS_COR[flashStatus].borda}`,
               color: STATUS_COR[flashStatus].cor,
-              borderRadius: 10,
-              padding: '10px 16px',
-              textAlign: 'center',
-              fontWeight: 700,
-              fontSize: '1.05rem',
+              borderRadius: 10, padding: '10px 16px',
+              textAlign: 'center', fontWeight: 700, fontSize: '1rem',
               marginBottom: 12,
-              animation: 'fadeIn 0.15s ease',
             }}>
               {STATUS_COR[flashStatus].icon} {STATUS_COR[flashStatus].label}
+              {flashNome && <div style={{ fontSize: '0.8rem', fontWeight: 500, marginTop: 2, opacity: 0.85 }}>{flashNome}</div>}
             </div>
           )}
 
-          {/* Viewfinder da câmera */}
-          <div style={{ position: 'relative', background: '#000', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-            <video
-              ref={videoRef}
-              style={{ width: '100%', display: 'block', maxHeight: 260, objectFit: 'cover' }}
-              muted
-              playsInline
-            />
-            {/* Mira central */}
+          {/* Viewfinder */}
+          <div style={{ position: 'relative', background: '#111', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
+            <video ref={videoRef} style={{ width: '100%', display: 'block', maxHeight: 240, objectFit: 'cover' }} muted playsInline />
             {cameraAtiva && (
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
-              }}>
-                <div style={{ width: 180, height: 100, border: '2px solid rgba(255,255,255,0.7)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.35)' }} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                <div style={{ width: 200, height: 80, border: '2px solid rgba(255,255,255,0.75)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.38)' }} />
               </div>
             )}
             {!cameraAtiva && !cameraError && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-                <span>Iniciando câmera…</span>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.85rem' }}>
+                Iniciando câmera…
               </div>
             )}
           </div>
 
-          {/* Erro de câmera */}
           {cameraError && (
-            <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: 10, marginBottom: 10, color: '#92400e', fontSize: '0.83rem' }}>
+            <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: 10, marginBottom: 10, color: '#92400e', fontSize: '0.82rem' }}>
               ⚠ {cameraError}
             </div>
           )}
 
           {/* Input manual */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             <input
               type="text"
               value={manualInput}
-              onChange={e => setManualInput(e.target.value.toUpperCase())}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && manualInput.trim()) {
-                  processarScan(manualInput);
-                  setManualInput('');
-                }
-              }}
-              placeholder="Digitar código manual (ex: CH-0042)"
+              onChange={e => setManualInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && manualInput.trim()) { processarScan(manualInput); setManualInput(''); } }}
+              placeholder="Nº da Chapa (ex: 90057) + Enter"
               style={{ ...inputStyle, flex: 1, margin: 0 }}
             />
             <button
               onClick={() => { if (manualInput.trim()) { processarScan(manualInput); setManualInput(''); } }}
-              style={{ ...btnPrimary, padding: '10px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+              style={{ ...btnPrimary, padding: '10px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
             >
               Validar
             </button>
           </div>
 
-          {/* Lista de itens escaneados */}
-          {listaEscaneada.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: '0 0 8px', fontSize: '0.8rem', fontWeight: 600, color: '#374151' }}>
-                ESCANEADOS ({listaEscaneada.length})
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
-                {listaEscaneada.map(e => {
+          {/* Escaneados */}
+          {listaEsc.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={sectionLabel}>LIDOS ({listaEsc.length})</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 180, overflowY: 'auto' }}>
+                {listaEsc.map(e => {
                   const cfg = STATUS_COR[e.status];
                   return (
-                    <div key={e.codigo} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      background: cfg.bg, border: `1px solid ${cfg.borda}`,
-                      borderRadius: 8, padding: '8px 12px',
-                    }}>
-                      <span style={{ fontSize: '1rem', color: cfg.cor, fontWeight: 700, minWidth: 18 }}>{cfg.icon}</span>
+                    <div key={e.codigo} style={{ display: 'flex', gap: 8, background: cfg.bg, border: `1px solid ${cfg.borda}`, borderRadius: 8, padding: '7px 10px', alignItems: 'flex-start' }}>
+                      <span style={{ color: cfg.cor, fontWeight: 700, fontSize: '0.85rem', minWidth: 16 }}>{cfg.icon}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1f2937' }}>
-                          {e.codigo} — {e.item?.nome ?? 'Item não cadastrado'}
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1f2937' }}>
+                          {e.codigo} — {e.item?.descricao ?? 'Não cadastrado'}
                         </div>
                         {e.status === 'deslocado' && e.item && (
-                          <div style={{ fontSize: '0.72rem', color: cfg.cor }}>
-                            Ambiente correto: {e.item.ambiente}
-                          </div>
+                          <div style={{ fontSize: '0.7rem', color: cfg.cor }}>Divisão correta: {parseDivisao(e.item.divisao)}</div>
                         )}
                       </div>
-                      <span style={{ fontSize: '0.7rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{e.ts}</span>
+                      <span style={{ fontSize: '0.68rem', color: '#9ca3af', whiteSpace: 'nowrap', alignSelf: 'flex-end' }}>{e.ts}</span>
                     </div>
                   );
                 })}
@@ -307,35 +264,26 @@ export default function Inventario() {
             </div>
           )}
 
-          {/* Itens ainda não escaneados */}
-          {itensEsperados.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: '0 0 8px', fontSize: '0.8rem', fontWeight: 600, color: '#374151' }}>
-                AGUARDANDO ({itensEsperados.filter(i => !escaneados[i.numChapa]).length})
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {itensEsperados.filter(i => !escaneados[i.numChapa]).map(i => (
-                  <span key={i.numChapa} style={{
-                    background: '#f3f4f6', border: '1px solid #d1d5db',
-                    borderRadius: 6, padding: '3px 10px', fontSize: '0.75rem', color: '#6b7280',
-                  }}>
-                    {i.numChapa}
+          {/* Pendentes */}
+          {pendentes.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={sectionLabel}>PENDENTES ({pendentes.length})</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                {pendentes.slice(0, 30).map(i => (
+                  <span key={i.chapa} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6, padding: '2px 8px', fontSize: '0.72rem', color: '#6b7280' }}>
+                    {i.chapa}
                   </span>
                 ))}
+                {pendentes.length > 30 && (
+                  <span style={{ fontSize: '0.72rem', color: '#9ca3af', alignSelf: 'center' }}>+{pendentes.length - 30} mais</span>
+                )}
               </div>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => setStep('configuracao')} style={{ ...btnSecondary, flex: 1 }}>
-              ← Voltar
-            </button>
-            <button
-              onClick={() => setStep('relatorio')}
-              style={{ ...btnPrimary, flex: 2 }}
-            >
-              Finalizar Inventário →
-            </button>
+            <button onClick={() => setStep('configuracao')} style={{ ...btnSecondary, flex: 1 }}>← Voltar</button>
+            <button onClick={() => setStep('relatorio')} style={{ ...btnPrimary, flex: 2 }}>Finalizar →</button>
           </div>
         </div>
       </div>
@@ -343,100 +291,133 @@ export default function Inventario() {
   }
 
   // ─── STEP 3 — Relatório ─────────────────────────────────────────────────
-  const todosEscaneados  = Object.values(escaneados);
-  const encontrados      = todosEscaneados.filter(e => e.status === 'ok');
-  const deslocados       = todosEscaneados.filter(e => e.status === 'deslocado');
-  const desconhecidos    = todosEscaneados.filter(e => e.status === 'desconhecido');
-  const ausentes         = itensEsperados.filter(i => !escaneados[i.numChapa] || escaneados[i.numChapa].status !== 'ok');
-  const pct              = itensEsperados.length > 0 ? Math.round((encontrados.length / itensEsperados.length) * 100) : 0;
+  const todosEsc     = Object.values(escaneados);
+  const encontrados  = todosEsc.filter(e => e.status === 'ok');
+  const deslocados   = todosEsc.filter(e => e.status === 'deslocado');
+  const desconhecidos = todosEsc.filter(e => e.status === 'desconhecido');
+  const ausentes     = itensEsperados.filter(i => !escaneados[i.chapa] || escaneados[i.chapa].status !== 'ok');
+  const pct          = itensEsperados.length > 0 ? Math.round((encontrados.length / itensEsperados.length) * 100) : 0;
+
+  const itensFiltrados = (() => {
+    const base = [...itensEsperados];
+    if (!busca) return base;
+    const q = busca.toLowerCase();
+    return base.filter(i =>
+      i.chapa.toLowerCase().includes(q) ||
+      i.descricao.toLowerCase().includes(q) ||
+      (i.responsavel || '').toLowerCase().includes(q)
+    );
+  })();
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 16px 32px' }}>
-      {/* Cabeçalho do relatório */}
-      <div style={{ background: '#1e3a5f', color: 'white', borderRadius: '0 0 16px 16px', padding: '20px 24px', marginBottom: 24 }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>📋 Relatório de Inventário</h2>
-        <p style={{ margin: '4px 0 0', opacity: 0.8, fontSize: '0.82rem' }}>
-          {ambiente} · {responsavel} · {dataHora}
+    <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 14px 32px' }}>
+      {/* Cabeçalho */}
+      <div style={{ background: '#1e3a5f', color: 'white', borderRadius: '0 0 16px 16px', padding: '18px 22px', marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>📋 Relatório de Inventário</h2>
+        <p style={{ margin: '4px 0 0', opacity: 0.8, fontSize: '0.78rem' }}>
+          {parseDivisao(divisaoSel)} · {responsavel} · {dataHora}
         </p>
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1, background: 'rgba(255,255,255,0.2)', borderRadius: 99, height: 8 }}>
             <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#4ade80' : '#facc15', borderRadius: 99 }} />
           </div>
-          <span style={{ fontWeight: 700, fontSize: '1rem' }}>{pct}%</span>
+          <span style={{ fontWeight: 800, fontSize: '1rem' }}>{pct}%</span>
         </div>
       </div>
 
-      {/* Cards de resumo */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+      {/* Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
         {[
-          { label: 'Esperados',     valor: itensEsperados.length, cor: '#1e3a5f', bg: '#eff6ff' },
-          { label: 'Encontrados',   valor: encontrados.length,    cor: '#16a34a', bg: '#dcfce7' },
-          { label: 'Ausentes',      valor: ausentes.length,       cor: '#dc2626', bg: '#fee2e2' },
-          { label: 'Deslocados',    valor: deslocados.length,     cor: '#d97706', bg: '#fef3c7' },
-          { label: 'Desconhecidos', valor: desconhecidos.length,  cor: '#7c3aed', bg: '#f5f3ff' },
-          { label: 'Cobertura',     valor: `${pct}%`,             cor: pct === 100 ? '#16a34a' : '#d97706', bg: '#f9fafb' },
+          { label: 'Esperados',    valor: itensEsperados.length, cor: '#1e40af', bg: '#eff6ff' },
+          { label: 'Encontrados',  valor: encontrados.length,    cor: '#16a34a', bg: '#dcfce7' },
+          { label: 'Ausentes',     valor: ausentes.length,       cor: '#dc2626', bg: '#fee2e2' },
+          { label: 'Deslocados',   valor: deslocados.length,     cor: '#d97706', bg: '#fef3c7' },
+          { label: 'Não cadastr.', valor: desconhecidos.length,  cor: '#7c3aed', bg: '#f5f3ff' },
+          { label: 'Cobertura',    valor: `${pct}%`,             cor: pct === 100 ? '#16a34a' : '#d97706', bg: '#f9fafb' },
         ].map(c => (
-          <div key={c.label} style={{ background: c.bg, borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: c.cor }}>{c.valor}</div>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{c.label}</div>
+          <div key={c.label} style={{ background: c.bg, borderRadius: 10, padding: '12px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: c.cor }}>{c.valor}</div>
+            <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: 2 }}>{c.label}</div>
           </div>
         ))}
       </div>
 
       {/* Tabela de itens esperados */}
-      <Section title="Itens do Ambiente" cor="#1e3a5f">
-        {itensEsperados.map(item => {
-          const scan = escaneados[item.numChapa];
-          const status = scan?.status ?? 'ausente';
-          const cfg = STATUS_COR[status] ?? { label: 'Ausente', cor: '#dc2626', bg: '#fee2e2', borda: '#fca5a5', icon: '○' };
-          return (
-            <ItemRow key={item.numChapa} icon={cfg.icon} cor={cfg.cor} bg={cfg.bg} borda={cfg.borda}>
-              <div style={{ flex: 1 }}>
-                <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{item.numChapa}</span>
-                <span style={{ color: '#374151', fontSize: '0.82rem' }}> — {item.nome}</span>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <p style={{ ...sectionLabel, margin: 0 }}>ITENS DA DIVISÃO ({itensFiltrados.length})</p>
+          <input
+            type="text"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Filtrar…"
+            style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.8rem', width: 140 }}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 340, overflowY: 'auto' }}>
+          {itensFiltrados.map(item => {
+            const scan = escaneados[item.chapa];
+            const status = scan?.status ?? 'ausente';
+            const cfg = STATUS_COR[status];
+            return (
+              <div key={item.chapa} style={{ display: 'flex', gap: 8, background: cfg.bg, border: `1px solid ${cfg.borda}`, borderRadius: 8, padding: '8px 12px', alignItems: 'flex-start' }}>
+                <span style={{ color: cfg.cor, fontWeight: 700, minWidth: 18, textAlign: 'center', paddingTop: 1 }}>{cfg.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1f2937' }}>
+                    {item.chapa} — {item.descricao}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#6b7280', display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 2 }}>
+                    {item.responsavel && <span>👤 {item.responsavel}</span>}
+                    {item.contaContabil && <span>📒 {item.contaContabil}</span>}
+                    {item.valorAtual && <span>💰 R$ {item.valorAtual}</span>}
+                    {item.estado && <span>🏷 {item.estado}</span>}
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: cfg.cor, background: 'rgba(255,255,255,0.6)', border: `1px solid ${cfg.borda}`, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>
+                  {cfg.label}
+                </span>
               </div>
-              <StatusBadge cfg={cfg} label={scan ? cfg.label : 'Ausente'} />
-            </ItemRow>
-          );
-        })}
-      </Section>
+            );
+          })}
+        </div>
+      </div>
 
-      {/* Itens deslocados */}
+      {/* Deslocados */}
       {deslocados.length > 0 && (
-        <Section title={`Deslocados (${deslocados.length})`} cor="#d97706">
-          {deslocados.map(e => (
-            <ItemRow key={e.codigo} icon="⚠" cor="#d97706" bg="#fef3c7" borda="#fcd34d">
-              <div style={{ flex: 1 }}>
-                <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{e.codigo}</span>
-                <span style={{ color: '#374151', fontSize: '0.82rem' }}> — {e.item?.nome}</span>
-                <div style={{ fontSize: '0.72rem', color: '#92400e' }}>Pertence a: {e.item?.ambiente}</div>
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ ...sectionLabel, color: '#d97706' }}>DESLOCADOS ({deslocados.length})</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {deslocados.map(e => (
+              <div key={e.codigo} style={{ display: 'flex', gap: 8, background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '8px 12px' }}>
+                <span style={{ color: '#d97706', fontWeight: 700 }}>⚠</span>
+                <div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>{e.codigo} — {e.item?.descricao}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#92400e' }}>Divisão correta: {e.item ? parseDivisao(e.item.divisao) : '—'}</div>
+                </div>
               </div>
-            </ItemRow>
-          ))}
-        </Section>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* Itens desconhecidos */}
+      {/* Não cadastrados */}
       {desconhecidos.length > 0 && (
-        <Section title={`Desconhecidos (${desconhecidos.length})`} cor="#dc2626">
-          {desconhecidos.map(e => (
-            <ItemRow key={e.codigo} icon="✗" cor="#dc2626" bg="#fee2e2" borda="#fca5a5">
-              <div style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600 }}>{e.codigo} — não cadastrado</div>
-            </ItemRow>
-          ))}
-        </Section>
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ ...sectionLabel, color: '#dc2626' }}>NÃO CADASTRADOS ({desconhecidos.length})</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {desconhecidos.map(e => (
+              <div key={e.codigo} style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: '0.82rem', fontWeight: 700, color: '#991b1b' }}>
+                ✗ Chapa {e.codigo} — não encontrada na base
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* Ações */}
-      <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+        <button onClick={() => setStep('escaneando')} style={{ ...btnSecondary, flex: 1 }}>← Retomar Scan</button>
         <button
-          onClick={() => setStep('escaneando')}
-          style={{ ...btnSecondary, flex: 1 }}
-        >
-          ← Retomar Scan
-        </button>
-        <button
-          onClick={() => { setStep('configuracao'); setAmbiente(''); setResponsavel(''); setEscaneados({}); }}
+          onClick={() => { setStep('configuracao'); setDivisaoSel(''); setResponsavel(''); setEscaneados({}); setBusca(''); }}
           style={{ ...btnPrimary, flex: 1 }}
         >
           Novo Inventário
@@ -446,56 +427,9 @@ export default function Inventario() {
   );
 }
 
-// ─── Componentes auxiliares ──────────────────────────────────────────────────
-function Section({ title, cor, children }) {
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <p style={{ margin: '0 0 8px', fontSize: '0.78rem', fontWeight: 700, color: cor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {title}
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
-    </div>
-  );
-}
-
-function ItemRow({ icon, cor, bg, borda, children }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: bg, border: `1px solid ${borda}`, borderRadius: 8, padding: '8px 12px' }}>
-      <span style={{ color: cor, fontWeight: 700, fontSize: '0.9rem', minWidth: 18, textAlign: 'center' }}>{icon}</span>
-      {children}
-    </div>
-  );
-}
-
-function StatusBadge({ cfg, label }) {
-  return (
-    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: cfg.cor, background: 'rgba(255,255,255,0.6)', border: `1px solid ${cfg.borda}`, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap' }}>
-      {label}
-    </span>
-  );
-}
-
 // ─── Estilos base ────────────────────────────────────────────────────────────
-const inputStyle = {
-  width: '100%', padding: '10px 12px', borderRadius: 8,
-  border: '1px solid #d1d5db', fontSize: '0.9rem',
-  boxSizing: 'border-box', outline: 'none',
-};
-
-const labelStyle = {
-  display: 'block', marginBottom: 6,
-  fontSize: '0.82rem', fontWeight: 600, color: '#374151',
-};
-
-const btnPrimary = {
-  background: '#1d4ed8', color: 'white', border: 'none',
-  borderRadius: 8, padding: '10px 20px', fontSize: '0.9rem',
-  fontWeight: 600, cursor: 'pointer',
-};
-
-const btnSecondary = {
-  background: '#f3f4f6', color: '#374151',
-  border: '1px solid #d1d5db', borderRadius: 8,
-  padding: '10px 20px', fontSize: '0.9rem',
-  fontWeight: 600, cursor: 'pointer',
-};
+const inputStyle  = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: '0.9rem', boxSizing: 'border-box', outline: 'none' };
+const labelStyle  = { display: 'block', marginBottom: 6, fontSize: '0.82rem', fontWeight: 600, color: '#374151' };
+const sectionLabel = { margin: '0 0 6px', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' };
+const btnPrimary  = { background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' };
+const btnSecondary = { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, padding: '10px 20px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' };
