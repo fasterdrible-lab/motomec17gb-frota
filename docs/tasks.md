@@ -763,7 +763,7 @@ Deploy:
 
 ## Issue 020 - Migrar Frota para backend
 
-Status: `[done]` — codigo implementado; deploy na VPS pendente
+Status: `[done]` — codigo commitado (b9e1dbd) e pushado para GitHub; deploy na VPS pendente
 
 Objetivo:
 
@@ -803,3 +803,44 @@ Cenarios:
 Deploy:
 
 - Mesmo comando de redeploy do backend (ver ARCHITECTURE.md). Nenhuma variavel nova necessaria.
+
+## Issue 021 - Modulo Patrimonio (Logistica)
+
+Status: `[done]` — codigo commitado (b9e1dbd) e pushado; deploy na VPS pendente (junto com Issue 020)
+
+Objetivo:
+
+- Criar pagina de gestao de patrimonio dentro da secao Logistica.
+- Separar patrimonios por origem (Prefeitura vs Estado).
+- Registrar processos de inclusao e exclusao de viaturas e materiais.
+
+Busca de reutilizacao:
+
+- Estrutura de abas similar a paginas existentes (Logistica, MatOperacionais).
+- Navegacao colapsavel do Sidebar ja existia para Logistica; reutilizada para Patrimonio.
+
+Arquivos criados/modificados:
+
+- `frontend/src/pages/Patrimonio.jsx`: criado com 4 abas (Prefeitura, Estado, Inclusao, Exclusao); dados de amostra embutidos.
+- `frontend/src/App.jsx`: rota `/logistica/patrimonio/:modo` registrada; footer copyright NEX-ALS adicionado.
+- `frontend/src/components/Sidebar.jsx`: item Patrimonio colapsavel com sub-itens Prefeitura, Estado, Inclusao, Exclusao.
+- `frontend/src/components/Header.jsx`, `LogisticaComponents.jsx`: ajustes de UI.
+- `frontend/src/pages/Logistica.jsx`, `MatOperacionais.jsx`, `Configuracoes.jsx`: melhorias de interface.
+
+Banco de dados:
+
+- Nenhuma alteracao. Dados de amostra embutidos no componente (placeholder para backend futuro).
+
+Dependencias externas:
+
+- Nenhuma.
+
+Cenarios:
+
+- Sucesso: sidebar exibe "Patrimonio" dentro de Logistica; sub-itens Prefeitura/Estado/Inclusao/Exclusao navegam para a pagina com aba correspondente.
+- Erro: rota inexistente redireciona para /logistica/patrimonio/prefeitura.
+- Edge cases: dados reais viriam de backend quando Issue 022 (backend patrimonio) for implementada.
+
+Deploy:
+
+- Rebuild do frontend necessario (ja incluido no plano de deploy da Issue 020 — ver CURRENT_STATE.md).

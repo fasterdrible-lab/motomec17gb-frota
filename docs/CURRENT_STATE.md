@@ -1,11 +1,11 @@
 # Current State — MOTOMEC 17GB Frota
 
-Atualizado em: 2026-06-12
+Atualizado em: 2026-06-15
 
 ## Status geral
 
 Aplicacao em producao em https://motomec17gb-frota.com.br.
-Proximo passo recomendado: redeploy do backend na VPS para ativar `GET /api/frota/detalhada` (Issue 020) e, em seguida, rebuild do frontend com o import atualizado.
+Proximo passo recomendado: **deploy na VPS** — git pull + rebuild backend + rebuild frontend (ver secao "Pendencias" abaixo para os comandos exatos).
 
 ---
 
@@ -199,9 +199,9 @@ Apos o Apps Script sincronizar, MOB-17108 foi adicionada como nova BAIXADA na 1S
 
 ---
 
-## O que foi implementado nesta sessao (2026-06-12)
+## O que foi implementado nesta sessao (2026-06-15)
 
-### Issue 020 — Migrar Frota para backend [CONCLUIDA — deploy pendente]
+### Issue 020 — Migrar Frota para backend [CONCLUIDA — deploy pendente na VPS]
 
 - Constante `STATUS_OVERRIDES` elevada para nivel de modulo em `sheetsService.js` (antes estava inline em `getDashboardMacro`).
 - Helper `getCellFormatted(row, idx)` adicionado ao `sheetsService.js`: retorna `cell.f ?? cell.v` (valor formatado para exibicao).
@@ -215,11 +215,54 @@ Apos o Apps Script sincronizar, MOB-17108 foi adicionada como nova BAIXADA na 1S
 
 **Resultado:** `frotaService.js` nao e mais usado por nenhuma pagina ativa. Pode ser removido em issue futura de limpeza.
 
+### Issue 021 — Modulo Patrimonio (Logistica) [CONCLUIDO — deploy pendente na VPS]
+
+- `frontend/src/pages/Patrimonio.jsx` criado: pagina com 4 abas — **Prefeitura** (patrimonios sem chapa/conta), **Estado** (patrimonios com numChapa e contaContabil), **Inclusao** (processos de inclusao de viaturas e materiais), **Exclusao** (placeholder).
+- Dados de amostra embutidos para demo inicial (sem backend ainda — Issue futura para persistencia).
+- `frontend/src/App.jsx`: rotas `/logistica/patrimonio` (redirect) e `/logistica/patrimonio/:modo` registradas; footer copyright NEX-ALS adicionado.
+- `frontend/src/components/Sidebar.jsx`: item "Patrimonio" colapsavel adicionado dentro da secao Logistica, com sub-itens Prefeitura, Estado, Inclusao, Exclusao.
+- `frontend/src/components/Header.jsx`, `LogisticaComponents.jsx`: ajustes de UI de consistencia.
+- `frontend/src/pages/Logistica.jsx`, `MatOperacionais.jsx`, `Configuracoes.jsx`: melhorias de interface.
+
+**Codigo commitado (b9e1dbd) e pushado para GitHub em 2026-06-15.**
+
 ---
 
 ## Pendencias
 
-- **Planilha (acao manual):** corrigir STATUS OPERACIONAL de UR-17208 e UR-17211 na aba 2SGB col P.
-  Apos correcao: remover `STATUS_OVERRIDES` em `backend/src/services/sheetsService.js` (linhas com a constante e a variavel `rawS`).
-- **Filtros na planilha:** 1SGB e 2SGB parecem ter filtros ativos mostrando so baixadas. Verificar se e intencional; se nao, desativar para que o GViz retorne todos os veiculos com seus status reais.
+### Deploy na VPS (URGENTE — Issues 020 e 021)
+
+Rodar na VPS como root em `/opt/motomec17gb-frota`:
+
+```bash
+# 1. Atualizar codigo
+git pull origin main
+
+# 2. Rebuild e restart backend (ativa GET /api/frota/detalhada)
+docker build -t motomec17gb-backend-node ./backend
+docker stop motomec17gb-backend-1 && docker rm motomec17gb-backend-1
+docker run -d --name motomec17gb-backend-1 \
+  --network motomec-net \
+  --env-file /opt/motomec17gb-frota/.env.backend \
+  -p 8001:8000 motomec17gb-backend-node
+
+# 3. Rebuild e restart frontend (ativa Patrimonio + melhorias UI)
+docker build -t motomec17gb-frontend \
+  --build-arg VITE_API_URL=https://motomec17gb-frota.com.br \
+  ./frontend
+docker stop motomec17gb-frontend-1 && docker rm motomec17gb-frontend-1
+docker run -d --name motomec17gb-frontend-1 \
+  -p 8080:80 motomec17gb-frontend
+```
+
+Verificar apos o deploy:
+```bash
+curl -s https://motomec17gb-frota.com.br/api/frota/detalhada -H "Authorization: Bearer <token>" | head -c 200
+```
+
+### Pendencias de planilha (acao manual)
+
+- Corrigir STATUS OPERACIONAL de UR-17208 e UR-17211 na aba 2SGB col P.
+  Apos correcao: remover `STATUS_OVERRIDES` em `backend/src/services/sheetsService.js`.
+- Filtros na planilha: 1SGB e 2SGB podem ter filtros ativos mostrando so baixadas. Verificar se e intencional.
 - `Relatorios.gs` CONCLUIDO — todas as colunas confirmadas e mapeadas.
