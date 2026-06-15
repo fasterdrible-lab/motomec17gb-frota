@@ -844,3 +844,72 @@ Cenarios:
 Deploy:
 
 - Rebuild do frontend necessario (ja incluido no plano de deploy da Issue 020 — ver CURRENT_STATE.md).
+
+## Issue 022 - Modulo Inventario com Scanner de Camera
+
+Status: `[done]` — codigo commitado (a91be9c) e pushado; deploy na VPS pendente (junto com Issues 020 e 021)
+
+Objetivo:
+
+- Permitir realizar inventario fisico dos bens patrimoniais do Estado por leitura de codigo de barras (campo Chapa).
+- Validar o ambiente (Divisao) em que o material foi encontrado vs. o ambiente onde deveria estar.
+- Gerar relatorio de cobertura com itens encontrados, ausentes, deslocados e nao cadastrados.
+
+Busca de reutilizacao:
+
+- `@zxing/browser`: lib de leitura de codigos de barras/QR via camera do navegador (sem app nativo).
+- `frontend/src/data/patrimonio_estado.json`: dados reais extraidos de `Inventario_Estado.xlsx` (planilha oficial, OneDrive).
+- Estrutura de wizard (3 etapas) similar a outros formularios do sistema.
+
+Arquivos criados/modificados:
+
+- `frontend/src/pages/Inventario.jsx`: wizard com Etapa 1 (Configuracao: divisao + responsavel), Etapa 2 (Escaneamento: camera + input manual), Etapa 3 (Relatorio completo com filtro de busca).
+- `frontend/src/data/patrimonio_estado.json`: 1.334 itens reais; campos: chapa, descricao, divisao, divisaoLabel, responsavel, contaContabil, valorAquisicao, valorAtual, vidaUtil, dataAquisicao, dataIncorporacao, estado.
+- `frontend/src/App.jsx`: rota `/inventario` adicionada.
+- `frontend/src/components/Sidebar.jsx`: item INVENTARIO adicionado no menu principal (entre MOTOMEC e LOGISTICA).
+- `frontend/package.json`: dependencia `@zxing/browser ^0.2.0` adicionada.
+
+Banco de dados:
+
+- Nenhuma alteracao. Dados embutidos como JSON estatico no bundle do frontend.
+- Para atualizar os dados: substituir `frontend/src/data/patrimonio_estado.json` com nova extracao da planilha.
+
+Dependencias externas:
+
+- `@zxing/browser ^0.2.0` (npm).
+- Camera do dispositivo (permissao solicitada automaticamente pelo browser).
+- Arquivo fonte: `Inventario_Estado.xlsx` no OneDrive (`motomec17gb-frota/`).
+
+Mapeamento de colunas da planilha (Inventario_Estado.xlsx):
+
+| Campo JSON      | Coluna Excel | Nome original         |
+|-----------------|-------------|----------------------|
+| chapa           | 2           | Chapa                |
+| descricao       | 6           | Descricao do Item    |
+| divisao         | 11          | Descricao da Divisao |
+| responsavel     | 12          | Responsavel          |
+| contaContabil   | 13          | Conta Contabil       |
+| valorAquisicao  | 15          | Valor de Aquisicao   |
+| valorAtual      | 17          | Valor Atual          |
+| vidaUtil        | 19          | Vida Util (Meses)    |
+| dataAquisicao   | 20          | Data de Aquisicao    |
+| dataIncorporacao| 21          | Data de Incorporacao |
+| estado          | 27          | Estado de Conservacao|
+
+Logica de validacao:
+
+- Chapa escaneada na divisao selecionada → OK (verde)
+- Chapa de outra divisao → DESLOCADO (laranja) — mostra divisao correta
+- Chapa sem cadastro na base → NAO CADASTRADO (vermelho)
+- Item esperado nao escaneado ao finalizar → AUSENTE no relatorio
+
+Cenarios:
+
+- Sucesso: usuario seleciona divisao, escaneia itens com a camera, relatorio mostra cobertura%.
+- Sem camera: input manual de chapa como fallback.
+- Chapa de outro ambiente: sinaliza deslocamento e indica onde o item deveria estar.
+- Edge cases: debounce de 2s evita dupla leitura do mesmo codigo; divisaoLabel remove prefixo OPM verboso do dropdown.
+
+Deploy:
+
+- Rebuild do frontend necessario. Nenhuma variavel de ambiente nova. Nenhuma alteracao de backend.

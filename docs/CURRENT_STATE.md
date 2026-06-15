@@ -7,6 +7,11 @@ Atualizado em: 2026-06-15
 Aplicacao em producao em https://motomec17gb-frota.com.br.
 Proximo passo recomendado: **deploy na VPS** — git pull + rebuild backend + rebuild frontend (ver secao "Pendencias" abaixo para os comandos exatos).
 
+Commits pendentes de deploy (codigo no GitHub, nao aplicado na VPS ainda):
+- `b9e1dbd` — Issue 020 (backend /api/frota/detalhada) + Issue 021 (Patrimonio)
+- `77b4cb4` — Issue 022 Inventario v1 (dados de amostra)
+- `a91be9c` — Issue 022 Inventario v2 (dados reais — 1.334 itens do Inventario_Estado.xlsx)
+
 ---
 
 ## Stack em producao
@@ -226,11 +231,36 @@ Apos o Apps Script sincronizar, MOB-17108 foi adicionada como nova BAIXADA na 1S
 
 **Codigo commitado (b9e1dbd) e pushado para GitHub em 2026-06-15.**
 
+### Issue 022 — Modulo Inventario com Scanner de Camera [CONCLUIDO — deploy pendente na VPS]
+
+Funcionalidade: inventario fisico por leitura de codigo de barras (Chapa) com validacao de ambiente (Divisao).
+
+**Arquivos criados/modificados:**
+
+- `frontend/src/pages/Inventario.jsx`: wizard 3 etapas
+  - **Etapa 1 (Configuracao):** selecao de divisao (169 divisoes reais) + responsavel; preview de itens esperados.
+  - **Etapa 2 (Escaneamento):** camera via `@zxing/browser` com mira visual; input manual de fallback; feedback instantaneo por cor (verde/laranja/vermelho) com nome do item; lista de itens lidos; chips de pendentes; barra de progresso X/Y.
+  - **Etapa 3 (Relatorio):** 6 cards de resumo (Esperados, Encontrados, Ausentes, Deslocados, Nao Cadastrados, Cobertura%); tabela de todos os itens da divisao com status; filtro de busca por chapa/descricao/responsavel; secoes separadas para Deslocados e Nao Cadastrados; botoes Retomar Scan ou Novo Inventario.
+- `frontend/src/data/patrimonio_estado.json`: **1.334 itens reais** extraidos de `Inventario_Estado.xlsx` (planilha oficial do Estado, arquivo no OneDrive). Campos: chapa, descricao, divisao, responsavel, contaContabil, valorAquisicao, valorAtual, vidaUtil, dataAquisicao, dataIncorporacao, estado.
+- `frontend/src/App.jsx`: rota `/inventario` registrada (commit anterior).
+- `frontend/src/components/Sidebar.jsx`: item INVENTARIO adicionado entre MOTOMEC e LOGISTICA (commit anterior).
+- `frontend/package.json`: `@zxing/browser ^0.2.0` adicionado.
+
+**Logica de validacao:**
+- Escaneou chapa presente na divisao selecionada → **OK** (verde)
+- Escaneou chapa cadastrada em outra divisao → **DESLOCADO** (laranja) — mostra onde deveria estar
+- Escaneou chapa sem cadastro → **NAO CADASTRADO** (vermelho)
+- Item esperado nao escaneado → **AUSENTE** (cinza) no relatorio final
+
+**Origem dos dados:** `Inventario_Estado.xlsx` (OneDrive/motomec17gb-frota). Planilha oficial com 29 colunas; extraidas 11 colunas relevantes. Nao e lida em tempo real — dados estao embutidos no bundle do frontend (JSON estatico). Para atualizar, re-executar o script de extracao e substituir `patrimonio_estado.json`.
+
+**Commits:** `77b4cb4` (v1 amostra) e `a91be9c` (v2 dados reais) — pushados para GitHub em 2026-06-15.
+
 ---
 
 ## Pendencias
 
-### Deploy na VPS (URGENTE — Issues 020 e 021)
+### Deploy na VPS (URGENTE — Issues 020, 021 e 022)
 
 Rodar na VPS como root em `/opt/motomec17gb-frota`:
 
