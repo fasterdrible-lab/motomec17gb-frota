@@ -105,6 +105,15 @@ function Sidebar({ onClose }) {
           </div>
         )}
 
+        {/* INVENTÁRIO */}
+        <NavLink
+          to="/inventario"
+          className={({ isActive }) => `sidebar-item sidebar-main-item ${isActive ? 'active' : ''}`}
+        >
+          <span className="sidebar-icon">📷</span>
+          <span>INVENTÁRIO</span>
+        </NavLink>
+
         {/* LOGÍSTICA */}
         <div className={`sidebar-item sidebar-main-item ${isLogisticaActive ? 'active' : ''}`} style={{ paddingRight: 12 }}>
           <NavLink

@@ -17,6 +17,7 @@ import Logistica from './pages/Logistica';
 import MatOperacionais from './pages/MatOperacionais';
 import PasDeaReparos from './pages/PasDeaReparos';
 import Patrimonio from './pages/Patrimonio';
+import Inventario from './pages/Inventario';
 import './styles/App.css';
 
 function App() {
@@ -77,6 +78,7 @@ function App() {
               <Route path="/logistica/relatorio" element={<RelatorioLogistica />} />
               <Route path="/logistica/patrimonio" element={<Navigate to="/logistica/patrimonio/prefeitura" replace />} />
               <Route path="/logistica/patrimonio/:modo" element={<Patrimonio />} />
+              <Route path="/inventario" element={<Inventario />} />
             </Routes>
           </div>
           <footer style={{
