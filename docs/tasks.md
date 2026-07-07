@@ -7,6 +7,56 @@ Status:
 - `[todo]` pendente.
 - `[blocked]` depende de decisao, credencial ou backend inexistente.
 
+## Issue 023 - Gerar APK Android (Capacitor) para o modulo Inventario
+
+Status: `[done]` — APK debug gerado localmente; codigo commitado (`dcb1dbf`) e pushado
+
+Objetivo:
+
+- Viabilizar o uso do modulo Inventario (scanner de camera) no celular como app instalavel, sem depender do navegador.
+
+Busca de reutilizacao:
+
+- `@zxing/browser` (ja usado em `Inventario.jsx`) funciona via `getUserMedia` padrao — compativel com WebView do Capacitor sem plugin de camera adicional.
+- Build web existente (Vite) reaproveitado; apenas variou o `base` e o `basename` do router para o contexto do app nativo.
+
+Arquivos criados/modificados:
+
+- `frontend/vite.config.js`: `base` e `build.outDir` agora condicionais a `VITE_BUILD_TARGET=capacitor` (usa `/` e `dist-capacitor` em vez de `/motomec17gb-frota/` e `dist`).
+- `frontend/src/App.jsx`: `basename` do `BrowserRouter` extraido para constante `routerBasename`, vazio quando `VITE_BUILD_TARGET=capacitor`.
+- `frontend/.env.capacitor`: variaveis publicas para o build do app (API aponta para `https://motomec17gb-frota.com.br`, producao).
+- `frontend/capacitor.config.json`: criado (`appId: br.mil.sp.cbm.motomec17gb`, `appName: MOTOMEC 17GB Frota`, `webDir: dist-capacitor`).
+- `frontend/android/`: projeto nativo Android gerado pelo Capacitor (commitado; artefatos de build e `local.properties` ignorados via `.gitignore`).
+- `frontend/android/app/src/main/AndroidManifest.xml`: permissao `android.permission.CAMERA` e features de camera (`required="false"`) adicionadas.
+- `frontend/package.json`: `@capacitor/core`, `@capacitor/android` e devDependency `@capacitor/cli` adicionados.
+- `.gitignore`: entradas para `frontend/dist-capacitor/`, `frontend/android/build/`, `frontend/android/app/build/`, `frontend/android/.gradle/`, `frontend/android/local.properties`, keystores.
+
+Banco de dados:
+
+- Nenhuma alteracao.
+
+Dependencias externas:
+
+- Android SDK (platforms 33-36, build-tools) e JDK 21 (JBR do Android Studio) usados localmente para o build via `./gradlew assembleDebug`. `JAVA_HOME` e `ANDROID_HOME` precisam apontar para esses caminhos ao rodar o build fora deste ambiente.
+- Nenhuma dependencia de runtime nova alem do Capacitor.
+
+Build gerado:
+
+- APK debug: `android/app/build/outputs/apk/debug/app-debug.apk`, copiado para `../apk/MOTOMEC-17GB-Frota-debug.apk` (fora do repositorio git, no OneDrive do projeto).
+- Assinado com a chave de debug padrao do Android — valido para instalar e testar em aparelhos com "Fontes desconhecidas" habilitado, **nao apto para publicacao na Play Store**.
+
+Cenarios:
+
+- Sucesso: app abre, faz login contra a API de producao, e o scanner de codigo de barras do Inventario aciona o dialogo nativo de permissao de camera na primeira leitura.
+- Erro: sem `JAVA_HOME`/`ANDROID_HOME` configurados o Gradle nao builda; sem permissao de camera concedida, o `getUserMedia` falha silenciosamente e o input manual de chapa deve ser usado como fallback (ja existente na tela).
+- Edge cases: no navegador (versao web), `VITE_BUILD_TARGET` fica indefinido e o comportamento de rota/base permanece identico ao de antes desta issue — nao ha regressao no deploy web.
+
+Pendencias:
+
+- APK ainda nao testado em dispositivo/emulador real (nenhum AVD configurado neste ambiente) — recomenda-se instalar em um aparelho fisico e validar o fluxo completo de login + scanner antes de distribuir.
+- Icone e splash screen usam o padrao gerado pelo Capacitor — customizar com a identidade visual do projeto e uma melhoria futura.
+- Build atual e "debug" (chave de assinatura automatica do Android SDK). Para publicacao oficial (Play Store) ou distribuicao mais formal, gerar build "release" com keystore proprio.
+
 ## Issue 001 - Criar baseline de produto e execucao
 
 Status: `[done]`
