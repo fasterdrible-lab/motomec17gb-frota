@@ -87,7 +87,7 @@ export default function Tarefas() {
         </div>
 
         {/* Contadores */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+        <div className="grid-cols-4" style={{ marginBottom: 20 }}>
           {[
             { label: 'Total de Tarefas', value: total, color: '#2563eb' },
             { label: 'Pendentes', value: pendentes, color: '#d97706' },

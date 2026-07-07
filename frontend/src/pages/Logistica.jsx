@@ -67,7 +67,7 @@ function Logistica() {
   const abasMatOp = (matOp?.abas || []).filter(a => ABAS_MAT_OP.includes(a.aba));
 
   return (
-    <div style={{ padding: '24px 28px' }}>
+    <div className="page-inner">
 
       {/* CABEÇALHO */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
@@ -98,7 +98,7 @@ function Logistica() {
       </div>
 
       {/* KPIs GLOBAIS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="grid-cols-6" style={{ marginBottom: 24 }}>
         <KPICard icon="📦" label="Total de Equipamentos" value={totais.total} sub="Mat. Operacionais" />
         <KPICard icon="✅" label="Operando"  value={totais.op}  sub={`${pctGeral}% disponibilidade`} variant="success" />
         <KPICard icon="❌" label="Baixados"  value={totais.bx}  sub={`${100 - pctGeral}% indisponíveis`} variant={totais.bx > 20 ? 'danger' : 'warning'} />
@@ -133,7 +133,7 @@ function Logistica() {
         const infoBlock = { fontSize: '0.8rem', color: C.mid, marginTop: 6, fontWeight: 500 };
 
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
+          <div className="grid-cols-4" style={{ marginBottom: 24 }}>
 
             {/* PAS DE DEA */}
             <div style={{ ...cardBase, background: '#eff6ff', borderLeft: '4px solid #1565C0' }}>

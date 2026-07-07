@@ -1018,6 +1018,34 @@ body {
 }
 
 /* ==============================
+   Grids utilitarios com colunas fixas
+   (usar em vez de gridTemplateColumns inline
+   para permitir colapso responsivo no mobile)
+   ============================== */
+.grid-cols-3,
+.grid-cols-4,
+.grid-cols-5,
+.grid-cols-6,
+.grid-cols-7 {
+  display: grid;
+  gap: 14px;
+}
+
+.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
+.grid-cols-6 { grid-template-columns: repeat(6, 1fr); }
+.grid-cols-7 { grid-template-columns: repeat(7, 1fr); }
+
+/* ==============================
+   Padding interno de pagina (usar em vez de
+   padding inline fixo, para reduzir no mobile)
+   ============================== */
+.page-inner {
+  padding: 24px 28px;
+}
+
+/* ==============================
    Responsive
    ============================== */
 @media (max-width: 768px) {
@@ -1098,6 +1126,28 @@ body {
   .brand-header-org {
     gap: 10px;
   }
+
+  .grid-cols-6,
+  .grid-cols-7 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .page-inner {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .grid-cols-6,
+  .grid-cols-7 {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 480px) {
@@ -1131,5 +1181,15 @@ body {
   .brand-header-logout {
     padding: 6px 10px;
     font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6,
+  .grid-cols-7 {
+    grid-template-columns: 1fr;
   }
 }

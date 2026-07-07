@@ -54,7 +54,7 @@ function ResumoCards({ aba }) {
   );
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 20 }}>
+    <div className="grid-cols-5" style={{ marginBottom: 20 }}>
 
       {/* STATUS */}
       <div style={card}>
@@ -154,7 +154,7 @@ function MatOperacionais() {
   const abaObj    = abasMatOp.find(a => a.aba === abaAtiva);
 
   return (
-    <div style={{ padding: '24px 28px' }}>
+    <div className="page-inner">
 
       {/* CABEÇALHO */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
@@ -185,7 +185,7 @@ function MatOperacionais() {
       </div>
 
       {/* CARDS DE CATEGORIA */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="grid-cols-7" style={{ marginBottom: 24 }}>
         {abasMatOp.map(a => {
           const ativo = abaAtiva === a.aba;
           const pct   = a.total ? Math.round(a.op / a.total * 100) : 100;

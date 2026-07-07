@@ -326,7 +326,7 @@ export default function Inventario() {
       </div>
 
       {/* Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div className="grid-cols-3" style={{ gap: 10, marginBottom: 20 }}>
         {[
           { label: 'Esperados',    valor: itensEsperados.length, cor: '#1e40af', bg: '#eff6ff' },
           { label: 'Encontrados',  valor: encontrados.length,    cor: '#16a34a', bg: '#dcfce7' },

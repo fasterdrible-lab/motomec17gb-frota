@@ -116,7 +116,7 @@ function Relatorios() {
           {/* Status da Frota */}
           <div>
             <div style={{ fontWeight: 700, color: '#1a1a2e', marginBottom: 12, fontSize: '1rem' }}>🚒 Status da Frota</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            <div className="grid-cols-4">
               <CardStat icon="📊" value={dados.frotaStatus.total} label="Total de Viaturas" />
               <CardStat icon="🚗" value={dados.frotaStatus.operando} label="Operando" cor="#16a34a" />
               <CardStat icon="🚒" value={dados.frotaStatus.baixadas} label="Baixadas" cor="#dc2626" />

@@ -75,7 +75,7 @@ function Abastecimentos() {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+        <div className="grid-cols-4" style={{ marginBottom: 20 }}>
           {[
             { label: 'Total de Registros', value: filtrados.length, color: '#0e7490' },
             { label: 'Total em Litros', value: `${totalLitros.toFixed(1)} L`, color: '#15803d' },

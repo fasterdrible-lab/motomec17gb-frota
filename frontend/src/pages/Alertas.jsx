@@ -65,7 +65,7 @@ function Alertas() {
       {!loading && !error && (
         <div style={{ padding: '0 20px 20px' }}>
           {/* Contadores */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+          <div className="grid-cols-3" style={{ marginBottom: 20 }}>
             <div style={{ background: 'white', borderRadius: 10, padding: '16px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
               <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{alertas.length}</div>
               <div style={{ color: '#6b7280', fontSize: '0.85rem' }}>Total de Alertas</div>
