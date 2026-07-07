@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MOTOMEC 17GB Frota</string>
+    <string name="title_activity_main">MOTOMEC 17GB Frota</string>
+    <string name="package_name">br.mil.sp.cbm.motomec17gb</string>
+    <string name="custom_url_scheme">br.mil.sp.cbm.motomec17gb</string>
+</resources>

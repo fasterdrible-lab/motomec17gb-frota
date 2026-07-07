@@ -15,6 +15,16 @@ build/
 dist/
 frontend/build/
 frontend/dist/
+frontend/dist-capacitor/
+
+# Android / Capacitor native project (build artifacts and machine-specific files)
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/capacitor-cordova-android-plugins/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/*.keystore
+frontend/android/*.jks
 
 # Logs
 *.log

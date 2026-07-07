@@ -20,6 +20,8 @@ import Patrimonio from './pages/Patrimonio';
 import Inventario from './pages/Inventario';
 import './styles/App.css';
 
+const routerBasename = import.meta.env.VITE_BUILD_TARGET === 'capacitor' ? '' : '/motomec17gb-frota';
+
 function App() {
   const [autenticado, setAutenticado] = useState(!!localStorage.getItem('token'));
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -43,7 +45,7 @@ function App() {
 
   if (!autenticado) {
     return (
-      <BrowserRouter basename="/motomec17gb-frota">
+      <BrowserRouter basename={routerBasename}>
         <Login onLogin={handleLogin} />
       </BrowserRouter>
     );
