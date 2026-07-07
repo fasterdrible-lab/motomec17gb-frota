@@ -45,6 +45,8 @@ Build gerado:
 - APK debug: `android/app/build/outputs/apk/debug/app-debug.apk`, copiado para `../apk/MOTOMEC-17GB-Frota-debug.apk` (fora do repositorio git, no OneDrive do projeto).
 - Assinado com a chave de debug padrao do Android — valido para instalar e testar em aparelhos com "Fontes desconhecidas" habilitado, **nao apto para publicacao na Play Store**.
 
+**Bug encontrado no primeiro teste em dispositivo real (corrigido):** login falhava com "Nao foi possivel conectar ao servidor". Causa: o WebView do Capacitor carrega o app com origem `https://localhost` por padrao, fora da whitelist `CORS_ORIGINS` do backend (so permite `motomec17gb-frota.com.br`). Corrigido adicionando `server.hostname: "motomec17gb-frota.com.br"` e `server.androidScheme: "https"` em `capacitor.config.json`, fazendo a origem das requisicoes do app bater com o CORS ja configurado em producao — sem alterar o backend. APK regerado apos o fix.
+
 Cenarios:
 
 - Sucesso: app abre, faz login contra a API de producao, e o scanner de codigo de barras do Inventario aciona o dialogo nativo de permissao de camera na primeira leitura.
