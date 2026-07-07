@@ -19,6 +19,20 @@ Deploy das Issues 020, 021 e 022 concluido na VPS em 2026-07-07 (backend + front
 
 ---
 
+## APK Android (Capacitor) — Issue 023, 2026-07-07
+
+APK debug gerado e validado ponta a ponta em dispositivo real (Samsung A07). Tres bugs encontrados e corrigidos (detalhes completos em `tasks.md` Issue 023, commit `b341e33`):
+
+1. `ReactDOM.createRoot` renderiza em branco sem erro nessa WebView — trocado para `ReactDOM.render` (legado) em `frontend/src/index.jsx`.
+2. `basename` do segundo `BrowserRouter` em `App.jsx` estava hardcoded, quebrando rotas no build do Capacitor.
+3. `capacitor.config.json` usava o dominio real como `server.hostname` para contornar CORS, mas isso fez o interceptador local do Capacitor capturar tambem as chamadas `/api/*`. Revertido para hostname padrao (`localhost`) + `https://localhost` adicionado ao `CORS_ORIGINS` do backend na VPS.
+
+**Mudanca de infraestrutura nao versionada:** `CORS_ORIGINS` em `/opt/motomec17gb-frota/.env.backend` na VPS agora e `https://motomec17gb-frota.com.br,https://www.motomec17gb-frota.com.br,https://localhost` (container `motomec17gb-backend-1` recriado com `docker run`, mesma imagem, sem rebuild).
+
+APK final: `apk/MOTOMEC-17GB-Frota-debug.apk` (fora do git, pasta OneDrive do projeto).
+
+---
+
 ## Stack em producao
 
 | Camada   | Container                  | Porta | Imagem                             |

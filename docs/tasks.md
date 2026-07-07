@@ -45,19 +45,26 @@ Build gerado:
 - APK debug: `android/app/build/outputs/apk/debug/app-debug.apk`, copiado para `../apk/MOTOMEC-17GB-Frota-debug.apk` (fora do repositorio git, no OneDrive do projeto).
 - Assinado com a chave de debug padrao do Android — valido para instalar e testar em aparelhos com "Fontes desconhecidas" habilitado, **nao apto para publicacao na Play Store**.
 
-**Bug encontrado no primeiro teste em dispositivo real (corrigido):** login falhava com "Nao foi possivel conectar ao servidor". Causa: o WebView do Capacitor carrega o app com origem `https://localhost` por padrao, fora da whitelist `CORS_ORIGINS` do backend (so permite `motomec17gb-frota.com.br`). Corrigido adicionando `server.hostname: "motomec17gb-frota.com.br"` e `server.androidScheme: "https"` em `capacitor.config.json`, fazendo a origem das requisicoes do app bater com o CORS ja configurado em producao — sem alterar o backend. APK regerado apos o fix.
+**Bugs encontrados e corrigidos em teste real em dispositivo (Samsung A07, Android 16, commit `b341e33`):**
+
+1. **Tela branca ao abrir o app.** `ReactDOM.createRoot` (renderer concorrente do React 18) executa a arvore inteira (roda hooks, `useEffect`, nao lanca excecao) mas nunca comita nada no DOM real nessa WebView especifica — confirmado isolando o problema via Chrome DevTools Protocol remoto (`chrome://inspect` equivalente por adb), testando ate um `<div>` estatico via `createRoot`. A API legada `ReactDOM.render` funciona perfeitamente no mesmo dispositivo. Trocado em `frontend/src/index.jsx`; app nao usa recursos concorrentes (Suspense/useTransition), sem perda de funcionalidade. Adicionado `ErrorBoundary` para expor erros futuros na tela em vez de branco silencioso.
+2. **Roteamento quebrado no build do Capacitor.** O segundo `<BrowserRouter>` (branch autenticado) em `App.jsx` ainda usava o `basename` fixo `/motomec17gb-frota` em vez da constante `routerBasename` — só o primeiro (`Login`) tinha sido corrigido. Corrigido para os dois usarem `routerBasename`.
+3. **Login "funcionava" mas gravava token invalido.** A tentativa inicial de resolver CORS configurando `capacitor.config.json` com `server.hostname` = dominio real de producao teve um efeito colateral grave: o interceptador local do Capacitor (WebViewAssetLoader) passou a capturar tambem as chamadas `/api/*` (mesma origem = mesmo dominio interceptado), devolvendo o proprio `index.html` do app em vez de proxiar para a internet — o login "succedia" com um corpo sem `access_token`, gravando a **string** `"undefined"` no `localStorage` (que e truthy em `!!token`). Corrigido revertendo `capacitor.config.json` para o hostname padrao do Capacitor (`localhost`) e adicionando `https://localhost` ao `CORS_ORIGINS` do backend na VPS (editado `.env.backend` + `docker run` novo do container `motomec17gb-backend-1`, sem rebuild de imagem). `Login.jsx` ganhou guarda contra `access_token` ausente; `App.jsx` ganhou `hasValidToken()` para tratar tokens corrompidos (`"undefined"`/`"null"`) como nao autenticado.
+
+Validado ponta a ponta no dispositivo apos os 3 fixes: login real contra a API de producao, Dashboard renderizando dados reais (frota, alertas, tarefas, gastos), navegacao para `/inventario` com as 169 divisoes carregadas.
 
 Cenarios:
 
-- Sucesso: app abre, faz login contra a API de producao, e o scanner de codigo de barras do Inventario aciona o dialogo nativo de permissao de camera na primeira leitura.
-- Erro: sem `JAVA_HOME`/`ANDROID_HOME` configurados o Gradle nao builda; sem permissao de camera concedida, o `getUserMedia` falha silenciosamente e o input manual de chapa deve ser usado como fallback (ja existente na tela).
-- Edge cases: no navegador (versao web), `VITE_BUILD_TARGET` fica indefinido e o comportamento de rota/base permanece identico ao de antes desta issue — nao ha regressao no deploy web.
+- Sucesso: app abre, faz login contra a API de producao, dashboard e inventario renderizam corretamente; scanner de codigo de barras aciona o dialogo nativo de permissao de camera na primeira leitura (mecanismo do Capacitor, sem plugin adicional).
+- Erro: sem `JAVA_HOME`/`ANDROID_HOME` configurados o Gradle nao builda; sem permissao de camera concedida, o `getUserMedia` falha e o input manual de chapa deve ser usado como fallback (ja existente na tela).
+- Edge cases: no navegador (versao web), `VITE_BUILD_TARGET` fica indefinido e o comportamento de rota/base permanece identico ao de antes desta issue — nao ha regressao no deploy web (rebuild `dist/` testado, compila normalmente).
 
 Pendencias:
 
-- APK ainda nao testado em dispositivo/emulador real (nenhum AVD configurado neste ambiente) — recomenda-se instalar em um aparelho fisico e validar o fluxo completo de login + scanner antes de distribuir.
 - Icone e splash screen usam o padrao gerado pelo Capacitor — customizar com a identidade visual do projeto e uma melhoria futura.
 - Build atual e "debug" (chave de assinatura automatica do Android SDK). Para publicacao oficial (Play Store) ou distribuicao mais formal, gerar build "release" com keystore proprio.
+- `CORS_ORIGINS` do backend na VPS foi editado diretamente (`.env.backend`) e o container reiniciado — a mudanca nao esta versionada em nenhum arquivo do repositorio (o `.env.backend` fica fora do git por design). Documentado aqui como referencia: valor atual e `https://motomec17gb-frota.com.br,https://www.motomec17gb-frota.com.br,https://localhost`.
+- Observado durante o teste: apos o restart do container backend, a senha da conta `phpos35@gmail.com` voltou a ser `admin123` (documentado como comportamento conhecido em Issue 018/CURRENT_STATE.md — possivel logica de seed no `initializeDb()`). Nao investigado a fundo nesta sessao.
 
 ## Issue 001 - Criar baseline de produto e execucao
 
