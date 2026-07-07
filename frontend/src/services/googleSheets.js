@@ -17,7 +17,7 @@ async function fetchSheetData(sheetName, gid = null) {
   if (!res.ok) throw new Error(`HTTP ${res.status} ao buscar aba "${sheetName}"`);
   const text = await res.text();
   const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-  if (!match) throw new Error(`Resposta invalida da aba "${sheetName}"`);
+  if (!match) throw new Error(`Resposta inválida da aba "${sheetName}"`);
   return JSON.parse(match[1]);
 }
 
@@ -316,9 +316,9 @@ export async function getAlertasDetalhados() {
         const dataLav = new Date(parts[2], parts[1] - 1, parts[0]);
         const dias = Math.floor((hoje - dataLav) / MS_PER_DAY);
         if (dias >= WASHING_CRITICAL_DAYS) {
-          alertas.push({ id: idCounter++, prefixo, tipo: 'Lavagem', nivel: 'critico', descricao: `${prefixo}: Ultima lavagem ha ${dias} dias`, lido: false });
+          alertas.push({ id: idCounter++, prefixo, tipo: 'Lavagem', nivel: 'critico', descricao: `${prefixo}: Última lavagem há ${dias} dias`, lido: false });
         } else if (dias >= WASHING_WARNING_DAYS) {
-          alertas.push({ id: idCounter++, prefixo, tipo: 'Lavagem', nivel: 'aviso', descricao: `${prefixo}: Lavagem necessaria em breve (${dias} dias)`, lido: false });
+          alertas.push({ id: idCounter++, prefixo, tipo: 'Lavagem', nivel: 'aviso', descricao: `${prefixo}: Lavagem necessária em breve (${dias} dias)`, lido: false });
         }
       }
     }
@@ -327,7 +327,7 @@ export async function getAlertasDetalhados() {
       if (kmAtual >= kmPneu) {
         alertas.push({ id: idCounter++, prefixo, tipo: 'Pneu', nivel: 'critico', descricao: `${prefixo}: Troca de pneu vencida (KM ${kmAtual}/${kmPneu})`, lido: false });
       } else if (kmPneu - kmAtual <= KM_THRESHOLD_WARNING) {
-        alertas.push({ id: idCounter++, prefixo, tipo: 'Pneu', nivel: 'aviso', descricao: `${prefixo}: Pneu proximo do limite (faltam ${kmPneu - kmAtual} km)`, lido: false });
+        alertas.push({ id: idCounter++, prefixo, tipo: 'Pneu', nivel: 'aviso', descricao: `${prefixo}: Pneu próximo do limite (faltam ${kmPneu - kmAtual} km)`, lido: false });
       }
     }
     const kmEmb = parseFloat(getCell(r, 14)) || 0;
@@ -335,7 +335,7 @@ export async function getAlertasDetalhados() {
       if (kmAtual >= kmEmb) {
         alertas.push({ id: idCounter++, prefixo, tipo: 'Embreagem', nivel: 'critico', descricao: `${prefixo}: Troca de embreagem vencida (KM ${kmAtual}/${kmEmb})`, lido: false });
       } else if (kmEmb - kmAtual <= KM_THRESHOLD_WARNING) {
-        alertas.push({ id: idCounter++, prefixo, tipo: 'Embreagem', nivel: 'aviso', descricao: `${prefixo}: Embreagem proxima do limite (faltam ${kmEmb - kmAtual} km)`, lido: false });
+        alertas.push({ id: idCounter++, prefixo, tipo: 'Embreagem', nivel: 'aviso', descricao: `${prefixo}: Embreagem próxima do limite (faltam ${kmEmb - kmAtual} km)`, lido: false });
       }
     }
   });

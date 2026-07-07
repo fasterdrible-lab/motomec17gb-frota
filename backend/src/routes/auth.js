@@ -10,7 +10,7 @@ router.post('/login', async (req, res, next) => {
 
     if (!email || !password) {
       return res.status(400).json({
-        detail: 'Email e senha sao obrigatorios.',
+        detail: 'Email e senha são obrigatórios.',
         code: 'MISSING_FIELDS',
         requestId: req.headers['x-request-id'] || null,
       });
@@ -25,7 +25,7 @@ router.post('/login', async (req, res, next) => {
 
 router.post('/recuperar-senha', (req, res) => {
   return res.json({
-    detail: 'Solicitacao recebida. Procure um administrador para redefinir sua senha.',
+    detail: 'Solicitação recebida. Procure um administrador para redefinir sua senha.',
   });
 });
 

@@ -24,7 +24,7 @@ export const publicConfig = {
 
 export function requirePublicConfig(value, name) {
   if (!value) {
-    throw new Error(`Configuracao publica ausente: ${name}`);
+    throw new Error(`Configuração pública ausente: ${name}`);
   }
   return value;
 }

@@ -22,7 +22,7 @@ function createApp() {
 
   app.use((req, res) => {
     res.status(404).json({
-      detail: 'Recurso nao encontrado.',
+      detail: 'Recurso não encontrado.',
       code: 'NOT_FOUND',
       requestId: req.headers['x-request-id'] || null,
     });

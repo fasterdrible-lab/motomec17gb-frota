@@ -11,8 +11,8 @@ function normalizePrefixo(value) {
 
 const serviceTabs = [
   { key: 'todos', label: 'Todos' },
-  { key: 'realizados', label: 'Servicos realizados' },
-  { key: 'oleo', label: 'Troca de oleo' },
+  { key: 'realizados', label: 'Serviços realizados' },
+  { key: 'oleo', label: 'Troca de óleo' },
   { key: 'pneus', label: 'Pneus' },
   { key: 'bateria', label: 'Bateria' },
 ];
@@ -94,7 +94,7 @@ function Manutencao() {
 
       setUltimaSync(new Date());
     } catch (e) {
-      setError('Erro ao buscar dados da planilha. Verifique a conexao e tente novamente.');
+      setError('Erro ao buscar dados da planilha. Verifique a conexão e tente novamente.');
     } finally {
       setLoading(false);
       setSyncing(false);
@@ -142,7 +142,7 @@ function Manutencao() {
     <div>
       <div className="dash-action-bar">
         <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e' }}>
-          Manutencao
+          Manutenção
           {prefixoParam && <span style={{ color: '#CC1F1F' }}> · {prefixoParam}</span>}
         </h2>
         <button className="btn-sincronizar" onClick={() => loadData(true)} disabled={syncing}>
@@ -150,7 +150,7 @@ function Manutencao() {
         </button>
         {ultimaSync && (
           <span className="sync-info">
-            Ultima sinc.: {ultimaSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            Última sinc.: {ultimaSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
       </div>
@@ -181,9 +181,9 @@ function Manutencao() {
           <div className="card mb-20">
             <div className="section-header">
               <div>
-                <h3 className="section-title">Pesquisa de servicos</h3>
+                <h3 className="section-title">Pesquisa de serviços</h3>
                 <div className="text-muted" style={{ marginTop: 4 }}>
-                  Area preparada para consultar servicos realizados, troca de oleo, pneus e bateria.
+                  Área preparada para consultar serviços realizados, troca de óleo, pneus e bateria.
                 </div>
               </div>
             </div>
@@ -232,8 +232,8 @@ function Manutencao() {
           {filtradas.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', background: 'white', borderRadius: 10 }}>
               {prefixoParam
-                ? 'Nenhuma manutencao encontrada para esta viatura nos filtros selecionados.'
-                : 'Nenhuma manutencao encontrada nesta categoria.'}
+                ? 'Nenhuma manutenção encontrada para esta viatura nos filtros selecionados.'
+                : 'Nenhuma manutenção encontrada nesta categoria.'}
             </div>
           ) : (
             <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>

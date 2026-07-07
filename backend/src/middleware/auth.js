@@ -7,7 +7,7 @@ async function authMiddleware(req, res, next) {
 
   if (!authHeader) {
     return res.status(401).json({
-      detail: 'Token nao fornecido.',
+      detail: 'Token não fornecido.',
       code: 'UNAUTHORIZED',
       requestId: req.headers['x-request-id'] || null,
     });
@@ -17,7 +17,7 @@ async function authMiddleware(req, res, next) {
 
   if (scheme !== 'Bearer' || !token) {
     return res.status(401).json({
-      detail: 'Formato de autorizacao invalido.',
+      detail: 'Formato de autorização inválido.',
       code: 'UNAUTHORIZED',
       requestId: req.headers['x-request-id'] || null,
     });
@@ -27,7 +27,7 @@ async function authMiddleware(req, res, next) {
   try {
     decoded = jwt.verify(token, env.jwtSecret);
   } catch (err) {
-    const detail = err.name === 'TokenExpiredError' ? 'Token expirado.' : 'Token invalido.';
+    const detail = err.name === 'TokenExpiredError' ? 'Token expirado.' : 'Token inválido.';
     return res.status(401).json({
       detail,
       code: 'UNAUTHORIZED',

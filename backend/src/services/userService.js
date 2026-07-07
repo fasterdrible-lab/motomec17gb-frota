@@ -68,10 +68,10 @@ function assertUserCanAuthenticate(user) {
     throw createHttpError(401, 'INVALID_CREDENTIALS', 'Email ou senha incorretos.');
   }
   if (user.status === 'pendente') {
-    throw createHttpError(403, 'USER_PENDING', 'Cadastro aguardando liberacao do administrador.');
+    throw createHttpError(403, 'USER_PENDING', 'Cadastro aguardando liberação do administrador.');
   }
   if (user.status === 'inativo') {
-    throw createHttpError(403, 'USER_INACTIVE', 'Usuario inativo. Solicite suporte ao administrador.');
+    throw createHttpError(403, 'USER_INACTIVE', 'Usuário inativo. Solicite suporte ao administrador.');
   }
 }
 
@@ -97,13 +97,13 @@ async function createPendingUser(payload) {
   const password = String(payload.password || '');
 
   if (!nome || !email || !password) {
-    throw createHttpError(400, 'MISSING_FIELDS', 'Nome, email e senha sao obrigatorios.');
+    throw createHttpError(400, 'MISSING_FIELDS', 'Nome, email e senha são obrigatórios.');
   }
   if (nome.length < 3) {
-    throw createHttpError(400, 'INVALID_NAME', 'Informe o nome completo do usuario.');
+    throw createHttpError(400, 'INVALID_NAME', 'Informe o nome completo do usuário.');
   }
   if (!isValidEmail(email)) {
-    throw createHttpError(400, 'INVALID_EMAIL', 'Informe um email valido.');
+    throw createHttpError(400, 'INVALID_EMAIL', 'Informe um email válido.');
   }
   if (password.length < 6) {
     throw createHttpError(400, 'INVALID_PASSWORD', 'A senha deve ter pelo menos 6 caracteres.');
@@ -111,7 +111,7 @@ async function createPendingUser(payload) {
 
   const existing = await findUserByEmail(email);
   if (existing) {
-    throw createHttpError(409, 'EMAIL_ALREADY_EXISTS', 'Ja existe um usuario cadastrado com este email.');
+    throw createHttpError(409, 'EMAIL_ALREADY_EXISTS', 'Já existe um usuário cadastrado com este email.');
   }
 
   const cargo = normalizeText(payload.cargo);
@@ -131,7 +131,7 @@ async function listUsers(filters = {}) {
   const status = filters.status ? normalizeStatus(filters.status) : null;
 
   if (filters.status && !status) {
-    throw createHttpError(400, 'INVALID_STATUS', 'Status de filtro invalido.');
+    throw createHttpError(400, 'INVALID_STATUS', 'Status de filtro inválido.');
   }
 
   let sql = 'SELECT * FROM usuarios';
@@ -149,7 +149,7 @@ async function listUsers(filters = {}) {
 async function updateUser(id, payload, actorId) {
   const user = await findUserById(id);
   if (!user) {
-    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuario nao encontrado.');
+    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuário não encontrado.');
   }
 
   const isSelfUpdate = Number(id) === Number(actorId);
@@ -159,7 +159,7 @@ async function updateUser(id, payload, actorId) {
   if (payload.nome !== undefined) {
     const nome = String(payload.nome || '').trim();
     if (nome.length < 3) {
-      throw createHttpError(400, 'INVALID_NAME', 'Informe o nome completo do usuario.');
+      throw createHttpError(400, 'INVALID_NAME', 'Informe o nome completo do usuário.');
     }
     updates.push('nome = ?');
     values.push(nome);
@@ -178,10 +178,10 @@ async function updateUser(id, payload, actorId) {
   if (payload.perfil !== undefined || payload.role !== undefined) {
     const perfil = normalizePerfil(payload.perfil ?? payload.role);
     if (!perfil) {
-      throw createHttpError(400, 'INVALID_PROFILE', 'Perfil de usuario invalido.');
+      throw createHttpError(400, 'INVALID_PROFILE', 'Perfil de usuário inválido.');
     }
     if (isSelfUpdate && perfil !== 'admin') {
-      throw createHttpError(400, 'CANNOT_DEMOTE_SELF', 'Administrador nao pode remover o proprio perfil admin.');
+      throw createHttpError(400, 'CANNOT_DEMOTE_SELF', 'Administrador não pode remover o próprio perfil admin.');
     }
     updates.push('perfil = ?');
     values.push(perfil);
@@ -190,10 +190,10 @@ async function updateUser(id, payload, actorId) {
   if (payload.status !== undefined) {
     const status = normalizeStatus(payload.status);
     if (!status) {
-      throw createHttpError(400, 'INVALID_STATUS', 'Status de usuario invalido.');
+      throw createHttpError(400, 'INVALID_STATUS', 'Status de usuário inválido.');
     }
     if (isSelfUpdate && status !== 'ativo') {
-      throw createHttpError(400, 'CANNOT_DISABLE_SELF', 'Administrador nao pode inativar a propria conta.');
+      throw createHttpError(400, 'CANNOT_DISABLE_SELF', 'Administrador não pode inativar a própria conta.');
     }
     updates.push('status = ?');
     values.push(status);
@@ -223,12 +223,12 @@ async function updateUser(id, payload, actorId) {
 
 async function deleteUser(id, actorId) {
   if (Number(id) === Number(actorId)) {
-    throw createHttpError(400, 'CANNOT_DELETE_SELF', 'Administrador nao pode excluir a propria conta.');
+    throw createHttpError(400, 'CANNOT_DELETE_SELF', 'Administrador não pode excluir a própria conta.');
   }
 
   const user = await findUserById(id);
   if (!user) {
-    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuario nao encontrado.');
+    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuário não encontrado.');
   }
 
   await pool.execute('DELETE FROM usuarios WHERE id = ?', [Number(id)]);
@@ -249,7 +249,7 @@ async function validateCredentials(email, password) {
 async function getUser(id) {
   const user = await findUserById(id);
   if (!user) {
-    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuario nao encontrado.');
+    throw createHttpError(404, 'USER_NOT_FOUND', 'Usuário não encontrado.');
   }
   return sanitizeUser(user);
 }

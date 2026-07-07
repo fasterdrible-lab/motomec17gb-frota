@@ -146,14 +146,14 @@ export default function Frota() {
         <PageState
           variant="loading"
           title="Carregando viaturas"
-          message="Buscando os dados da frota e cruzando as informacoes das abas SGB."
+          message="Buscando os dados da frota e cruzando as informações das abas SGB."
         />
       )}
 
       {erro && !loading && (
         <PageState
           variant="error"
-          title="Nao foi possivel carregar a frota"
+          title="Não foi possível carregar a frota"
           message={erro}
           actionLabel="Tentar novamente"
           onAction={carregarDados}
@@ -164,7 +164,7 @@ export default function Frota() {
         <PageState
           variant="empty"
           title="Nenhuma viatura encontrada"
-          message="Ajuste os filtros ou refaca a busca para localizar outra viatura."
+          message="Ajuste os filtros ou refaça a busca para localizar outra viatura."
         />
       )}
 
@@ -187,7 +187,7 @@ export default function Frota() {
                 key={v.prefixo}
                 role="button"
                 tabIndex={0}
-                aria-label={`Abrir manutencao da viatura ${v.prefixo}`}
+                aria-label={`Abrir manutenção da viatura ${v.prefixo}`}
                 onClick={() => abrirManutencao(v)}
                 onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -275,7 +275,7 @@ export default function Frota() {
                     {statusStyle.label}
                   </span>
                   <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>
-                    Abrir manutencao
+                    Abrir manutenção
                   </span>
                 </div>
               </div>

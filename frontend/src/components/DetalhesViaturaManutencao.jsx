@@ -7,35 +7,35 @@ const fixedFields = [
   { label: 'Ano', key: 'ano' },
   { label: 'Placa', key: 'placa' },
   { label: 'Nº motor', key: 'numeroMotor' },
-  { label: 'Patrimonio', key: 'patrimonio' },
-  { label: 'Data inclusao na frota', key: 'dataInclusaoFrota' },
+  { label: 'Patrimônio', key: 'patrimonio' },
+  { label: 'Data inclusão na frota', key: 'dataInclusaoFrota' },
   { label: 'Tipo', key: 'tipo' },
-  { label: 'Tipo de oleo', key: 'tipoOleo' },
+  { label: 'Tipo de óleo', key: 'tipoOleo' },
   { label: 'Medida pneu', key: 'medidaPneu' },
   { label: 'Tipo de bateria / amperagem', key: 'tipoBateriaAmperagem' },
-  { label: 'Tipo oleo transmissao', key: 'tipoOleoTransmissao' },
-  { label: 'Tipo oleo motor', key: 'tipoOleoMotor' },
-  { label: 'Numeracao de radio', key: 'numeracaoRadio' },
+  { label: 'Tipo óleo transmissão', key: 'tipoOleoTransmissao' },
+  { label: 'Tipo óleo motor', key: 'tipoOleoMotor' },
+  { label: 'Numeração de rádio', key: 'numeracaoRadio' },
 ];
 
 const operationalFields = [
   { label: 'KM atual', key: 'km' },
-  { label: 'Prox. troca oleo KM', key: 'proximaTrocaOleoKm' },
-  { label: 'Prox. troca oleo tempo', key: 'proximaTrocaOleoTempo' },
-  { label: 'Status oleo KM', key: 'statusOleoKm' },
-  { label: 'Status oleo tempo', key: 'statusOleoTempo' },
-  { label: 'Revisao freio KM', key: 'revisaoFreioKm' },
+  { label: 'Prox. troca óleo KM', key: 'proximaTrocaOleoKm' },
+  { label: 'Prox. troca óleo tempo', key: 'proximaTrocaOleoTempo' },
+  { label: 'Status óleo KM', key: 'statusOleoKm' },
+  { label: 'Status óleo tempo', key: 'statusOleoTempo' },
+  { label: 'Revisão freio KM', key: 'revisaoFreioKm' },
   { label: 'Status freio', key: 'statusFreio' },
   { label: 'Bateria', key: 'statusBateria' },
   { label: 'Vencimento bateria', key: 'vencimentoBateria' },
   { label: 'Pneus prox. troca', key: 'pneusProximaTroca' },
   { label: 'Embreagem prox. troca', key: 'embreagemProximaTroca' },
-  { label: 'Lavagem/lubrificacao', key: 'dataLavagemLubrificacao' },
+  { label: 'Lavagem/lubrificação', key: 'dataLavagemLubrificacao' },
 ];
 
 function getValue(viatura, key) {
   const value = viatura?.[key];
-  if (value === null || value === undefined || value === '') return 'Nao informado';
+  if (value === null || value === undefined || value === '') return 'Não informado';
   return value;
 }
 
@@ -93,7 +93,7 @@ export default function DetalhesViaturaManutencao({ viatura, onClear }) {
       <DetailGrid fields={fixedFields} viatura={viatura} />
 
       <div style={{ marginTop: 18, marginBottom: 10, fontWeight: 700, color: 'var(--color-text)' }}>
-        Dados operacionais de manutencao
+        Dados operacionais de manutenção
       </div>
       <DetailGrid fields={operationalFields} viatura={viatura} />
     </div>

@@ -3,10 +3,10 @@ import React from 'react';
 const DEFAULT_STATES = {
   loading: {
     title: 'Carregando dados',
-    message: 'Aguarde enquanto buscamos as informacoes da tela.',
+    message: 'Aguarde enquanto buscamos as informações da tela.',
   },
   error: {
-    title: 'Nao foi possivel carregar os dados',
+    title: 'Não foi possível carregar os dados',
     message: 'Tente novamente em instantes.',
   },
   empty: {

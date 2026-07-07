@@ -37,19 +37,19 @@ function Header({ onLogout, sidebarVisible, onToggleSidebar }) {
       </div>
 
       <div className="brand-header-brand">
-        <img src={logo17gb} alt="Brasao 17 GB" width={48} height={48} className="brand-header-logo" />
+        <img src={logo17gb} alt="Brasão 17º GB" width={48} height={48} className="brand-header-logo" />
         <div className="brand-header-brand-text">
-          <div className="brand-header-title">17 Grupamento de Bombeiros</div>
-          <div className="brand-header-subtitle">Corpo de Bombeiros Militar do Estado de Sao Paulo</div>
+          <div className="brand-header-title">17º Grupamento de Bombeiros</div>
+          <div className="brand-header-subtitle">Corpo de Bombeiros Militar do Estado de São Paulo</div>
         </div>
       </div>
 
       <div className="brand-header-org">
         <div className="brand-header-org-text">
           <div className="brand-header-org-title">CBMESP</div>
-          <div className="brand-header-org-subtitle">Secretaria da Seguranca Publica</div>
+          <div className="brand-header-org-subtitle">Secretaria da Segurança Pública</div>
         </div>
-        <img src={logocb} alt="Brasao CBMESP" width={48} height={48} className="brand-header-logo" />
+        <img src={logocb} alt="Brasão CBMESP" width={48} height={48} className="brand-header-logo" />
         {onLogout && (
           <button onClick={onLogout} title="Sair" className="brand-header-logout">
             Sair

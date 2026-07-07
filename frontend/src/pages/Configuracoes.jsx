@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { deleteUsuario, getMe, getUsuarios, updateUsuario } from '../services/api';
 
 const statusLabels = {
-  pendente: 'Aguardando liberacao',
+  pendente: 'Aguardando liberação',
   ativo: 'Ativo',
   inativo: 'Inativo',
 };
@@ -257,7 +257,7 @@ function Configuracoes() {
       setUsuarios(res.data || []);
       setError('');
     } catch (e) {
-      setError(getApiError(e, 'Erro ao carregar usuarios.'));
+      setError(getApiError(e, 'Erro ao carregar usuários.'));
     } finally {
       setLoadingUsers(false);
     }
@@ -269,7 +269,7 @@ function Configuracoes() {
         const user = await getMe();
         setCurrentUser(user);
       } catch (e) {
-        setError(getApiError(e, 'Nao foi possivel validar seu usuario.'));
+        setError(getApiError(e, 'Não foi possível validar seu usuário.'));
       } finally {
         setLoadingCurrentUser(false);
       }
@@ -292,7 +292,7 @@ function Configuracoes() {
       showSuccess(successMessage);
       await loadUsuarios();
     } catch (e) {
-      setError(getApiError(e, 'Nao foi possivel concluir a acao.'));
+      setError(getApiError(e, 'Não foi possível concluir a ação.'));
     } finally {
       setActionId(null);
     }
@@ -302,7 +302,7 @@ function Configuracoes() {
     runUserAction(
       user.id,
       () => updateUsuario(user.id, { status: 'ativo' }),
-      'Usuario liberado com sucesso.'
+      'Usuário liberado com sucesso.'
     );
   };
 
@@ -315,16 +315,16 @@ function Configuracoes() {
   };
 
   const handleInativar = (user) => {
-    if (!window.confirm(`Inativar o usuario ${user.nome}?`)) return;
+    if (!window.confirm(`Inativar o usuário ${user.nome}?`)) return;
     runUserAction(
       user.id,
       () => updateUsuario(user.id, { status: 'inativo' }),
-      'Usuario inativado com sucesso.'
+      'Usuário inativado com sucesso.'
     );
   };
 
   const handleResetSenha = (user) => {
-    const novaSenha = window.prompt(`Nova senha para ${user.nome} (minimo 6 caracteres):`);
+    const novaSenha = window.prompt(`Nova senha para ${user.nome} (mínimo 6 caracteres):`);
     if (novaSenha === null) return;
 
     if (novaSenha.length < 6) {
@@ -341,15 +341,15 @@ function Configuracoes() {
 
   const handleExcluir = (user) => {
     if (user.id === currentUser?.id) {
-      setError('Administrador nao pode excluir a propria conta.');
+      setError('Administrador não pode excluir a própria conta.');
       return;
     }
 
-    if (!window.confirm(`Excluir definitivamente o usuario ${user.nome}?`)) return;
+    if (!window.confirm(`Excluir definitivamente o usuário ${user.nome}?`)) return;
     runUserAction(
       user.id,
       () => deleteUsuario(user.id),
-      'Usuario excluido com sucesso.'
+      'Usuário excluído com sucesso.'
     );
   };
 
@@ -364,13 +364,13 @@ function Configuracoes() {
     }, {});
 
     if (loadingCurrentUser) {
-      return <div className="loading">Validando permissoes...</div>;
+      return <div className="loading">Validando permissões...</div>;
     }
 
     if (!isAdmin) {
       return (
         <div className="empty-state" style={{ textAlign: 'left' }}>
-          Gerenciamento de usuarios disponivel apenas para administradores.
+          Gerenciamento de usuários disponível apenas para administradores.
         </div>
       );
     }
@@ -382,15 +382,15 @@ function Configuracoes() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filtrar usuarios por status"
+              aria-label="Filtrar usuários por status"
             >
               <option value="">Todos os status ({usuarios.length})</option>
-              <option value="pendente">Aguardando liberacao ({statusCounts.pendente || 0})</option>
+              <option value="pendente">Aguardando liberação ({statusCounts.pendente || 0})</option>
               <option value="ativo">Ativos ({statusCounts.ativo || 0})</option>
               <option value="inativo">Inativos ({statusCounts.inativo || 0})</option>
             </select>
             <span className="text-muted" style={{ fontSize: '0.85rem' }}>
-              Sua conta ativa/admin aparece em Ativos, nao em Aguardando liberacao.
+              Sua conta ativa/admin aparece em Ativos, não em Aguardando liberação.
             </span>
           </div>
           <button className="btn-small" type="button" onClick={() => loadUsuarios()}>
@@ -399,12 +399,12 @@ function Configuracoes() {
         </div>
 
         {loadingUsers ? (
-          <div className="loading">Carregando usuarios...</div>
+          <div className="loading">Carregando usuários...</div>
         ) : visibleUsuarios.length === 0 ? (
           <div className="empty-state">
             {statusFilter === 'pendente'
-              ? 'Nenhum usuario aguardando liberacao no momento.'
-              : 'Nenhum usuario encontrado para o filtro selecionado.'}
+              ? 'Nenhum usuário aguardando liberação no momento.'
+              : 'Nenhum usuário encontrado para o filtro selecionado.'}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -416,7 +416,7 @@ function Configuracoes() {
                   <th>Perfil</th>
                   <th>Status</th>
                   <th>Data de cadastro</th>
-                  <th>Acoes</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -431,7 +431,7 @@ function Configuracoes() {
                         onChange={(e) => handlePerfilChange(user, e.target.value)}
                         disabled={actionId === user.id || user.id === currentUser?.id}
                         aria-label={`Alterar perfil de ${user.nome}`}
-                        title={user.id === currentUser?.id ? 'Nao e permitido remover o proprio perfil admin' : 'Alterar perfil'}
+                        title={user.id === currentUser?.id ? 'Não é permitido remover o próprio perfil admin' : 'Alterar perfil'}
                       >
                         <option value="admin">Administrador</option>
                         <option value="operador">Operador</option>
@@ -462,7 +462,7 @@ function Configuracoes() {
                             type="button"
                             onClick={() => handleInativar(user)}
                             disabled={actionId === user.id || user.id === currentUser?.id}
-                            title={user.id === currentUser?.id ? 'Nao e permitido inativar a propria conta' : 'Inativar usuario'}
+                            title={user.id === currentUser?.id ? 'Não é permitido inativar a própria conta' : 'Inativar usuário'}
                           >
                             Inativar
                           </button>
@@ -472,7 +472,7 @@ function Configuracoes() {
                           type="button"
                           onClick={() => handleResetSenha(user)}
                           disabled={actionId === user.id}
-                          title="Redefinir senha do usuario"
+                          title="Redefinir senha do usuário"
                         >
                           Redefinir senha
                         </button>
@@ -481,7 +481,7 @@ function Configuracoes() {
                           type="button"
                           onClick={() => handleExcluir(user)}
                           disabled={actionId === user.id || user.id === currentUser?.id}
-                          title={user.id === currentUser?.id ? 'Nao e permitido excluir a propria conta' : 'Excluir usuario'}
+                          title={user.id === currentUser?.id ? 'Não é permitido excluir a própria conta' : 'Excluir usuário'}
                         >
                           Excluir
                         </button>
@@ -499,14 +499,14 @@ function Configuracoes() {
 
   return (
     <div>
-      <h1 className="page-title">Configuracoes do Sistema</h1>
+      <h1 className="page-title">Configurações do Sistema</h1>
 
       {error && <div className="error-msg">{error}</div>}
       {successMsg && <div className="success-msg">{successMsg}</div>}
 
       <div className="card mb-20">
         <div className="section-header">
-          <h3 className="section-title">Gerenciamento de Usuarios</h3>
+          <h3 className="section-title">Gerenciamento de Usuários</h3>
         </div>
         {renderUserManagement()}
       </div>

@@ -39,13 +39,13 @@ export default function Login({ onLogin }) {
       const email = form.email.trim().toLowerCase();
 
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setErro('Informe um email valido.');
+        setErro('Informe um email válido.');
         return;
       }
 
       if (modo === 'recuperar') {
         await solicitarRecuperacaoSenha(email);
-        setSucesso('Solicitacao recebida. Procure um administrador para redefinir sua senha.');
+        setSucesso('Solicitação recebida. Procure um administrador para redefinir sua senha.');
         setModo('login');
         setForm({ ...emptyForm, email });
         return;
@@ -59,7 +59,7 @@ export default function Login({ onLogin }) {
       if (modo === 'login') {
         const data = await login(email, form.password);
         if (!data?.access_token) {
-          setErro('Resposta invalida do servidor. Tente novamente.');
+          setErro('Resposta inválida do servidor. Tente novamente.');
           return;
         }
         localStorage.setItem('token', data.access_token);
@@ -72,7 +72,7 @@ export default function Login({ onLogin }) {
         return;
       }
       if (form.password !== form.confirmar) {
-        setErro('As senhas nao coincidem.');
+        setErro('As senhas não coincidem.');
         return;
       }
       if (form.password.length < 6) {
@@ -87,7 +87,7 @@ export default function Login({ onLogin }) {
         cargo: form.cargo || null,
         unidade: form.unidade || null,
       });
-      setSucesso('Cadastro enviado. Aguarde a liberacao de um administrador para acessar o sistema.');
+      setSucesso('Cadastro enviado. Aguarde a liberação de um administrador para acessar o sistema.');
       setModo('login');
       setForm({ ...emptyForm, email });
     } catch (err) {
@@ -97,11 +97,11 @@ export default function Login({ onLogin }) {
       } else if (Array.isArray(detail) && detail[0]?.msg) {
         setErro(detail[0].msg);
       } else if (!err?.response) {
-        setErro('Nao foi possivel conectar ao servidor. Verifique sua conexao e tente novamente.');
+        setErro('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
       } else if (modo === 'login') {
         setErro('Email ou senha incorretos.');
       } else if (modo === 'recuperar') {
-        setErro('Nao foi possivel solicitar a recuperacao. Verifique o email e tente novamente.');
+        setErro('Não foi possível solicitar a recuperação. Verifique o email e tente novamente.');
       } else {
         setErro('Erro ao cadastrar. Verifique os dados e tente novamente.');
       }
@@ -176,7 +176,6 @@ export default function Login({ onLogin }) {
           onError={e => { e.target.style.display = 'none'; }} />
         <div style={{ color: 'white' }}>
           <div style={{ fontWeight: 800, fontSize: '1.3rem', letterSpacing: 1 }}>Painel de Gestão 17º GB</div>
-          <div style={{ fontSize: '0.82rem', opacity: 0.85 }}>Gestao de Frota - CBMESP</div>
         </div>
         <img src={logocb} alt="CBMESP" width={56} height={56}
           style={{ objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }}
@@ -207,7 +206,7 @@ export default function Login({ onLogin }) {
             background: '#eff6ff', color: '#1d4ed8', padding: '10px 14px',
             borderRadius: 8, marginBottom: 16, fontSize: '0.88rem', border: '1px solid #bfdbfe',
           }}>
-            Apos o cadastro, o acesso fica aguardando liberacao de um administrador.
+            Após o cadastro, o acesso fica aguardando liberação de um administrador.
           </div>
         )}
 
@@ -231,7 +230,7 @@ export default function Login({ onLogin }) {
                 Nome completo *
               </label>
               <input name="nome" value={form.nome} onChange={handle} required
-                placeholder="Sd PM Joao Silva" style={inputStyle} />
+                placeholder="Sd PM João Silva" style={inputStyle} />
             </div>
           )}
 
@@ -249,7 +248,7 @@ export default function Login({ onLogin }) {
             value: form.password,
             show: showPassword,
             setShow: setShowPassword,
-            placeholder: modo === 'cadastro' ? 'Minimo 6 caracteres' : 'Sua senha',
+            placeholder: modo === 'cadastro' ? 'Mínimo 6 caracteres' : 'Sua senha',
             autoComplete: modo === 'login' ? 'current-password' : 'new-password',
           })}
 
@@ -290,7 +289,7 @@ export default function Login({ onLogin }) {
               fontSize: '1rem', cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'background 0.2s', letterSpacing: 0.5,
             }}>
-            {loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : modo === 'cadastro' ? 'Criar conta' : 'Solicitar recuperacao'}
+            {loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : modo === 'cadastro' ? 'Criar conta' : 'Solicitar recuperação'}
           </button>
         </form>
       </div>

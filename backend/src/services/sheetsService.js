@@ -20,7 +20,7 @@ async function fetchSheetData(sheetName, gid = null) {
   if (!res.ok) throw new Error(`HTTP ${res.status} ao buscar aba "${sheetName}"`);
   const text = await res.text();
   const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-  if (!match) throw new Error(`Resposta invalida da aba "${sheetName}"`);
+  if (!match) throw new Error(`Resposta inválida da aba "${sheetName}"`);
   return JSON.parse(match[1]);
 }
 

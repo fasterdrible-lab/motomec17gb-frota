@@ -61,7 +61,7 @@ function Abastecimentos() {
   return (
     <div style={{ padding: '0 0 32px' }}>
       <div style={{ background: '#1a1a1a', padding: '8px 20px', color: 'white', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
-        <span>Sistema de Gestao de Frota - Abastecimentos</span>
+        <span>Sistema de Gestão de Frota - Abastecimentos</span>
       </div>
       <div style={{ padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -80,7 +80,7 @@ function Abastecimentos() {
             { label: 'Total de Registros', value: filtrados.length, color: '#0e7490' },
             { label: 'Total em Litros', value: `${totalLitros.toFixed(1)} L`, color: '#15803d' },
             { label: 'Total Gasto', value: fmtMoeda(totalValor), color: '#d97706' },
-            { label: 'Media por Abastecimento', value: fmtMoeda(mediaPorAbast), color: '#7c3aed' },
+            { label: 'Média por Abastecimento', value: fmtMoeda(mediaPorAbast), color: '#7c3aed' },
           ].map(c => (
             <div key={c.label} style={{ background: 'white', borderRadius: 8, padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', borderTop: `3px solid ${c.color}` }}>
               <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1a1a2e' }}>{c.value}</div>

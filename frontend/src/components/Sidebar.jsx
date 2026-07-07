@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 
 const submenuMotomec = [
   { path: '/frota', icon: '🚗', label: 'Frota' },
-  { path: '/manutencao', icon: '🔧', label: 'Manutencao' },
+  { path: '/manutencao', icon: '🔧', label: 'Manutenção' },
   { path: '/alertas', icon: '⚠️', label: 'Alertas' },
   { path: '/gastos', icon: '💰', label: 'Gastos' },
   { path: '/tarefas', icon: '📋', label: 'Tarefas' },
@@ -15,7 +15,7 @@ const submenuMotomec = [
 function Sidebar({ onClose }) {
   const location = useLocation();
   const isMotomecActive = submenuMotomec.some(item => location.pathname === item.path) || location.pathname === '/dashboard';
-  const isLogisticaActive = location.pathname.startsWith('/logistica');
+  const isLogisticaActive = location.pathname.startsWith('/logistica') || location.pathname === '/inventario';
   const isPatrimonioActive = location.pathname.startsWith('/logistica/patrimonio');
 
   const [motomecOpen, setMotomecOpen] = useState(isMotomecActive);
@@ -107,16 +107,6 @@ function Sidebar({ onClose }) {
           </div>
         )}
 
-        {/* INVENTÁRIO */}
-        <NavLink
-          to="/inventario"
-          onClick={onClose}
-          className={({ isActive }) => `sidebar-item sidebar-main-item ${isActive ? 'active' : ''}`}
-        >
-          <span className="sidebar-icon">📷</span>
-          <span>INVENTÁRIO</span>
-        </NavLink>
-
         {/* LOGÍSTICA */}
         <div className={`sidebar-item sidebar-main-item ${isLogisticaActive ? 'active' : ''}`} style={{ paddingRight: 12 }}>
           <NavLink
@@ -139,7 +129,7 @@ function Sidebar({ onClose }) {
           <button
             type="button"
             onClick={() => setLogisticaOpen(v => !v)}
-            aria-label={logisticaOpen ? 'Ocultar subitens de logistica' : 'Mostrar subitens de logistica'}
+            aria-label={logisticaOpen ? 'Ocultar subitens de logística' : 'Mostrar subitens de logística'}
             style={{
               marginLeft: 8,
               width: 28,
@@ -161,6 +151,16 @@ function Sidebar({ onClose }) {
 
         {logisticaOpen && (
           <>
+            <NavLink
+              to="/inventario"
+              onClick={onClose}
+              className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
+              style={subItemStyle}
+            >
+              <span className="sidebar-icon">📷</span>
+              <span>Inventário</span>
+            </NavLink>
+
             <NavLink
               to="/logistica/mat-operacionais"
               onClick={onClose}

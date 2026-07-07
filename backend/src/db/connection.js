@@ -42,7 +42,7 @@ async function initializeDb() {
        VALUES (?, ?, ?, ?, ?, 'admin', 'ativo')`,
       ['Admin Teste', 'admin@cbmesp.sp.gov.br', `${salt}:${hash}`, 'Comandante', '17GB']
     );
-    console.log('[db] Admin padrao criado: admin@cbmesp.sp.gov.br / admin123');
+    console.log('[db] Admin padrão criado: admin@cbmesp.sp.gov.br / admin123');
   }
 
   console.log('[db] Banco inicializado.');
