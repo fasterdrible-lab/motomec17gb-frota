@@ -87,6 +87,7 @@ function Sidebar({ onClose }) {
           <div className="sidebar-submenu">
             <NavLink
               to="/dashboard"
+              onClick={onClose}
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
             >
               <span className="sidebar-icon">🏠</span>
@@ -96,6 +97,7 @@ function Sidebar({ onClose }) {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={onClose}
                 className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
               >
                 <span className="sidebar-icon">{item.icon}</span>
@@ -108,6 +110,7 @@ function Sidebar({ onClose }) {
         {/* INVENTÁRIO */}
         <NavLink
           to="/inventario"
+          onClick={onClose}
           className={({ isActive }) => `sidebar-item sidebar-main-item ${isActive ? 'active' : ''}`}
         >
           <span className="sidebar-icon">📷</span>
@@ -119,6 +122,7 @@ function Sidebar({ onClose }) {
           <NavLink
             to="/logistica"
             end
+            onClick={onClose}
             className="sidebar-item"
             style={{
               flex: 1,
@@ -159,6 +163,7 @@ function Sidebar({ onClose }) {
           <>
             <NavLink
               to="/logistica/mat-operacionais"
+              onClick={onClose}
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
               style={subItemStyle}
             >
@@ -168,6 +173,7 @@ function Sidebar({ onClose }) {
 
             <NavLink
               to="/logistica/pas-dea-reparos"
+              onClick={onClose}
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
               style={subItemStyle}
             >
@@ -190,6 +196,7 @@ function Sidebar({ onClose }) {
               <>
                 <NavLink
                   to="/logistica/patrimonio/prefeitura"
+                  onClick={onClose}
                   className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
                   style={subSubItemStyle}
                 >
@@ -198,6 +205,7 @@ function Sidebar({ onClose }) {
                 </NavLink>
                 <NavLink
                   to="/logistica/patrimonio/estado"
+                  onClick={onClose}
                   className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
                   style={subSubItemStyle}
                 >
@@ -206,6 +214,7 @@ function Sidebar({ onClose }) {
                 </NavLink>
                 <NavLink
                   to="/logistica/patrimonio/inclusao"
+                  onClick={onClose}
                   className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
                   style={subSubItemStyle}
                 >
@@ -214,6 +223,7 @@ function Sidebar({ onClose }) {
                 </NavLink>
                 <NavLink
                   to="/logistica/patrimonio/exclusao"
+                  onClick={onClose}
                   className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
                   style={subSubItemStyle}
                 >
@@ -225,6 +235,7 @@ function Sidebar({ onClose }) {
 
             <NavLink
               to="/logistica/relatorio"
+              onClick={onClose}
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
               style={subItemStyle}
             >
@@ -236,6 +247,7 @@ function Sidebar({ onClose }) {
 
         <NavLink
           to="/configuracoes"
+          onClick={onClose}
           className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
         >
           <span className="sidebar-icon">⚙️</span>

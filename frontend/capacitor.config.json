@@ -1,6 +1,6 @@
 {
   "appId": "br.mil.sp.cbm.motomec17gb",
-  "appName": "MOTOMEC 17GB Frota",
+  "appName": "Painel de Gestão",
   "webDir": "dist-capacitor",
   "server": {
     "androidScheme": "https"

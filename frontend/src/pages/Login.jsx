@@ -175,7 +175,7 @@ export default function Login({ onLogin }) {
           style={{ objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }}
           onError={e => { e.target.style.display = 'none'; }} />
         <div style={{ color: 'white' }}>
-          <div style={{ fontWeight: 800, fontSize: '1.3rem', letterSpacing: 1 }}>MOTOMEC 17GB</div>
+          <div style={{ fontWeight: 800, fontSize: '1.3rem', letterSpacing: 1 }}>Painel de Gestão 17º GB</div>
           <div style={{ fontSize: '0.82rem', opacity: 0.85 }}>Gestao de Frota - CBMESP</div>
         </div>
         <img src={logocb} alt="CBMESP" width={56} height={56}
