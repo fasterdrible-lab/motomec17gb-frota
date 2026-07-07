@@ -58,6 +58,10 @@ export default function Login({ onLogin }) {
 
       if (modo === 'login') {
         const data = await login(email, form.password);
+        if (!data?.access_token) {
+          setErro('Resposta invalida do servidor. Tente novamente.');
+          return;
+        }
         localStorage.setItem('token', data.access_token);
         onLogin();
         return;

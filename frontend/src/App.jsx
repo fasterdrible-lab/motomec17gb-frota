@@ -22,12 +22,17 @@ import './styles/App.css';
 
 const routerBasename = import.meta.env.VITE_BUILD_TARGET === 'capacitor' ? '' : '/motomec17gb-frota';
 
+function hasValidToken() {
+  const token = localStorage.getItem('token');
+  return !!token && token !== 'undefined' && token !== 'null';
+}
+
 function App() {
-  const [autenticado, setAutenticado] = useState(!!localStorage.getItem('token'));
+  const [autenticado, setAutenticado] = useState(hasValidToken());
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
   useEffect(() => {
-    const onStorage = () => setAutenticado(!!localStorage.getItem('token'));
+    const onStorage = () => setAutenticado(hasValidToken());
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
@@ -52,7 +57,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter basename="/motomec17gb-frota">
+    <BrowserRouter basename={routerBasename}>
       <div className={`app-layout ${sidebarVisible ? 'app-layout-sidebar-open' : 'app-layout-sidebar-hidden'}`}>
         {sidebarVisible && <Sidebar onClose={() => setSidebarVisible(false)} />}
         <div className="main-content">
