@@ -763,7 +763,7 @@ Deploy:
 
 ## Issue 020 - Migrar Frota para backend
 
-Status: `[done]` — codigo commitado (b9e1dbd) e pushado para GitHub; deploy na VPS pendente
+Status: `[done]` — deployado na VPS em 2026-07-07
 
 Objetivo:
 
@@ -802,11 +802,11 @@ Cenarios:
 
 Deploy:
 
-- Mesmo comando de redeploy do backend (ver ARCHITECTURE.md). Nenhuma variavel nova necessaria.
+- Deployado na VPS em 2026-07-07. Bug encontrado durante o deploy: `backend/src/routes/frota.js` importava `authMiddleware` sem desestruturar (`const authMiddleware = require(...)` em vez de `const { authMiddleware } = require(...)`), o que derrubava o backend no boot (`Route.get() requires a callback function but got a [object Object]`). Corrigido e pushado (commit `290b062`).
 
 ## Issue 021 - Modulo Patrimonio (Logistica)
 
-Status: `[done]` — codigo commitado (b9e1dbd) e pushado; deploy na VPS pendente (junto com Issue 020)
+Status: `[done]` — deployado na VPS em 2026-07-07
 
 Objetivo:
 
@@ -843,11 +843,11 @@ Cenarios:
 
 Deploy:
 
-- Rebuild do frontend necessario (ja incluido no plano de deploy da Issue 020 — ver CURRENT_STATE.md).
+- Deployado na VPS em 2026-07-07 (rebuild do frontend junto com Issue 020).
 
 ## Issue 022 - Modulo Inventario com Scanner de Camera
 
-Status: `[done]` — codigo commitado (a91be9c) e pushado; deploy na VPS pendente (junto com Issues 020 e 021)
+Status: `[done]` — deployado na VPS em 2026-07-07
 
 Objetivo:
 
@@ -912,4 +912,4 @@ Cenarios:
 
 Deploy:
 
-- Rebuild do frontend necessario. Nenhuma variavel de ambiente nova. Nenhuma alteracao de backend.
+- Deployado na VPS em 2026-07-07. Nenhuma variavel de ambiente nova.

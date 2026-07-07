@@ -1,16 +1,21 @@
 # Current State — MOTOMEC 17GB Frota
 
-Atualizado em: 2026-06-15
+Atualizado em: 2026-07-07
 
 ## Status geral
 
 Aplicacao em producao em https://motomec17gb-frota.com.br.
-Proximo passo recomendado: **deploy na VPS** — git pull + rebuild backend + rebuild frontend (ver secao "Pendencias" abaixo para os comandos exatos).
+Deploy das Issues 020, 021 e 022 concluido na VPS em 2026-07-07 (backend + frontend rebuildados e trocados). Site publico verificado retornando 200 apos o deploy.
 
-Commits pendentes de deploy (codigo no GitHub, nao aplicado na VPS ainda):
-- `b9e1dbd` — Issue 020 (backend /api/frota/detalhada) + Issue 021 (Patrimonio)
-- `77b4cb4` — Issue 022 Inventario v1 (dados de amostra)
-- `a91be9c` — Issue 022 Inventario v2 (dados reais — 1.334 itens do Inventario_Estado.xlsx)
+---
+
+## Deploy 2026-07-07 — Issues 020, 021, 022
+
+- `git pull origin main` na VPS: `fecd5ab` → `290b062` (commits `b9e1dbd`, `8a3d9a7`, `4a5226f`, `77b4cb4`, `a91be9c`, `45631c8`, `290b062`).
+- Antes do pull, a VPS tinha uma alteracao manual nao commitada em `backend/src/services/sheetsService.js` (o mesmo fix das Issues 018/019 aplicado direto no servidor, sem commit). Foi feito `git stash` antes do pull; o conteudo do stash ficou superado pelo codigo puxado (confirmado por diff). Stash preservado em `stash@{0}` na VPS, nao descartado.
+- **Bug encontrado durante o deploy:** `backend/src/routes/frota.js` fazia `const authMiddleware = require('../middleware/auth')` sem desestruturar — o modulo exporta `{ authMiddleware, requireAdmin }`, entao `authMiddleware` chegava como objeto em vez de funcao. Isso derrubava o container do backend no boot (`Route.get() requires a callback function but got a [object Object]`). Corrigido para `const { authMiddleware } = require('../middleware/auth')`, commitado e pushado (`290b062`), aplicado na VPS e no repositorio.
+- Rede Docker usada para o backend: `motomec17gb_default` (nao `motomec-net` como o comando antigo documentado abaixo sugeria — corrigido nesta secao).
+- Backend e frontend verificados apos o deploy: `GET /api/health` = 200, `GET /api/frota/detalhada` = 401 sem token (esperado), `GET /motomec17gb-frota/` = 200, site publico = 200.
 
 ---
 
@@ -260,7 +265,7 @@ Funcionalidade: inventario fisico por leitura de codigo de barras (Chapa) com va
 
 ## Pendencias
 
-### Deploy na VPS (URGENTE — Issues 020, 021 e 022)
+### Comando de redeploy (referencia — rede corrigida para `motomec17gb_default`)
 
 Rodar na VPS como root em `/opt/motomec17gb-frota`:
 
@@ -268,19 +273,19 @@ Rodar na VPS como root em `/opt/motomec17gb-frota`:
 # 1. Atualizar codigo
 git pull origin main
 
-# 2. Rebuild e restart backend (ativa GET /api/frota/detalhada)
+# 2. Rebuild e restart backend
 docker build -t motomec17gb-backend-node ./backend
-docker stop motomec17gb-backend-1 && docker rm motomec17gb-backend-1
+docker rm -f motomec17gb-backend-1
 docker run -d --name motomec17gb-backend-1 \
-  --network motomec-net \
+  --network motomec17gb_default \
   --env-file /opt/motomec17gb-frota/.env.backend \
   -p 8001:8000 motomec17gb-backend-node
 
-# 3. Rebuild e restart frontend (ativa Patrimonio + melhorias UI)
+# 3. Rebuild e restart frontend
 docker build -t motomec17gb-frontend \
   --build-arg VITE_API_URL=https://motomec17gb-frota.com.br \
   ./frontend
-docker stop motomec17gb-frontend-1 && docker rm motomec17gb-frontend-1
+docker rm -f motomec17gb-frontend-1
 docker run -d --name motomec17gb-frontend-1 \
   -p 8080:80 motomec17gb-frontend
 ```
