@@ -2,7 +2,7 @@
 
 const { Router } = require('express');
 const { getFrotaDetalhada } = require('../services/sheetsService');
-const authMiddleware = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = Router();
 
