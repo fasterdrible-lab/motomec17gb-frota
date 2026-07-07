@@ -60,6 +60,7 @@ function App() {
     <BrowserRouter basename={routerBasename}>
       <div className={`app-layout ${sidebarVisible ? 'app-layout-sidebar-open' : 'app-layout-sidebar-hidden'}`}>
         {sidebarVisible && <Sidebar onClose={() => setSidebarVisible(false)} />}
+        {sidebarVisible && <div className="sidebar-backdrop" onClick={() => setSidebarVisible(false)} />}
         <div className="main-content">
           <Header
             onLogout={handleLogout}
