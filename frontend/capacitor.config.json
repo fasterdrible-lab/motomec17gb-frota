@@ -1,5 +1,9 @@
 {
   "appId": "br.mil.sp.cbm.motomec17gb",
   "appName": "MOTOMEC 17GB Frota",
-  "webDir": "dist-capacitor"
+  "webDir": "dist-capacitor",
+  "server": {
+    "hostname": "motomec17gb-frota.com.br",
+    "androidScheme": "https"
+  }
 }
