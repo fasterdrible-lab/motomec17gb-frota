@@ -9,10 +9,31 @@ function parseDivisao(div) {
   return m ? m[1].trim() : div.trim();
 }
 
+// Normaliza o prefixo da divisão em um nome de setor legível.
+// Os dados tem grafias inconsistentes ("1 SGB" vs "1SGB"), entao usamos
+// regex em vez de comparar a string inteira.
+function getSetor(divisaoLabel) {
+  if (/^1\s*SGB/i.test(divisaoLabel)) return '1º SGB';
+  if (/^2\s*SGB/i.test(divisaoLabel)) return '2º SGB';
+  if (/^EM\b/i.test(divisaoLabel)) return 'Estado-Maior (EM)';
+  return divisaoLabel.split(' ')[0];
+}
+
 const TODOS_ITENS = patrimonioRaw.map(i => ({ ...i, divisaoLabel: parseDivisao(i.divisao) }));
 
 const DIVISOES = [...new Set(TODOS_ITENS.map(i => i.divisao))]
   .sort((a, b) => parseDivisao(a).localeCompare(parseDivisao(b)));
+
+// Mapa responsável → divisões sob sua responsabilidade (usado para filtrar
+// o dropdown de Divisão/Ambiente assim que o responsável e escolhido).
+const RESP_TO_DIVISOES = {};
+TODOS_ITENS.forEach(i => {
+  const r = (i.responsavel || '').trim();
+  if (!r) return;
+  if (!RESP_TO_DIVISOES[r]) RESP_TO_DIVISOES[r] = new Set();
+  RESP_TO_DIVISOES[r].add(i.divisao);
+});
+const RESPONSAVEIS = Object.keys(RESP_TO_DIVISOES).sort();
 
 const STATUS_COR = {
   ok:           { label: 'Correto',      cor: '#16a34a', bg: '#dcfce7', borda: '#86efac', icon: '✓' },
@@ -100,6 +121,11 @@ export default function Inventario() {
   // ─── STEP 1 — Configuração ───────────────────────────────────────────────
   if (step === 'configuracao') {
     const divisaoLabel = divisaoSel ? parseDivisao(divisaoSel) : '';
+    const divisoesDoResponsavel = responsavel ? [...(RESP_TO_DIVISOES[responsavel] || [])] : [];
+    const setoresDoResponsavel = [...new Set(divisoesDoResponsavel.map(d => getSetor(parseDivisao(d))))];
+    const divisoesDisponiveis = divisoesDoResponsavel
+      .slice()
+      .sort((a, b) => parseDivisao(a).localeCompare(parseDivisao(b)));
 
     return (
       <div style={{ maxWidth: 520, margin: '0 auto', padding: 24 }}>
@@ -112,26 +138,43 @@ export default function Inventario() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
+            <label style={labelStyle}>Responsável pelo setor</label>
+            <select
+              value={responsavel}
+              onChange={e => { setResponsavel(e.target.value); setDivisaoSel(''); }}
+              style={inputStyle}
+            >
+              <option value="">Selecione o responsável…</option>
+              {RESPONSAVEIS.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+
+          {responsavel && (
+            <div style={{ background: '#eff6ff', border: '1px solid #bae6fd', borderRadius: 10, padding: '10px 14px' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#1e40af' }}>
+                Setor{setoresDoResponsavel.length > 1 ? 'es' : ''}: <strong>{setoresDoResponsavel.join(', ')}</strong>
+                {' '}· {divisoesDisponiveis.length} divisões
+              </p>
+            </div>
+          )}
+
+          <div>
             <label style={labelStyle}>Divisão / Ambiente</label>
-            <select value={divisaoSel} onChange={e => setDivisaoSel(e.target.value)} style={inputStyle}>
-              <option value="">Selecione a divisão…</option>
-              {DIVISOES.map(d => (
+            <select
+              value={divisaoSel}
+              onChange={e => setDivisaoSel(e.target.value)}
+              style={inputStyle}
+              disabled={!responsavel}
+            >
+              <option value="">{responsavel ? 'Selecione a divisão…' : 'Selecione o responsável primeiro'}</option>
+              {divisoesDisponiveis.map(d => (
                 <option key={d} value={d}>
                   {parseDivisao(d)}
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Responsável pelo inventário</label>
-            <input
-              type="text"
-              value={responsavel}
-              onChange={e => setResponsavel(e.target.value)}
-              placeholder="Nome completo"
-              style={inputStyle}
-            />
           </div>
 
           {divisaoSel && (
@@ -144,12 +187,12 @@ export default function Inventario() {
           )}
 
           <button
-            disabled={!divisaoSel || !responsavel.trim()}
+            disabled={!divisaoSel || !responsavel}
             onClick={() => { setEscaneados({}); setStep('escaneando'); }}
             style={{
               ...btnPrimary,
-              opacity: (!divisaoSel || !responsavel.trim()) ? 0.45 : 1,
-              cursor: (!divisaoSel || !responsavel.trim()) ? 'not-allowed' : 'pointer',
+              opacity: (!divisaoSel || !responsavel) ? 0.45 : 1,
+              cursor: (!divisaoSel || !responsavel) ? 'not-allowed' : 'pointer',
               padding: '14px 0', fontSize: '1rem', marginTop: 8,
             }}
           >
