@@ -219,28 +219,23 @@ export default function Inventario() {
   const [cameraError, setCameraError] = useState('');
   const [cameraAtiva, setCameraAtiva] = useState(false);
   const [ocrBusy, setOcrBusy]         = useState(false);
+  const [ocrReady, setOcrReady]       = useState(false);
   const [busca, setBusca]             = useState('');
 
   const videoRef     = useRef(null);
-  const lastCodeRef  = useRef('');
   const processarRef = useRef(null);
+  const capturarRef  = useRef(null);
 
   const itensEsperados = TODOS_ITENS.filter(i => i.divisao === divisaoSel);
 
   // ─── Validação ──────────────────────────────────────────────────────────
-  // A trava de "nao repetir o mesmo codigo em 2s" existe para a camera (que
-  // tenta decodificar a cada ~500ms e leria o mesmo codigo varias vezes por
-  // frame). Ela so deve valer para leituras vindas da camera — validacao
-  // manual e uma acao explicita do usuario (clique/Enter) e deve sempre
-  // processar, mesmo que o codigo seja igual ao ultimo lido.
-  function processarScan(codigo, origem = 'manual') {
+  // O OCR agora so roda quando o usuario aperta o botao "Capturar" (nao mais
+  // continuamente), entao toda leitura — camera ou digitada — e uma acao
+  // explicita do usuario e deve sempre processar, mesmo que o codigo seja
+  // igual ao ultimo lido.
+  function processarScan(codigo) {
     const cod = codigo.trim();
     if (!cod) return;
-    if (origem === 'camera') {
-      if (cod === lastCodeRef.current) return;
-      lastCodeRef.current = cod;
-      setTimeout(() => { lastCodeRef.current = ''; }, 2000);
-    }
 
     const item = TODOS_ITENS.find(i => i.chapa === cod);
     let status;
@@ -257,7 +252,7 @@ export default function Inventario() {
     setTimeout(() => setFlashStatus(null), 1400);
   }
 
-  processarRef.current = (codigo) => processarScan(codigo, 'camera');
+  processarRef.current = processarScan;
 
   function validarManual() {
     const cod = manualInput.trim();
@@ -266,28 +261,30 @@ export default function Inventario() {
       return;
     }
     setManualAviso('');
-    processarScan(cod, 'manual');
+    processarScan(cod);
     setManualInput('');
   }
 
   // ─── Scanner lifecycle ───────────────────────────────────────────────────
   // O valor gravado nas barras do codigo de barras nem sempre e o mesmo
   // numero impresso na etiqueta — foi o que causava leituras "erradas".
-  // Por isso a camera agora faz OCR (reconhecimento de texto) apenas dos
-  // DIGITOS IMPRESSOS dentro da mira, em vez de tentar decodificar as
-  // barras. Mais lento por captura, mas o numero reconhecido e sempre o
-  // mesmo que esta escrito na etiqueta. Continua analisando so o recorte da
-  // mira (getCropRegion), pelo mesmo motivo de antes: nao pegar por engano
-  // o numero de uma etiqueta vizinha que esteja no campo de visao da camera.
+  // Por isso a camera faz OCR (reconhecimento de texto) apenas dos DIGITOS
+  // IMPRESSOS dentro da mira, em vez de tentar decodificar as barras.
+  //
+  // O OCR SO RODA quando o usuario aperta o botao "Capturar" — nao fica
+  // tentando ler sozinho o tempo todo. Rodar continuamente deixava a tela
+  // "lenta" (analise a cada ~60ms competindo por CPU o tempo todo), sem
+  // ganho real: o usuario ja precisa segurar o aparelho parado e focado pra
+  // funcionar, entao e melhor deixar ele escolher a hora certa de capturar.
   useEffect(() => {
     if (step !== 'escaneando') return;
     let stopped = false;
     let stream = null;
-    let loopTimer = null;
     let worker = null;
     setCameraError('');
     setCameraAtiva(false);
     setOcrBusy(false);
+    setOcrReady(false);
 
     const scanCanvas = document.createElement('canvas');
     const scanCtx = scanCanvas.getContext('2d');
@@ -357,14 +354,12 @@ export default function Inventario() {
           // numero certo com 95%+ de confianca.
           tessedit_pageseg_mode: PSM.SPARSE_TEXT,
         });
+        if (stopped) { await worker.terminate(); return; }
 
-        async function loop() {
-          if (stopped) return;
+        capturarRef.current = async () => {
+          if (stopped || !worker) return;
           const region = getCropRegion(video, video.parentElement);
-          if (!region || region.srcW <= 0 || region.srcH <= 0) {
-            loopTimer = setTimeout(loop, 300);
-            return;
-          }
+          if (!region || region.srcW <= 0 || region.srcH <= 0) return;
 
           scanCanvas.width = region.srcW;
           scanCanvas.height = region.srcH;
@@ -394,21 +389,20 @@ export default function Inventario() {
           try {
             const { data } = await worker.recognize(ocrCanvas);
             const digitos = extrairChapa(data.text);
-            if (digitos && !stopped) processarRef.current(digitos);
+            if (stopped) return;
+            if (digitos) {
+              setManualAviso('');
+              processarRef.current(digitos);
+            } else {
+              setManualAviso('Não consegui ler o número. Ajuste o foco/distância e capture de novo, ou digite manualmente.');
+            }
           } catch {
-            // frame ilegivel — tenta de novo no proximo ciclo
+            if (!stopped) setManualAviso('Erro ao processar a imagem. Tente capturar de novo.');
+          } finally {
+            if (!stopped) setOcrBusy(false);
           }
-          if (!stopped) {
-            setOcrBusy(false);
-            // Sem espera artificial extra — o proprio tempo do
-            // reconhecimento ja da uma pausa natural entre tentativas, e
-            // cada tentativa a mais aumenta a chance de pegar um enquadramento
-            // em que o SPARSE_TEXT consiga separar bem o numero do resto.
-            loopTimer = setTimeout(loop, 60);
-          }
-        }
-
-        loop();
+        };
+        setOcrReady(true);
       } catch {
         if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
@@ -417,11 +411,12 @@ export default function Inventario() {
     startScanner();
     return () => {
       stopped = true;
-      if (loopTimer) clearTimeout(loopTimer);
+      capturarRef.current = null;
       stream?.getTracks().forEach(t => t.stop());
       worker?.terminate();
       setCameraAtiva(false);
       setOcrBusy(false);
+      setOcrReady(false);
     };
   }, [step]);
 
@@ -590,9 +585,23 @@ export default function Inventario() {
           </div>
 
           {cameraAtiva && (
-            <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-              Centralize a etiqueta dentro da caixa. O código de barras é ignorado — só o número é lido.
-            </p>
+            <>
+              <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                Centralize a etiqueta dentro da caixa, espere focar e toque em Capturar.
+              </p>
+              <button
+                onClick={() => capturarRef.current?.()}
+                disabled={!ocrReady || ocrBusy}
+                style={{
+                  ...btnPrimary,
+                  width: '100%', padding: '12px 0', fontSize: '0.95rem', marginBottom: 14,
+                  opacity: (!ocrReady || ocrBusy) ? 0.6 : 1,
+                  cursor: (!ocrReady || ocrBusy) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {ocrBusy ? 'Analisando…' : ocrReady ? '📸 Capturar' : 'Preparando leitor…'}
+              </button>
+            </>
           )}
 
           {cameraError && (
