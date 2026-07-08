@@ -184,7 +184,12 @@ function detectarFaixaAposBarcode(canvas) {
   }
   if (melhorInicio === -1) return null;
 
-  const margem = Math.max(2, Math.round(h * 0.015));
+  // Margem generosa entre o codigo de barras detectado e o recorte do
+  // numero — testado com etiqueta real: com pouca margem, uma sombra fina
+  // das ultimas barras ainda aparece colada no numero e confunde o OCR
+  // (leu "211088" e "2118" em vez de "167207", provavelmente misturando
+  // resquicio de barra com digito).
+  const margem = Math.max(6, Math.round(h * 0.06));
   const alturaAbaixo = h - melhorFim;
   const alturaAcima = melhorInicio;
   if (alturaAbaixo >= alturaAcima) {
