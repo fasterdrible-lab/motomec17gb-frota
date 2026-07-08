@@ -414,22 +414,32 @@ export default function Inventario() {
           }
         }
 
-        capturarRef.current = () => { capturarUmaVez(); };
-
-        // Loop automatico: tenta de novo logo em seguida se nao achou nada
-        // (400ms — ML Kit e rapido o bastante pra isso nao pesar), e espera
-        // um pouco mais depois de um acerto (1200ms, tempo do flash de
-        // confirmacao na tela) pra nao reler a mesma etiqueta em sequencia
-        // enquanto o usuario ainda nao trocou de mira.
-        async function loop() {
-          if (stopped) return;
-          const achou = await capturarUmaVez();
-          if (stopped) return;
-          loopTimer = setTimeout(loop, achou ? 1200 : 400);
+        // Loop automatico: tenta de novo a cada 400ms (ML Kit e rapido o
+        // bastante pra isso nao pesar) enquanto nao acha nada — mas PARA
+        // assim que um numero e lido com sucesso, em vez de continuar
+        // tentando. O botao "Capturar agora" chama a mesma funcao: se o
+        // loop ja parou (ultima leitura deu certo), tocar nele forca uma
+        // tentativa imediata pra proxima etiqueta e reativa o loop
+        // automatico ate essa tentativa tambem dar certo.
+        let loopAtivo = false;
+        async function iniciarLoop() {
+          if (stopped || loopAtivo) return;
+          loopAtivo = true;
+          try {
+            while (!stopped) {
+              const achou = await capturarUmaVez();
+              if (stopped || achou) break;
+              await new Promise(resolve => { loopTimer = setTimeout(resolve, 400); });
+            }
+          } finally {
+            loopAtivo = false;
+          }
         }
 
+        capturarRef.current = () => { iniciarLoop(); };
+
         setOcrReady(true);
-        loop();
+        iniciarLoop();
       } catch {
         if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
@@ -614,7 +624,7 @@ export default function Inventario() {
           {cameraAtiva && (
             <>
               <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                Centralize a etiqueta dentro da caixa — a leitura acontece sozinha. Se demorar, toque em Capturar pra forçar agora.
+                Centralize a etiqueta — a leitura acontece sozinha e para ao confirmar um número. Pra próxima etiqueta, toque em Capturar.
               </p>
               <button
                 onClick={() => capturarRef.current?.()}
