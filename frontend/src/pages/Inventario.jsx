@@ -39,6 +39,49 @@ function getEB(divisaoLabel) {
   return nome ? `EB ${toTitleCase(nome)}` : 'Outros';
 }
 
+// Fracao da area VISIVEL do video (o retangulo da mira) que sera de fato
+// decodificada. Mantendo os dois usando a mesma constante garantimos que o
+// usuario so consegue ler o codigo de barras que aparece dentro da mira —
+// evita pegar por engano uma etiqueta vizinha que esteja no campo de visao
+// da camera mas fora da area que o usuario mirou.
+const MIRA_LARGURA_PCT = 0.8;
+const MIRA_ALTURA_PCT = 0.32;
+
+// Converte a mira (definida em % da area exibida do <video>, que usa
+// object-fit:cover) para coordenadas de pixel do frame REAL da camera, que
+// quase sempre tem uma resolucao/proporcao diferente da area exibida.
+function getCropRegion(video, containerEl) {
+  const videoW = video.videoWidth;
+  const videoH = video.videoHeight;
+  if (!videoW || !videoH) return null;
+
+  const rect = containerEl.getBoundingClientRect();
+  const containerW = rect.width;
+  const containerH = rect.height;
+  if (!containerW || !containerH) return null;
+
+  // object-fit:cover — a imagem e escalada para cobrir o container inteiro,
+  // cortando o excesso; precisamos do mesmo fator de escala para saber quais
+  // pixels do frame original correspondem ao que esta sendo exibido.
+  const scale = Math.max(containerW / videoW, containerH / videoH);
+  const displayedW = videoW * scale;
+  const displayedH = videoH * scale;
+  const offsetX = (displayedW - containerW) / 2;
+  const offsetY = (displayedH - containerH) / 2;
+
+  const boxW = containerW * MIRA_LARGURA_PCT;
+  const boxH = containerH * MIRA_ALTURA_PCT;
+  const boxX = (containerW - boxW) / 2;
+  const boxY = (containerH - boxH) / 2;
+
+  const srcX = (boxX + offsetX) / scale;
+  const srcY = (boxY + offsetY) / scale;
+  const srcW = boxW / scale;
+  const srcH = boxH / scale;
+
+  return { srcX, srcY, srcW, srcH };
+}
+
 const TODOS_ITENS = patrimonioRaw.map(i => ({ ...i, divisaoLabel: parseDivisao(i.divisao) }));
 
 const DIVISOES = [...new Set(TODOS_ITENS.map(i => i.divisao))]
@@ -79,7 +122,6 @@ export default function Inventario() {
   const [busca, setBusca]             = useState('');
 
   const videoRef     = useRef(null);
-  const controlsRef  = useRef(null);
   const lastCodeRef  = useRef('');
   const processarRef = useRef(null);
 
@@ -129,55 +171,84 @@ export default function Inventario() {
   }
 
   // ─── Scanner lifecycle ───────────────────────────────────────────────────
+  // Em vez de deixar o zxing decodificar o frame INTEIRO da camera
+  // (decodeFromConstraints), controlamos a captura manualmente e so
+  // decodificamos o retangulo recortado que corresponde a mira desenhada na
+  // tela. Isso evita que uma etiqueta vizinha, fora da area que o usuario
+  // mirou mas ainda dentro do campo de visao da camera, seja lida por
+  // engano — foi o que causou a leitura errada (mirou em uma chapa e o
+  // sistema trouxe o numero de outra que estava por perto).
   useEffect(() => {
     if (step !== 'escaneando') return;
     let stopped = false;
+    let stream = null;
+    let intervalId = null;
     setCameraError('');
     setCameraAtiva(false);
 
+    // TRY_HARDER faz o decoder tentar mais angulos/rotacoes por frame — mais
+    // lento, mas bem mais confiavel para etiquetas de patrimonio (codigo de
+    // barras pequeno, nem sempre alinhado).
+    const hints = new Map();
+    hints.set(DecodeHintType.TRY_HARDER, true);
+    const reader = new BrowserMultiFormatReader(hints);
+    const scanCanvas = document.createElement('canvas');
+    const scanCtx = scanCanvas.getContext('2d');
+
     async function startScanner() {
       try {
-        // TRY_HARDER faz o decoder tentar mais angulos/rotacoes por frame —
-        // mais lento por frame, mas bem mais confiavel para etiquetas de
-        // patrimonio (codigo de barras pequeno, nem sempre alinhado).
-        const hints = new Map();
-        hints.set(DecodeHintType.TRY_HARDER, true);
-        const reader = new BrowserMultiFormatReader(hints);
-
         // Sem largura/altura definidas o navegador pode escolher uma
         // resolucao baixa demais para ler um codigo de barras pequeno.
         // facingMode 'environment' pede a camera traseira.
-        const constraints = {
+        stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'environment',
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
-        };
+        });
+        if (stopped) { stream.getTracks().forEach(t => t.stop()); return; }
 
-        const controls = await reader.decodeFromConstraints(
-          constraints,
-          videoRef.current,
-          (result) => { if (result && !stopped) processarRef.current(result.getText()); }
-        );
-        if (!stopped) {
-          controlsRef.current = controls;
-          setCameraAtiva(true);
-          // Foco continuo ajuda muito em etiquetas pequenas de perto — nem
-          // todo aparelho suporta, entao e melhor esforco (nao trava nada
-          // se a API ou o modo nao existir).
-          try {
-            const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
-            const caps = track?.getCapabilities?.();
-            if (caps?.focusMode?.includes('continuous')) {
-              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-            }
-          } catch {
-            // sem suporte a controle de foco manual, segue com o padrao do aparelho
+        const video = videoRef.current;
+        video.srcObject = stream;
+        await video.play();
+        if (stopped) return;
+
+        setCameraAtiva(true);
+
+        // Foco continuo ajuda muito em etiquetas pequenas de perto — nem
+        // todo aparelho suporta, entao e melhor esforco (nao trava nada se a
+        // API ou o modo nao existir).
+        try {
+          const track = stream.getVideoTracks()[0];
+          const caps = track?.getCapabilities?.();
+          if (caps?.focusMode?.includes('continuous')) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
           }
-        } else {
-          controls.stop();
+        } catch {
+          // sem suporte a controle de foco manual, segue com o padrao do aparelho
         }
+
+        intervalId = setInterval(() => {
+          if (stopped || !video.videoWidth) return;
+          const region = getCropRegion(video, video.parentElement);
+          if (!region || region.srcW <= 0 || region.srcH <= 0) return;
+
+          scanCanvas.width = region.srcW;
+          scanCanvas.height = region.srcH;
+          scanCtx.drawImage(
+            video,
+            region.srcX, region.srcY, region.srcW, region.srcH,
+            0, 0, region.srcW, region.srcH
+          );
+
+          try {
+            const result = reader.decodeFromCanvas(scanCanvas);
+            if (result && !stopped) processarRef.current(result.getText());
+          } catch {
+            // nenhum codigo de barras nesse recorte — normal na maioria dos frames
+          }
+        }, 350);
       } catch {
         if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
@@ -186,8 +257,8 @@ export default function Inventario() {
     startScanner();
     return () => {
       stopped = true;
-      controlsRef.current?.stop();
-      controlsRef.current = null;
+      if (intervalId) clearInterval(intervalId);
+      stream?.getTracks().forEach(t => t.stop());
       setCameraAtiva(false);
     };
   }, [step]);
@@ -339,7 +410,9 @@ export default function Inventario() {
             <video ref={videoRef} style={{ width: '100%', display: 'block', maxHeight: 240, objectFit: 'cover' }} muted playsInline />
             {cameraAtiva && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <div style={{ width: 200, height: 80, border: '2px solid rgba(255,255,255,0.75)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.38)' }} />
+                {/* Precisa bater com MIRA_LARGURA_PCT/MIRA_ALTURA_PCT — só o
+                    que aparece dentro dessa caixa é de fato decodificado. */}
+                <div style={{ width: `${MIRA_LARGURA_PCT * 100}%`, height: `${MIRA_ALTURA_PCT * 100}%`, border: '2px solid rgba(255,255,255,0.75)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.38)' }} />
               </div>
             )}
             {!cameraAtiva && !cameraError && (
