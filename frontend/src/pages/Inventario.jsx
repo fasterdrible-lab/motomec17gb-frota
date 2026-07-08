@@ -43,21 +43,17 @@ function getEB(divisaoLabel) {
 // usuario so consegue ler o que aparece dentro da mira — evita pegar por
 // engano uma etiqueta vizinha que esteja no campo de visao da camera mas
 // fora da area que o usuario mirou. Tamanho generoso de proposito: o
-// usuario mira a etiqueta inteira (nao so o numero) — quem descarta o
-// codigo de barras e o recorte interno (ver CROP_NUMERO_* mais abaixo) e a
-// extracao de digitos, nao o enquadramento na tela.
+// usuario mira a etiqueta inteira (nao so o numero).
+//
+// Nao existe um recorte interno fixo pro numero (ja tentamos — testado com
+// etiqueta real, a posicao do numero DENTRO da mira varia bastante conforme
+// a distancia/angulo: as vezes fica na metade de baixo, as vezes na de
+// cima. Um recorte fixo acertava uma foto e cortava o numero fora em
+// outra). Quem descarta o codigo de barras e o SPARSE_TEXT (que segmenta a
+// imagem em blocos de texto soltos) + extrairChapa (que filtra o ruido do
+// codigo de barras pelo tamanho do candidato) — ver mais abaixo.
 const MIRA_LARGURA_PCT = 0.8;
 const MIRA_ALTURA_PCT = 0.32;
-
-// Dentro do recorte da mira, o numero impresso da chapa fica sempre na
-// faixa de baixo (o codigo de barras e o texto do orgao ficam em cima).
-// Recorte interno generoso — nao precisa ser preciso, so precisa excluir a
-// MAIOR PARTE do codigo de barras. Testado com etiqueta real: sem esse
-// recorte o OCR mistura as barras com os digitos e sai lixo.
-const CROP_NUMERO_X0 = 0.12;
-const CROP_NUMERO_X1 = 0.92;
-const CROP_NUMERO_Y0 = 0.45;
-const CROP_NUMERO_Y1 = 1.0;
 
 // Converte a mira (definida em % da area exibida do <video>, que usa
 // object-fit:cover) para coordenadas de pixel do frame REAL da camera, que
@@ -233,8 +229,6 @@ export default function Inventario() {
 
     const scanCanvas = document.createElement('canvas');
     const scanCtx = scanCanvas.getContext('2d');
-    const numeroCanvas = document.createElement('canvas');
-    const numeroCtx = numeroCanvas.getContext('2d');
 
     async function startScanner() {
       try {
@@ -319,21 +313,9 @@ export default function Inventario() {
             0, 0, region.srcW, region.srcH
           );
 
-          // Recorte interno (nao visivel na tela) so da faixa de baixo do
-          // que a mira capturou — descarta a maior parte do codigo de
-          // barras/texto do orgao sem exigir que o usuario mire so no
-          // numero. O usuario continua enquadrando a etiqueta inteira.
-          const nx = Math.round(scanCanvas.width * CROP_NUMERO_X0);
-          const ny = Math.round(scanCanvas.height * CROP_NUMERO_Y0);
-          const nw = Math.round(scanCanvas.width * (CROP_NUMERO_X1 - CROP_NUMERO_X0));
-          const nh = Math.round(scanCanvas.height * (CROP_NUMERO_Y1 - CROP_NUMERO_Y0));
-          numeroCanvas.width = nw;
-          numeroCanvas.height = nh;
-          numeroCtx.drawImage(scanCanvas, nx, ny, nw, nh, 0, 0, nw, nh);
-
           setOcrBusy(true);
           try {
-            const { data } = await worker.recognize(numeroCanvas);
+            const { data } = await worker.recognize(scanCanvas);
             const digitos = extrairChapa(data.text);
             if (digitos && !stopped) processarRef.current(digitos);
           } catch {
@@ -341,7 +323,11 @@ export default function Inventario() {
           }
           if (!stopped) {
             setOcrBusy(false);
-            loopTimer = setTimeout(loop, 250);
+            // Sem espera artificial extra — o proprio tempo do
+            // reconhecimento ja da uma pausa natural entre tentativas, e
+            // cada tentativa a mais aumenta a chance de pegar um enquadramento
+            // em que o SPARSE_TEXT consiga separar bem o numero do resto.
+            loopTimer = setTimeout(loop, 60);
           }
         }
 
