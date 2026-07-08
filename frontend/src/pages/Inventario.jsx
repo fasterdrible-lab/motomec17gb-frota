@@ -19,6 +19,25 @@ function getSetor(divisaoLabel) {
   return divisaoLabel.split(' ')[0];
 }
 
+// Nomes conhecidos de Estação de Bombeiros (EB) — a formatação da planilha
+// e inconsistente (espacamento, "EBEB", falta de token "EB"), entao em vez
+// de tentar parsear a posicao exata, procuramos essas cidades conhecidas em
+// qualquer lugar do texto da divisão.
+const EB_NOMES = ['FERRAZ DE VASCONCELOS', 'ITAQUAQUECETUBA', 'BRAS CUBAS', 'GUARAREMA', 'SHANGAI', 'SUZANO'];
+const PALAVRAS_MINUSCULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+
+function toTitleCase(s) {
+  return s.toLowerCase().split(' ').map((w, i) => (
+    i > 0 && PALAVRAS_MINUSCULAS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)
+  )).join(' ');
+}
+
+function getEB(divisaoLabel) {
+  const upper = divisaoLabel.toUpperCase();
+  const nome = EB_NOMES.find(n => upper.includes(n));
+  return nome ? `EB ${toTitleCase(nome)}` : 'Outros';
+}
+
 const TODOS_ITENS = patrimonioRaw.map(i => ({ ...i, divisaoLabel: parseDivisao(i.divisao) }));
 
 const DIVISOES = [...new Set(TODOS_ITENS.map(i => i.divisao))]
@@ -47,6 +66,7 @@ export default function Inventario() {
   const [step, setStep]               = useState('configuracao');
   const [divisaoSel, setDivisaoSel]   = useState('');
   const [responsavel, setResponsavel] = useState('');
+  const [ebSel, setEbSel]             = useState('');
   const [dataHora]                    = useState(() => new Date().toLocaleString('pt-BR'));
   const [escaneados, setEscaneados]   = useState({});
   const [flashStatus, setFlashStatus] = useState(null);
@@ -123,8 +143,10 @@ export default function Inventario() {
     const divisaoLabel = divisaoSel ? parseDivisao(divisaoSel) : '';
     const divisoesDoResponsavel = responsavel ? [...(RESP_TO_DIVISOES[responsavel] || [])] : [];
     const setoresDoResponsavel = [...new Set(divisoesDoResponsavel.map(d => getSetor(parseDivisao(d))))];
+    const ebsDoResponsavel = [...new Set(divisoesDoResponsavel.map(d => getEB(parseDivisao(d))))]
+      .sort((a, b) => a === 'Outros' ? 1 : b === 'Outros' ? -1 : a.localeCompare(b));
     const divisoesDisponiveis = divisoesDoResponsavel
-      .slice()
+      .filter(d => !ebSel || getEB(parseDivisao(d)) === ebSel)
       .sort((a, b) => parseDivisao(a).localeCompare(parseDivisao(b)));
 
     return (
@@ -155,8 +177,24 @@ export default function Inventario() {
             <div style={{ background: '#eff6ff', border: '1px solid #bae6fd', borderRadius: 10, padding: '10px 14px' }}>
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#1e40af' }}>
                 Setor{setoresDoResponsavel.length > 1 ? 'es' : ''}: <strong>{setoresDoResponsavel.join(', ')}</strong>
-                {' '}· {divisoesDisponiveis.length} divisões
+                {' '}· {divisoesDoResponsavel.length} divisões
               </p>
+            </div>
+          )}
+
+          {responsavel && (
+            <div>
+              <label style={labelStyle}>Estação de Bombeiros (EB)</label>
+              <select
+                value={ebSel}
+                onChange={e => { setEbSel(e.target.value); setDivisaoSel(''); }}
+                style={inputStyle}
+              >
+                <option value="">Todas as EB deste setor</option>
+                {ebsDoResponsavel.map(eb => (
+                  <option key={eb} value={eb}>{eb}</option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -460,7 +498,7 @@ export default function Inventario() {
       <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
         <button onClick={() => setStep('escaneando')} style={{ ...btnSecondary, flex: 1 }}>← Retomar Scan</button>
         <button
-          onClick={() => { setStep('configuracao'); setDivisaoSel(''); setResponsavel(''); setEscaneados({}); setBusca(''); }}
+          onClick={() => { setStep('configuracao'); setDivisaoSel(''); setResponsavel(''); setEbSel(''); setEscaneados({}); setBusca(''); }}
           style={{ ...btnPrimary, flex: 1 }}
         >
           Novo Inventário
