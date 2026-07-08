@@ -281,6 +281,13 @@ export default function Inventario() {
           // presente. simd-lstm cobre qualquer Android moderno.
           corePath: '/tesseract-core/tesseract-core-simd-lstm.wasm.js',
           langPath: '/tessdata',
+          // O WebView do Capacitor devolve 404 pra arquivos .gz (nao
+          // reconhece a extensao como servivel) — descoberto testando no
+          // aparelho real via CDP, o OCR nunca rodava porque o download do
+          // eng.traineddata.gz falhava em silencio. Usamos o arquivo
+          // descompactado (eng.traineddata) e avisamos o tesseract.js que
+          // nao precisa tentar descomprimir.
+          gzip: false,
           cacheMethod: 'readOnly',
         });
         if (stopped) { await worker.terminate(); return; }
