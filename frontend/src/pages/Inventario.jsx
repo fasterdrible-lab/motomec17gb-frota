@@ -93,30 +93,92 @@ function getCropRegion(video, containerEl) {
 // O OCR (SPARSE_TEXT) as vezes quebra o numero da chapa em pedacos na mesma
 // linha por causa do espacamento entre os digitos (ex: "211 029" em vez de
 // "211029"), e quase sempre pega ruido do codigo de barras como "digitos"
-// isolados em outras linhas (ex: "8", "15"). Por isso: junta tokens
-// numericos ADJACENTES na mesma linha (provavelmente o mesmo numero
-// quebrado em dois pelo OCR), descarta fragmentos curtos demais pra ser
-// uma chapa valida (as reais tem 5-6 digitos), e fica com o candidato mais
-// longo.
+// isolados por perto (ex: "211029 4"). Geramos dois tipos de candidato —
+// cada token sozinho, e cada par de tokens ADJACENTES na mesma linha
+// grudados (caso o numero real tenha sido quebrado em dois) — e filtramos
+// pelo tamanho real das chapas cadastradas (4 a 6 digitos). Isso rejeita
+// tanto o ruido isolado quanto uniões erradas tipo "211029"+"4"="2110294".
 function extrairChapa(texto) {
   const candidatos = [];
   for (const linha of texto.split(/\n+/)) {
-    const tokens = linha.trim().split(/\s+/).filter(Boolean);
-    let atual = '';
-    for (const tok of tokens) {
-      if (/^\d+$/.test(tok)) {
-        atual += tok;
-      } else if (atual) {
-        candidatos.push(atual);
-        atual = '';
-      }
+    const tokens = linha.trim().split(/\s+/).filter(t => /^\d+$/.test(t));
+    candidatos.push(...tokens);
+    for (let i = 0; i < tokens.length - 1; i++) {
+      candidatos.push(tokens[i] + tokens[i + 1]);
     }
-    if (atual) candidatos.push(atual);
   }
   const validos = candidatos
-    .filter(c => c.length >= 4 && c.length <= 8)
+    .filter(c => c.length >= 4 && c.length <= 6)
     .sort((a, b) => b.length - a.length);
   return validos[0] || null;
+}
+
+// O numero impresso da chapa fica sempre logo ACIMA ou ABAIXO do codigo de
+// barras (o layout da etiqueta e fixo), mas a posicao disso tudo DENTRO da
+// mira varia bastante conforme a distancia/angulo de quem esta escaneando
+// — testado com etiqueta real, um recorte fixo por posicao acertava uma
+// foto e cortava o numero fora em outra. Em vez de adivinhar a posicao,
+// detectamos onde o codigo de barras REALMENTE esta em cada frame (linhas
+// de pixel com muitas transições claro/escuro — as barras finas do codigo
+// de barras têm bem mais transições por linha do que o restante da
+// etiqueta) e recortamos a faixa logo depois dele.
+function detectarFaixaAposBarcode(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  if (w < 10 || h < 10) return null;
+  const { data } = ctx.getImageData(0, 0, w, h);
+
+  const gray = new Float32Array(w * h);
+  let soma = 0;
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    const v = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    gray[p] = v;
+    soma += v;
+  }
+  const media = soma / (w * h);
+  const limiar = media * 0.75;
+
+  const transicoesPorLinha = new Int32Array(h);
+  for (let y = 0; y < h; y++) {
+    const base = y * w;
+    let escuroAnterior = gray[base] < limiar;
+    let contagem = 0;
+    for (let x = 1; x < w; x++) {
+      const escuro = gray[base + x] < limiar;
+      if (escuro !== escuroAnterior) contagem++;
+      escuroAnterior = escuro;
+    }
+    transicoesPorLinha[y] = contagem;
+  }
+
+  const limiarBarcode = w / 22;
+  let melhorInicio = -1;
+  let melhorFim = -1;
+  let inicioAtual = -1;
+  for (let y = 0; y < h; y++) {
+    if (transicoesPorLinha[y] > limiarBarcode) {
+      if (inicioAtual === -1) inicioAtual = y;
+    } else if (inicioAtual !== -1) {
+      if (y - inicioAtual > melhorFim - melhorInicio) { melhorInicio = inicioAtual; melhorFim = y; }
+      inicioAtual = -1;
+    }
+  }
+  if (inicioAtual !== -1 && h - inicioAtual > melhorFim - melhorInicio) {
+    melhorInicio = inicioAtual;
+    melhorFim = h;
+  }
+  if (melhorInicio === -1) return null;
+
+  const margem = Math.max(2, Math.round(h * 0.015));
+  const alturaAbaixo = h - melhorFim;
+  const alturaAcima = melhorInicio;
+  if (alturaAbaixo >= alturaAcima) {
+    const y0 = Math.min(melhorFim + margem, h - 1);
+    return { x: 0, y: y0, w, h: h - y0 };
+  }
+  const y1 = Math.max(melhorInicio - margem, 1);
+  return { x: 0, y: 0, w, h: y1 };
 }
 
 const TODOS_ITENS = patrimonioRaw.map(i => ({ ...i, divisaoLabel: parseDivisao(i.divisao) }));
@@ -229,6 +291,8 @@ export default function Inventario() {
 
     const scanCanvas = document.createElement('canvas');
     const scanCtx = scanCanvas.getContext('2d');
+    const numeroCanvas = document.createElement('canvas');
+    const numeroCtx = numeroCanvas.getContext('2d');
 
     async function startScanner() {
       try {
@@ -313,9 +377,22 @@ export default function Inventario() {
             0, 0, region.srcW, region.srcH
           );
 
+          // Tenta achar a faixa logo apos o codigo de barras (onde o numero
+          // sempre fica impresso) e roda o OCR so nela — se nao conseguir
+          // detectar o codigo de barras nesse frame, cai de volta pra mira
+          // inteira mesmo.
+          let ocrCanvas = scanCanvas;
+          const faixa = detectarFaixaAposBarcode(scanCanvas);
+          if (faixa && faixa.h >= 12) {
+            numeroCanvas.width = faixa.w;
+            numeroCanvas.height = faixa.h;
+            numeroCtx.drawImage(scanCanvas, faixa.x, faixa.y, faixa.w, faixa.h, 0, 0, faixa.w, faixa.h);
+            ocrCanvas = numeroCanvas;
+          }
+
           setOcrBusy(true);
           try {
-            const { data } = await worker.recognize(scanCanvas);
+            const { data } = await worker.recognize(ocrCanvas);
             const digitos = extrairChapa(data.text);
             if (digitos && !stopped) processarRef.current(digitos);
           } catch {
