@@ -90,21 +90,27 @@ function getCropRegion(video, containerEl) {
   return { srcX, srcY, srcW, srcH };
 }
 
-// O OCR (SPARSE_TEXT) as vezes quebra o numero da chapa em pedacos na mesma
-// linha por causa do espacamento entre os digitos (ex: "211 029" em vez de
-// "211029"), e quase sempre pega ruido do codigo de barras como "digitos"
-// isolados por perto (ex: "211029 4"). Geramos dois tipos de candidato —
-// cada token sozinho, e cada par de tokens ADJACENTES na mesma linha
-// grudados (caso o numero real tenha sido quebrado em dois) — e filtramos
-// pelo tamanho real das chapas cadastradas (4 a 6 digitos). Isso rejeita
-// tanto o ruido isolado quanto uniões erradas tipo "211029"+"4"="2110294".
+// O OCR (SPARSE_TEXT) as vezes quebra o numero da chapa em varios pedacos na
+// mesma linha por causa do espacamento entre os digitos — em fontes com
+// letras mais separadas, um numero de 6 digitos pode sair como 6 tokens de
+// UM digito cada, nao so 2 pedacos. Tambem pega ruido do codigo de barras
+// como "digitos" isolados por perto (ex: "211029 4"). Por isso testamos
+// TODA sequencia contigua de tokens numericos na mesma linha (nao so pares
+// adjacentes) e filtramos pelo tamanho real das chapas cadastradas (4 a 6
+// digitos) — isso reconstroi o numero mesmo se ele saiu bem fragmentado, e
+// ainda rejeita ruido isolado e uniões longas demais tipo
+// "211029"+"4"="2110294" (7 digitos, fora do range valido).
 function extrairChapa(texto) {
   const candidatos = [];
   for (const linha of texto.split(/\n+/)) {
     const tokens = linha.trim().split(/\s+/).filter(t => /^\d+$/.test(t));
-    candidatos.push(...tokens);
-    for (let i = 0; i < tokens.length - 1; i++) {
-      candidatos.push(tokens[i] + tokens[i + 1]);
+    for (let i = 0; i < tokens.length; i++) {
+      let acumulado = '';
+      for (let j = i; j < tokens.length; j++) {
+        acumulado += tokens[j];
+        if (acumulado.length > 6) break;
+        candidatos.push(acumulado);
+      }
     }
   }
   const validos = candidatos
