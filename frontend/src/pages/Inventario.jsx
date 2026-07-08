@@ -152,7 +152,15 @@ function detectarFaixaAposBarcode(canvas) {
     transicoesPorLinha[y] = contagem;
   }
 
-  const limiarBarcode = w / 22;
+  // Limiar RELATIVO (nao um numero fixo de barras) — etiquetas diferentes
+  // tem codigos de barra com espessuras de barra diferentes. Usamos metade
+  // da maior contagem de transicoes encontrada na propria imagem: a linha
+  // mais "listrada" quase sempre e uma linha do codigo de barras, entao
+  // isso se adapta a densidade real de cada etiqueta em vez de assumir uma
+  // largura de barra fixa.
+  let maxTransicoes = 0;
+  for (let y = 0; y < h; y++) if (transicoesPorLinha[y] > maxTransicoes) maxTransicoes = transicoesPorLinha[y];
+  const limiarBarcode = Math.max(8, maxTransicoes * 0.5);
   let melhorInicio = -1;
   let melhorFim = -1;
   let inicioAtual = -1;
