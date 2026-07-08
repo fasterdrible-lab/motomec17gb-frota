@@ -142,7 +142,7 @@ function Logistica() {
                 <div style={{ fontSize: '1.8rem', fontWeight: 800, color: C.dark, lineHeight: 1 }}>{pasDea.total}</div>
                 <div style={infoBlock}>PAS DE DEA solicitadas</div>
               </div>
-              <Link to="/logistica/pas-dea-reparos" style={{ ...btnBase, background: '#1565C0', color: '#fff' }}>Ver →</Link>
+              <Link to="/logistica/pas-dea" style={{ ...btnBase, background: '#1565C0', color: '#fff' }}>Ver →</Link>
             </div>
 
             {/* REPAROS */}
@@ -155,7 +155,7 @@ function Logistica() {
                 </div>
                 <div style={infoBlock}>Reparos em andamento</div>
               </div>
-              <Link to="/logistica/pas-dea-reparos" style={{ ...btnBase, background: C.orange, color: '#fff' }}>Ver →</Link>
+              <Link to="/logistica/reparos" style={{ ...btnBase, background: C.orange, color: '#fff' }}>Ver →</Link>
             </div>
 
             {/* ALERTAS */}
@@ -250,16 +250,31 @@ function Logistica() {
           </div>
         </Link>
 
-        <Link to="/logistica/pas-dea-reparos" style={{ textDecoration: 'none' }}>
+        <Link to="/logistica/pas-dea" style={{ textDecoration: 'none' }}>
           <div style={{
             background: `linear-gradient(135deg, #1565C0, #0d47a1)`,
             borderRadius: 12, padding: '20px 24px', color: '#fff', cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(21,101,192,0.3)',
           }}>
             <div style={{ fontSize: '1.8rem', marginBottom: 8 }}>🫀</div>
-            <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 4 }}>PAS DE DEA &amp; Reparos</div>
+            <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 4 }}>PAS DE DEA</div>
             <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>
-              Solicitações de PAS, desfibriladores e registro de reparos em andamento
+              Solicitações de PAS e dispositivos DEA
+            </div>
+            <div style={{ marginTop: 12, fontSize: '0.78rem', fontWeight: 600 }}>Acessar detalhes →</div>
+          </div>
+        </Link>
+
+        <Link to="/logistica/reparos" style={{ textDecoration: 'none' }}>
+          <div style={{
+            background: `linear-gradient(135deg, ${C.orange}, #bf360c)`,
+            borderRadius: 12, padding: '20px 24px', color: '#fff', cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(230,74,25,0.3)',
+          }}>
+            <div style={{ fontSize: '1.8rem', marginBottom: 8 }}>🛠️</div>
+            <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 4 }}>Reparos</div>
+            <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>
+              Registro de reparos em andamento e histórico de manutenções
             </div>
             <div style={{ marginTop: 12, fontSize: '0.78rem', fontWeight: 600 }}>Acessar detalhes →</div>
           </div>

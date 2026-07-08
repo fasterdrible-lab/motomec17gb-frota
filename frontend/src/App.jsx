@@ -15,7 +15,8 @@ import RelatorioLogistica from './pages/RelatorioLogistica';
 import Configuracoes from './pages/Configuracoes';
 import Logistica from './pages/Logistica';
 import MatOperacionais from './pages/MatOperacionais';
-import PasDeaReparos from './pages/PasDeaReparos';
+import PasDea from './pages/PasDea';
+import Reparos from './pages/Reparos';
 import Patrimonio from './pages/Patrimonio';
 import Inventario from './pages/Inventario';
 import './styles/App.css';
@@ -82,7 +83,8 @@ function App() {
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/logistica" element={<Logistica />} />
               <Route path="/logistica/mat-operacionais" element={<MatOperacionais />} />
-              <Route path="/logistica/pas-dea-reparos" element={<PasDeaReparos />} />
+              <Route path="/logistica/pas-dea" element={<PasDea />} />
+              <Route path="/logistica/reparos" element={<Reparos />} />
               <Route path="/logistica/relatorio" element={<RelatorioLogistica />} />
               <Route path="/logistica/patrimonio" element={<Navigate to="/logistica/patrimonio/prefeitura" replace />} />
               <Route path="/logistica/patrimonio/:modo" element={<Patrimonio />} />

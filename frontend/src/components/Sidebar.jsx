@@ -16,7 +16,7 @@ function Sidebar({ onClose }) {
   const location = useLocation();
   const isMotomecActive = submenuMotomec.some(item => location.pathname === item.path) || location.pathname === '/dashboard';
   const isLogisticaActive = location.pathname.startsWith('/logistica') || location.pathname === '/inventario';
-  const isPatrimonioActive = location.pathname.startsWith('/logistica/patrimonio');
+  const isPatrimonioActive = location.pathname.startsWith('/logistica/patrimonio') || location.pathname === '/inventario';
 
   const [motomecOpen, setMotomecOpen] = useState(isMotomecActive);
   const [logisticaOpen, setLogisticaOpen] = useState(isLogisticaActive);
@@ -152,16 +152,6 @@ function Sidebar({ onClose }) {
         {logisticaOpen && (
           <>
             <NavLink
-              to="/inventario"
-              onClick={onClose}
-              className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
-              style={subItemStyle}
-            >
-              <span className="sidebar-icon">📷</span>
-              <span>Inventário</span>
-            </NavLink>
-
-            <NavLink
               to="/logistica/mat-operacionais"
               onClick={onClose}
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
@@ -172,13 +162,23 @@ function Sidebar({ onClose }) {
             </NavLink>
 
             <NavLink
-              to="/logistica/pas-dea-reparos"
+              to="/logistica/pas-dea"
               onClick={onClose}
               className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
               style={subItemStyle}
             >
               <span className="sidebar-icon">🫀</span>
-              <span>PAS/DEA &amp; Reparos</span>
+              <span>PAS/DEA</span>
+            </NavLink>
+
+            <NavLink
+              to="/logistica/reparos"
+              onClick={onClose}
+              className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
+              style={subItemStyle}
+            >
+              <span className="sidebar-icon">🛠️</span>
+              <span>Reparos</span>
             </NavLink>
 
             {/* PATRIMÔNIO (colapsável) */}
@@ -194,6 +194,15 @@ function Sidebar({ onClose }) {
 
             {patrimonioOpen && (
               <>
+                <NavLink
+                  to="/inventario"
+                  onClick={onClose}
+                  className={({ isActive }) => `sidebar-item sidebar-sub-item ${isActive ? 'active' : ''}`}
+                  style={subSubItemStyle}
+                >
+                  <span className="sidebar-icon">📷</span>
+                  <span>Inventário</span>
+                </NavLink>
                 <NavLink
                   to="/logistica/patrimonio/prefeitura"
                   onClick={onClose}

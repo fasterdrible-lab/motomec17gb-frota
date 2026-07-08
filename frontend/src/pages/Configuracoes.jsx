@@ -79,8 +79,12 @@ const SECOES_MANUAL = [
         desc: 'Detalhamento completo dos equipamentos por categoria: EPR, Compressor, Embarcações, Cilíndros, MS/MA/MP/SS, Desencarceradores e Equip. Diversos. Clique em um card de categoria para expandir e ver: cards analíticos (Status, Por SGB, Por Tipo, Por Marca, Por Localização) e a tabela completa com busca e filtro por status. A tabela só exibe resultados após clicar em "Pesquisar".',
       },
       {
-        icone: '🫀', titulo: 'PAS/DEA & Reparos',
-        desc: 'Controle de solicitações de PAS (Primeiros Socorros) e desfibriladores DEA, além do registro de reparos em andamento no grupamento. Cada registro mostra viatura/equipamento, tipo de solicitação, data e situação atual.',
+        icone: '🫀', titulo: 'PAS/DEA',
+        desc: 'Controle de solicitações de PAS (Primeiros Socorros) e desfibriladores DEA. Cada registro mostra viatura/equipamento, tipo de solicitação, data e situação atual.',
+      },
+      {
+        icone: '🛠️', titulo: 'Reparos',
+        desc: 'Registro de reparos em andamento e histórico de manutenções no grupamento. Cada registro mostra viatura/equipamento, tipo de reparo, data e situação atual.',
       },
       {
         icone: '🏛️', titulo: 'Patrimônio — Mat. Prefeitura',

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getMateriaisOperacionais } from '../services/logisticaSheets';
 import { C, REFRESH_INTERVAL, KPICard, AbaHeader, TabelaAba } from '../components/LogisticaComponents';
 
-function PasDeaReparos() {
+function Reparos() {
   const [data, setData]             = useState(null);
   const [loading, setLoading]       = useState(true);
   const [syncing, setSyncing]       = useState(false);
@@ -37,7 +37,7 @@ function PasDeaReparos() {
         width: 40, height: 40, border: `4px solid #e5e7eb`,
         borderTopColor: C.red2, borderRadius: '50%', animation: 'spin 0.8s linear infinite',
       }} />
-      <div style={{ color: C.mid }}>Carregando PAS DE DEA e Reparos...</div>
+      <div style={{ color: C.mid }}>Carregando Reparos...</div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
@@ -52,8 +52,7 @@ function PasDeaReparos() {
     </div>
   );
 
-  const pasDea  = data?.abas?.find(a => a.aba === 'PAS DE DEA')  || { aba: 'PAS DE DEA',  icone: '🫀', rows: [], headers: [], op: 0, bx: 0, total: 0 };
-  const reparos = data?.abas?.find(a => a.aba === 'REPAROS')     || { aba: 'REPAROS',      icone: '🛠️', rows: [], headers: [], op: 0, bx: 0, total: 0 };
+  const reparos = data?.abas?.find(a => a.aba === 'REPAROS') || { aba: 'REPAROS', icone: '🛠️', rows: [], headers: [], op: 0, bx: 0, total: 0 };
 
   return (
     <div className="page-inner" style={{ maxWidth: 1400, margin: '0 auto' }}>
@@ -61,9 +60,9 @@ function PasDeaReparos() {
       {/* CABEÇALHO */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: C.dark }}>🫀 PAS DE DEA &amp; Reparos</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: C.dark }}>🛠️ Reparos</h1>
           <p style={{ fontSize: '0.85rem', color: C.mid, marginTop: 2 }}>
-            Solicitações de PAS, DEA e registros de reparo · 17º Grupamento de Bombeiros
+            Registro de reparos em andamento e histórico de manutenções · 17º Grupamento de Bombeiros
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -86,35 +85,18 @@ function PasDeaReparos() {
         </div>
       </div>
 
-      {/* KPIs DAS DUAS SEÇÕES */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14, marginBottom: 32 }}>
-        <KPICard icon="🫀" label="PAS DE DEA solicitadas" value={pasDea.total} variant="info" />
-        <KPICard icon="🛠️" label="Reparos registrados"    value={reparos.total} sub={reparos.bx > 0 ? `${reparos.bx} baixados/inativos` : undefined} variant={reparos.bx > 0 ? 'warning' : 'default'} />
-        <KPICard icon="✅" label="PAS operando/ativas"    value={pasDea.op}    variant="success" />
-        <KPICard icon="⚙️" label="Reparos em andamento"   value={reparos.op}   variant="info" />
+      {/* KPIs */}
+      <div className="grid-cols-3" style={{ marginBottom: 24 }}>
+        <KPICard icon="🛠️" label="Reparos registrados" value={reparos.total} variant="info" />
+        <KPICard icon="⚙️" label="Em andamento" value={reparos.op} variant="success" />
+        <KPICard icon="❌" label="Baixados/inativos" value={reparos.bx} variant={reparos.bx > 0 ? 'warning' : 'default'} />
       </div>
 
-      {/* SEÇÃO PAS DE DEA */}
-      <div style={{ marginBottom: 40 }}>
-        <div style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: C.dark }}>🫀 PAS DE DEA</h2>
-          <p style={{ fontSize: '0.82rem', color: C.mid, marginTop: 2 }}>Registro completo de solicitações e dispositivos DEA</p>
-        </div>
-        <AbaHeader aba={pasDea} />
-        <TabelaAba aba={pasDea} />
-      </div>
-
-      {/* SEÇÃO REPAROS */}
-      <div>
-        <div style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: C.dark }}>🛠️ Reparos</h2>
-          <p style={{ fontSize: '0.82rem', color: C.mid, marginTop: 2 }}>Registro de reparos em andamento e histórico de manutenções</p>
-        </div>
-        <AbaHeader aba={reparos} />
-        <TabelaAba aba={reparos} />
-      </div>
+      {/* TABELA */}
+      <AbaHeader aba={reparos} />
+      <TabelaAba aba={reparos} />
     </div>
   );
 }
 
-export default PasDeaReparos;
+export default Reparos;
