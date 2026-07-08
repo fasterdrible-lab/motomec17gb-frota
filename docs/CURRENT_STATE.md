@@ -51,6 +51,25 @@ Deploy: frontend rebuildado na VPS (`docker build --no-cache`) e reiniciado; sit
 
 ---
 
+## Scanner de Inventario — estado final, 2026-07-08 (Issues 024-026)
+
+**SUPERA as secoes de OCR/tesseract.js acima** — apos varias etiquetas reais falharem com tesseract.js (fragmentacao do numero, resquicio de codigo de barras confundindo o reconhecimento, mesmo com a imagem legivel), o motor de OCR foi trocado para **ML Kit nativo do Google** (o mesmo do Google Lens). Arquitetura final do scanner em `frontend/src/pages/Inventario.jsx`:
+
+- **Camera embutida** (`getUserMedia`) com preview ao vivo e mira na tela — nao usa a camera nativa do aparelho (foi tentado, usuario preferiu a camera embutida pra nao sair do fluxo do app).
+- **OCR via `@jcesarmobile/capacitor-ocr`** (usa `com.google.mlkit:text-recognition` no Android). `tesseract.js` e todos os arquivos que ele precisava (worker, core `.wasm`, modelo de idioma, ~9MB) foram removidos.
+- **Leitura automatica continua**: tenta a cada 400ms enquanto nao acha nada, mas **para completamente** assim que um numero e confirmado (nao fica relendo a mesma etiqueta). Botao "Capturar agora" forca uma tentativa imediata e reativa a tentativa automatica pra proxima etiqueta.
+- **`detectarFaixaAposBarcode()`**: antes do OCR, analisa a imagem linha por linha contando transicoes claro/escuro pra achar dinamicamente onde o codigo de barras esta em cada foto (limiar RELATIVO — metade da maior contagem de transicoes da propria imagem, se adapta a etiquetas com barras de espessuras diferentes) e recorta so a faixa logo depois dele, onde o numero sempre fica impresso. Se nao detectar, cai de volta pra mira inteira.
+- **`extrairChapa()`**: o OCR pode fragmentar o numero em varios tokens (fonte com letras espacadas). Testa toda sequencia contigua de tokens numericos na mesma linha e filtra pelo tamanho real das chapas cadastradas (4 a 6 digitos), reconstruindo o numero mesmo bem fragmentado e rejeitando ruido.
+- **Mira estilo leitor de QR code**: cantos em L (nao moldura fechada), cor muda conforme o estado — branco parado, azul analisando, verde ao confirmar.
+- **Previa "ULTIMA CAPTURA"**: mostra a imagem exata que foi analisada, pra debug visual sem precisar de acesso remoto ao aparelho.
+- **Fallback manual**: campo de texto + botao Validar sempre disponivel pra digitar a chapa quando o OCR nao consegue ler.
+
+**Limitacao conhecida:** Inventario so reconhece itens de `patrimonio_estado.json` (Estado). O arquivo `Inventario_Municipio.xlsx` na pasta do projeto e identico ao do Estado (nao e uma planilha real da Prefeitura) — usuario vai providenciar a planilha correta depois pra adicionar itens da Prefeitura.
+
+Historico completo de tentativas (zxing → tesseract.js → deteccao de barcode → camera nativa → ML Kit) em `tasks.md`, Issues 022 e 024-026.
+
+---
+
 ## Stack em producao
 
 | Camada   | Container                  | Porta | Imagem                             |

@@ -1038,3 +1038,40 @@ Deploy:
 - Commits `0f2f55e` (fix VITE_API_URL) e `a1d52ab` (OCR), push para `main`.
 - VPS: `git pull` + `docker build --no-cache` do frontend, container recriado, assets do tesseract confirmados presentes no container, site publico verificado (200).
 - APK debug recompilado e reinstalado no aparelho de teste.
+
+---
+
+## Issue 026 - Scanner: iteracoes com etiqueta real ate ML Kit nativo
+
+Status: `[done]` — deployado na VPS e no APK em 2026-07-08
+
+Objetivo:
+
+- Continuacao da Issue 025. Depois do fix de deploy, o usuario testou o OCR (tesseract.js) com etiquetas reais (Prefeitura de Mogi das Cruzes e Corpo de Bombeiros) por varias rodadas. Essa issue documenta as iteracoes ate chegar na versao que funciona bem, incluindo dois pivots de arquitetura pedidos pelo usuario no meio do caminho.
+
+Iteracoes com tesseract.js (todas testadas com fotos reais capturadas via CDP no aparelho):
+
+1. **PSM errado + mira grande demais**: `PSM.SINGLE_LINE` nao lida bem com uma imagem com titulo+codigo de barras+numero juntos. Trocado pra `PSM.SPARSE_TEXT` e mira reduzida — usuario pediu de volta o tamanho grande (nao queria mirar so o numero).
+2. **Extracao de digitos**: o OCR fragmenta o numero em varios tokens por causa do espacamento da fonte. Versao final de `extrairChapa()` testa toda sequencia contigua de tokens numericos na mesma linha (nao so pares adjacentes) e filtra pelo tamanho real das chapas (4-6 digitos).
+3. **Recorte por posicao fixa nao funciona**: tentativa de recortar so a "metade de baixo" da mira (onde o numero geralmente fica) falhava porque a posicao varia com distancia/angulo. Substituido por `detectarFaixaAposBarcode()` — detecta a faixa de linhas com muitas transicoes claro/escuro (o codigo de barras) dinamicamente em cada frame, com limiar RELATIVO (metade da maior contagem de transicoes da propria imagem) pra funcionar em etiquetas com barras de espessuras diferentes.
+4. **OCR nunca rodava**: o WebView do Capacitor devolve 404 pra arquivos `.gz` — o download do modelo de idioma do tesseract falhava em silencio. Resolvido usando o arquivo descompactado + `gzip: false`.
+5. **Margem entre codigo de barras e numero**: mesmo detectando o codigo de barras corretamente, uma margem pequena deixava resquicio de barra colado no numero, confundindo o OCR (leu "211088" em vez de "167207"). Margem aumentada de ~1.5% pra 6% da altura.
+
+Pivot 1 — camera nativa (revertido): pedido do usuario ("abra janela de captura pra focar melhor") — implementado `@capacitor/camera` (`Camera.getPhoto`) pra abrir o app de camera nativo do Android em vez do preview embutido. Testado: funcionou tecnicamentre (sem erros), mas o usuario achou a experiencia pior ("essa solucao nao me atende") por interromper o fluxo do app. Revertido pra camera embutida (`git checkout` nos arquivos, `@capacitor/camera` nunca chegou a ser commitado).
+
+Pivot 2 — ML Kit nativo (permanente): apos mais uma etiqueta falhar com tesseract.js mesmo com imagem legivel na previa "ULTIMA CAPTURA" (nova funcionalidade adicionada nessa rodada — mostra a imagem exata analisada, pra debug sem precisar de CDP), usuario pediu pra trocar pra ML Kit Text Recognition do Google. Trocado `tesseract.js` por `@jcesarmobile/capacitor-ocr` (usa `com.google.mlkit:text-recognition` nativamente no Android). API bem mais simples (`Ocr.process({ image: dataUrl })`), sem precisar de worker/wasm/modelo de idioma bundled — tudo roda nativo.
+
+Ajustes finais depois do ML Kit:
+
+- Leitura automatica continua de volta (era manual desde a Issue 025 por causa da lentidao do tesseract.js) — ML Kit e rapido o bastante pra nao ter esse problema. Loop tenta a cada 400ms, mas **para completamente** ao confirmar um numero (evita reler a mesma etiqueta em sequencia). Botao "Capturar agora" forca tentativa imediata e reativa o loop pra proxima etiqueta.
+- Mira trocada de moldura fechada pra cantos em L estilo leitor de QR code, com cor por estado (branco parado, azul analisando, verde ao confirmar).
+
+Achados de dados (nao sao bugs de codigo):
+
+- A etiqueta de teste inicial (chapa 211029) e da Prefeitura Municipal de Mogi das Cruzes, fora do escopo atual do Inventario (so reconhece `patrimonio_estado.json`).
+- `Inventario_Municipio.xlsx` (pasta do projeto) e identico ao `Inventario_Estado.xlsx` — nao e uma planilha real da Prefeitura. Usuario vai providenciar o arquivo correto depois.
+- Uma segunda etiqueta de teste (chapa 167207, "LANTERNA TATICA") e um item real do Estado — usada pra validar o pipeline completo.
+
+Arquivos modificados: `frontend/src/pages/Inventario.jsx` (praticamente reescrito nessa rodada), `frontend/package.json` (`tesseract.js` removido, `@jcesarmobile/capacitor-ocr` adicionado), `frontend/android/app/capacitor.build.gradle` e `capacitor.settings.gradle` (registro do plugin nativo, gerados por `npx cap sync`), arquivos publicos do tesseract removidos (`public/tesseract-worker.min.js`, `public/tesseract-core/`, `public/tessdata/`).
+
+Deploy: cada iteracao foi commitada, pushada, deployada na VPS (`docker build --no-cache`) e testada no APK real (Samsung A07) antes da proxima. Commits principais: `929a79b`, `489c9f3`, `77eac7a`, `67cec10`, `1dbb0f2`, `f2eefa1`, `0a9da12`, `4197bea`, `66b64d7`, `113f5ee`, `d0a68b6`, `68faa93`, `43048d6`, `fc5bb4d`.
