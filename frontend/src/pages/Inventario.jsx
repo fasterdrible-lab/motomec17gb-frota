@@ -39,18 +39,25 @@ function getEB(divisaoLabel) {
 }
 
 // Fracao da area VISIVEL do video (o retangulo da mira) que sera de fato
-// decodificada. Mantendo os dois usando a mesma constante garantimos que o
-// usuario so consegue ler o codigo de barras que aparece dentro da mira —
-// evita pegar por engano uma etiqueta vizinha que esteja no campo de visao
-// da camera mas fora da area que o usuario mirou.
-// A mira e estreita de proposito: o OCR so funciona bem quando le SO os
-// digitos impressos, sem pegar o codigo de barras ou o texto do orgao junto
-// (testado com etiqueta real — com a mira grande o reconhecimento sai
-// como lixo tipo "0\n14"; recortando so a faixa do numero, confianca de
-// 95%+). Por isso o usuario precisa alinhar so o numero dentro da caixa,
-// nao a etiqueta inteira.
-const MIRA_LARGURA_PCT = 0.7;
-const MIRA_ALTURA_PCT = 0.14;
+// analisada. Mantendo os dois usando a mesma constante garantimos que o
+// usuario so consegue ler o que aparece dentro da mira — evita pegar por
+// engano uma etiqueta vizinha que esteja no campo de visao da camera mas
+// fora da area que o usuario mirou. Tamanho generoso de proposito: o
+// usuario mira a etiqueta inteira (nao so o numero) — quem descarta o
+// codigo de barras e o recorte interno (ver CROP_NUMERO_* mais abaixo) e a
+// extracao de digitos, nao o enquadramento na tela.
+const MIRA_LARGURA_PCT = 0.8;
+const MIRA_ALTURA_PCT = 0.32;
+
+// Dentro do recorte da mira, o numero impresso da chapa fica sempre na
+// faixa de baixo (o codigo de barras e o texto do orgao ficam em cima).
+// Recorte interno generoso — nao precisa ser preciso, so precisa excluir a
+// MAIOR PARTE do codigo de barras. Testado com etiqueta real: sem esse
+// recorte o OCR mistura as barras com os digitos e sai lixo.
+const CROP_NUMERO_X0 = 0.12;
+const CROP_NUMERO_X1 = 0.92;
+const CROP_NUMERO_Y0 = 0.45;
+const CROP_NUMERO_Y1 = 1.0;
 
 // Converte a mira (definida em % da area exibida do <video>, que usa
 // object-fit:cover) para coordenadas de pixel do frame REAL da camera, que
@@ -85,6 +92,35 @@ function getCropRegion(video, containerEl) {
   const srcH = boxH / scale;
 
   return { srcX, srcY, srcW, srcH };
+}
+
+// O OCR (SPARSE_TEXT) as vezes quebra o numero da chapa em pedacos na mesma
+// linha por causa do espacamento entre os digitos (ex: "211 029" em vez de
+// "211029"), e quase sempre pega ruido do codigo de barras como "digitos"
+// isolados em outras linhas (ex: "8", "15"). Por isso: junta tokens
+// numericos ADJACENTES na mesma linha (provavelmente o mesmo numero
+// quebrado em dois pelo OCR), descarta fragmentos curtos demais pra ser
+// uma chapa valida (as reais tem 5-6 digitos), e fica com o candidato mais
+// longo.
+function extrairChapa(texto) {
+  const candidatos = [];
+  for (const linha of texto.split(/\n+/)) {
+    const tokens = linha.trim().split(/\s+/).filter(Boolean);
+    let atual = '';
+    for (const tok of tokens) {
+      if (/^\d+$/.test(tok)) {
+        atual += tok;
+      } else if (atual) {
+        candidatos.push(atual);
+        atual = '';
+      }
+    }
+    if (atual) candidatos.push(atual);
+  }
+  const validos = candidatos
+    .filter(c => c.length >= 4 && c.length <= 8)
+    .sort((a, b) => b.length - a.length);
+  return validos[0] || null;
 }
 
 const TODOS_ITENS = patrimonioRaw.map(i => ({ ...i, divisaoLabel: parseDivisao(i.divisao) }));
@@ -197,6 +233,8 @@ export default function Inventario() {
 
     const scanCanvas = document.createElement('canvas');
     const scanCtx = scanCanvas.getContext('2d');
+    const numeroCanvas = document.createElement('canvas');
+    const numeroCtx = numeroCanvas.getContext('2d');
 
     async function startScanner() {
       try {
@@ -274,11 +312,23 @@ export default function Inventario() {
             0, 0, region.srcW, region.srcH
           );
 
+          // Recorte interno (nao visivel na tela) so da faixa de baixo do
+          // que a mira capturou — descarta a maior parte do codigo de
+          // barras/texto do orgao sem exigir que o usuario mire so no
+          // numero. O usuario continua enquadrando a etiqueta inteira.
+          const nx = Math.round(scanCanvas.width * CROP_NUMERO_X0);
+          const ny = Math.round(scanCanvas.height * CROP_NUMERO_Y0);
+          const nw = Math.round(scanCanvas.width * (CROP_NUMERO_X1 - CROP_NUMERO_X0));
+          const nh = Math.round(scanCanvas.height * (CROP_NUMERO_Y1 - CROP_NUMERO_Y0));
+          numeroCanvas.width = nw;
+          numeroCanvas.height = nh;
+          numeroCtx.drawImage(scanCanvas, nx, ny, nw, nh, 0, 0, nw, nh);
+
           setOcrBusy(true);
           try {
-            const { data } = await worker.recognize(scanCanvas);
-            const digitos = (data.text.match(/\d+/g) || []).sort((a, b) => b.length - a.length)[0];
-            if (digitos && digitos.length >= 4 && !stopped) processarRef.current(digitos);
+            const { data } = await worker.recognize(numeroCanvas);
+            const digitos = extrairChapa(data.text);
+            if (digitos && !stopped) processarRef.current(digitos);
           } catch {
             // frame ilegivel — tenta de novo no proximo ciclo
           }
@@ -471,7 +521,7 @@ export default function Inventario() {
 
           {cameraAtiva && (
             <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-              Alinhe só o <strong>número</strong> impresso da chapa dentro da caixa — sem pegar o código de barras.
+              Centralize a etiqueta dentro da caixa. O código de barras é ignorado — só o número é lido.
             </p>
           )}
 
