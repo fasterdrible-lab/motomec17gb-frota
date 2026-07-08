@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/browser';
-import { DecodeHintType } from '@zxing/library';
+import { createWorker, PSM } from 'tesseract.js';
 import patrimonioRaw from '../data/patrimonio_estado.json';
 
 // ─── Helpers de dados ────────────────────────────────────────────────────────
@@ -119,6 +118,7 @@ export default function Inventario() {
   const [manualAviso, setManualAviso] = useState('');
   const [cameraError, setCameraError] = useState('');
   const [cameraAtiva, setCameraAtiva] = useState(false);
+  const [ocrBusy, setOcrBusy]         = useState(false);
   const [busca, setBusca]             = useState('');
 
   const videoRef     = useRef(null);
@@ -171,34 +171,31 @@ export default function Inventario() {
   }
 
   // ─── Scanner lifecycle ───────────────────────────────────────────────────
-  // Em vez de deixar o zxing decodificar o frame INTEIRO da camera
-  // (decodeFromConstraints), controlamos a captura manualmente e so
-  // decodificamos o retangulo recortado que corresponde a mira desenhada na
-  // tela. Isso evita que uma etiqueta vizinha, fora da area que o usuario
-  // mirou mas ainda dentro do campo de visao da camera, seja lida por
-  // engano — foi o que causou a leitura errada (mirou em uma chapa e o
-  // sistema trouxe o numero de outra que estava por perto).
+  // O valor gravado nas barras do codigo de barras nem sempre e o mesmo
+  // numero impresso na etiqueta — foi o que causava leituras "erradas".
+  // Por isso a camera agora faz OCR (reconhecimento de texto) apenas dos
+  // DIGITOS IMPRESSOS dentro da mira, em vez de tentar decodificar as
+  // barras. Mais lento por captura, mas o numero reconhecido e sempre o
+  // mesmo que esta escrito na etiqueta. Continua analisando so o recorte da
+  // mira (getCropRegion), pelo mesmo motivo de antes: nao pegar por engano
+  // o numero de uma etiqueta vizinha que esteja no campo de visao da camera.
   useEffect(() => {
     if (step !== 'escaneando') return;
     let stopped = false;
     let stream = null;
-    let intervalId = null;
+    let loopTimer = null;
+    let worker = null;
     setCameraError('');
     setCameraAtiva(false);
+    setOcrBusy(false);
 
-    // TRY_HARDER faz o decoder tentar mais angulos/rotacoes por frame — mais
-    // lento, mas bem mais confiavel para etiquetas de patrimonio (codigo de
-    // barras pequeno, nem sempre alinhado).
-    const hints = new Map();
-    hints.set(DecodeHintType.TRY_HARDER, true);
-    const reader = new BrowserMultiFormatReader(hints);
     const scanCanvas = document.createElement('canvas');
     const scanCtx = scanCanvas.getContext('2d');
 
     async function startScanner() {
       try {
         // Sem largura/altura definidas o navegador pode escolher uma
-        // resolucao baixa demais para ler um codigo de barras pequeno.
+        // resolucao baixa demais para ler os digitos pequenos da etiqueta.
         // facingMode 'environment' pede a camera traseira.
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -229,26 +226,59 @@ export default function Inventario() {
           // sem suporte a controle de foco manual, segue com o padrao do aparelho
         }
 
-        intervalId = setInterval(() => {
-          if (stopped || !video.videoWidth) return;
+        // Worker do tesseract.js apontando para arquivos locais (copiados em
+        // frontend/public/) em vez do CDN padrao — o app roda como APK e nao
+        // podemos depender de internet no momento do inventario.
+        worker = await createWorker('eng', 1, {
+          workerPath: '/tesseract-worker.min.js',
+          // Arquivo especifico (nao um diretorio) — evita a autodeteccao de
+          // SIMD/relaxedSIMD do tesseract.js, que tenta variantes diferentes
+          // do wasm dependendo do aparelho e falha se alguma nao estiver
+          // presente. simd-lstm cobre qualquer Android moderno.
+          corePath: '/tesseract-core/tesseract-core-simd-lstm.wasm.js',
+          langPath: '/tessdata',
+          cacheMethod: 'readOnly',
+        });
+        if (stopped) { await worker.terminate(); return; }
+        await worker.setParameters({
+          tessedit_char_whitelist: '0123456789',
+          tessedit_pageseg_mode: PSM.SINGLE_LINE,
+        });
+
+        async function loop() {
+          if (stopped) return;
           const region = getCropRegion(video, video.parentElement);
-          if (!region || region.srcW <= 0 || region.srcH <= 0) return;
+          if (!region || region.srcW <= 0 || region.srcH <= 0) {
+            loopTimer = setTimeout(loop, 300);
+            return;
+          }
 
           scanCanvas.width = region.srcW;
           scanCanvas.height = region.srcH;
+          // Preto e branco + mais contraste ajuda bastante o OCR a separar
+          // os digitos impressos do fundo da etiqueta.
+          scanCtx.filter = 'grayscale(1) contrast(1.6)';
           scanCtx.drawImage(
             video,
             region.srcX, region.srcY, region.srcW, region.srcH,
             0, 0, region.srcW, region.srcH
           );
 
+          setOcrBusy(true);
           try {
-            const result = reader.decodeFromCanvas(scanCanvas);
-            if (result && !stopped) processarRef.current(result.getText());
+            const { data } = await worker.recognize(scanCanvas);
+            const digitos = (data.text.match(/\d+/g) || []).sort((a, b) => b.length - a.length)[0];
+            if (digitos && digitos.length >= 4 && !stopped) processarRef.current(digitos);
           } catch {
-            // nenhum codigo de barras nesse recorte — normal na maioria dos frames
+            // frame ilegivel — tenta de novo no proximo ciclo
           }
-        }, 350);
+          if (!stopped) {
+            setOcrBusy(false);
+            loopTimer = setTimeout(loop, 250);
+          }
+        }
+
+        loop();
       } catch {
         if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
@@ -257,9 +287,11 @@ export default function Inventario() {
     startScanner();
     return () => {
       stopped = true;
-      if (intervalId) clearInterval(intervalId);
+      if (loopTimer) clearTimeout(loopTimer);
       stream?.getTracks().forEach(t => t.stop());
+      worker?.terminate();
       setCameraAtiva(false);
+      setOcrBusy(false);
     };
   }, [step]);
 
@@ -413,6 +445,11 @@ export default function Inventario() {
                 {/* Precisa bater com MIRA_LARGURA_PCT/MIRA_ALTURA_PCT — só o
                     que aparece dentro dessa caixa é de fato decodificado. */}
                 <div style={{ width: `${MIRA_LARGURA_PCT * 100}%`, height: `${MIRA_ALTURA_PCT * 100}%`, border: '2px solid rgba(255,255,255,0.75)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.38)' }} />
+                {ocrBusy && (
+                  <span style={{ position: 'absolute', bottom: 8, background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '0.7rem', padding: '3px 10px', borderRadius: 20 }}>
+                    Analisando…
+                  </span>
+                )}
               </div>
             )}
             {!cameraAtiva && !cameraError && (
