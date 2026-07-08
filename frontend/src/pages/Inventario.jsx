@@ -73,6 +73,7 @@ export default function Inventario() {
   const [flashStatus, setFlashStatus] = useState(null);
   const [flashNome, setFlashNome]     = useState('');
   const [manualInput, setManualInput] = useState('');
+  const [manualAviso, setManualAviso] = useState('');
   const [cameraError, setCameraError] = useState('');
   const [cameraAtiva, setCameraAtiva] = useState(false);
   const [busca, setBusca]             = useState('');
@@ -85,11 +86,19 @@ export default function Inventario() {
   const itensEsperados = TODOS_ITENS.filter(i => i.divisao === divisaoSel);
 
   // ─── Validação ──────────────────────────────────────────────────────────
-  function processarScan(codigo) {
+  // A trava de "nao repetir o mesmo codigo em 2s" existe para a camera (que
+  // tenta decodificar a cada ~500ms e leria o mesmo codigo varias vezes por
+  // frame). Ela so deve valer para leituras vindas da camera — validacao
+  // manual e uma acao explicita do usuario (clique/Enter) e deve sempre
+  // processar, mesmo que o codigo seja igual ao ultimo lido.
+  function processarScan(codigo, origem = 'manual') {
     const cod = codigo.trim();
-    if (!cod || cod === lastCodeRef.current) return;
-    lastCodeRef.current = cod;
-    setTimeout(() => { lastCodeRef.current = ''; }, 2000);
+    if (!cod) return;
+    if (origem === 'camera') {
+      if (cod === lastCodeRef.current) return;
+      lastCodeRef.current = cod;
+      setTimeout(() => { lastCodeRef.current = ''; }, 2000);
+    }
 
     const item = TODOS_ITENS.find(i => i.chapa === cod);
     let status;
@@ -106,7 +115,18 @@ export default function Inventario() {
     setTimeout(() => setFlashStatus(null), 1400);
   }
 
-  processarRef.current = processarScan;
+  processarRef.current = (codigo) => processarScan(codigo, 'camera');
+
+  function validarManual() {
+    const cod = manualInput.trim();
+    if (!cod) {
+      setManualAviso('Digite o número da chapa antes de validar.');
+      return;
+    }
+    setManualAviso('');
+    processarScan(cod, 'manual');
+    setManualInput('');
+  }
 
   // ─── Scanner lifecycle ───────────────────────────────────────────────────
   useEffect(() => {
@@ -336,22 +356,31 @@ export default function Inventario() {
           )}
 
           {/* Input manual */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: manualAviso ? 4 : 14 }}>
             <input
               type="text"
+              inputMode="numeric"
+              autoCapitalize="off"
+              autoCorrect="off"
               value={manualInput}
-              onChange={e => setManualInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && manualInput.trim()) { processarScan(manualInput); setManualInput(''); } }}
+              onChange={e => { setManualInput(e.target.value); if (manualAviso) setManualAviso(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') validarManual(); }}
               placeholder="Nº da Chapa (ex: 90057) + Enter"
               style={{ ...inputStyle, flex: 1, margin: 0 }}
             />
             <button
-              onClick={() => { if (manualInput.trim()) { processarScan(manualInput); setManualInput(''); } }}
+              onClick={validarManual}
               style={{ ...btnPrimary, padding: '10px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
             >
               Validar
             </button>
           </div>
+
+          {manualAviso && (
+            <div style={{ color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, marginBottom: 14 }}>
+              ⚠ {manualAviso}
+            </div>
+          )}
 
           {/* Escaneados */}
           {listaEsc.length > 0 && (
