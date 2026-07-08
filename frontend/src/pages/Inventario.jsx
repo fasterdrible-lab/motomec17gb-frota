@@ -228,6 +228,7 @@ export default function Inventario() {
   const [cameraAtiva, setCameraAtiva] = useState(false);
   const [ocrBusy, setOcrBusy]         = useState(false);
   const [ocrReady, setOcrReady]       = useState(false);
+  const [ultimaCaptura, setUltimaCaptura] = useState(null);
   const [busca, setBusca]             = useState('');
 
   const videoRef     = useRef(null);
@@ -293,6 +294,7 @@ export default function Inventario() {
     setCameraAtiva(false);
     setOcrBusy(false);
     setOcrReady(false);
+    setUltimaCaptura(null);
 
     const scanCanvas = document.createElement('canvas');
     const scanCtx = scanCanvas.getContext('2d');
@@ -392,6 +394,11 @@ export default function Inventario() {
             numeroCtx.drawImage(scanCanvas, faixa.x, faixa.y, faixa.w, faixa.h, 0, 0, faixa.w, faixa.h);
             ocrCanvas = numeroCanvas;
           }
+
+          // Mostra pro usuario exatamente a imagem que foi analisada — ajuda
+          // a perceber na hora se o problema e foco/distancia/enquadramento,
+          // sem precisar de mais nenhuma ida-e-volta.
+          setUltimaCaptura(ocrCanvas.toDataURL('image/jpeg', 0.8));
 
           setOcrBusy(true);
           try {
@@ -640,8 +647,19 @@ export default function Inventario() {
           </div>
 
           {manualAviso && (
-            <div style={{ color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, marginBottom: 14 }}>
+            <div style={{ color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, marginBottom: 8 }}>
               ⚠ {manualAviso}
+            </div>
+          )}
+
+          {ultimaCaptura && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={sectionLabel}>ÚLTIMA CAPTURA (o que foi analisado)</p>
+              <img
+                src={ultimaCaptura}
+                alt="Última captura analisada pelo leitor"
+                style={{ width: '100%', maxHeight: 120, objectFit: 'contain', background: '#111', borderRadius: 8, border: '1px solid #d1d5db' }}
+              />
             </div>
           )}
 
