@@ -605,8 +605,26 @@ export default function Inventario() {
             {cameraAtiva && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                 {/* Precisa bater com MIRA_LARGURA_PCT/MIRA_ALTURA_PCT — só o
-                    que aparece dentro dessa caixa é de fato decodificado. */}
-                <div style={{ width: `${MIRA_LARGURA_PCT * 100}%`, height: `${MIRA_ALTURA_PCT * 100}%`, border: '2px solid rgba(255,255,255,0.75)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.38)' }} />
+                    que aparece dentro dessa caixa é de fato decodificado.
+                    Cantos estilo leitor de QR code em vez de moldura
+                    fechada — cor muda conforme o estado: branco parado,
+                    azul analisando, verde quando confirma um número. */}
+                <div style={{ position: 'relative', width: `${MIRA_LARGURA_PCT * 100}%`, height: `${MIRA_ALTURA_PCT * 100}%`, boxShadow: '0 0 0 9999px rgba(0,0,0,0.38)', borderRadius: 8 }}>
+                  {(() => {
+                    const corMira = flashStatus ? '#4ade80' : ocrBusy ? '#60a5fa' : 'rgba(255,255,255,0.85)';
+                    const espessura = 4;
+                    const tamanho = 26;
+                    const base = { position: 'absolute', width: tamanho, height: tamanho, borderColor: corMira, transition: 'border-color 0.25s' };
+                    return (
+                      <>
+                        <div style={{ ...base, top: -espessura / 2, left: -espessura / 2, borderTop: `${espessura}px solid ${corMira}`, borderLeft: `${espessura}px solid ${corMira}`, borderTopLeftRadius: 8 }} />
+                        <div style={{ ...base, top: -espessura / 2, right: -espessura / 2, borderTop: `${espessura}px solid ${corMira}`, borderRight: `${espessura}px solid ${corMira}`, borderTopRightRadius: 8 }} />
+                        <div style={{ ...base, bottom: -espessura / 2, left: -espessura / 2, borderBottom: `${espessura}px solid ${corMira}`, borderLeft: `${espessura}px solid ${corMira}`, borderBottomLeftRadius: 8 }} />
+                        <div style={{ ...base, bottom: -espessura / 2, right: -espessura / 2, borderBottom: `${espessura}px solid ${corMira}`, borderRight: `${espessura}px solid ${corMira}`, borderBottomRightRadius: 8 }} />
+                      </>
+                    );
+                  })()}
+                </div>
                 {ocrBusy && (
                   <span style={{ position: 'absolute', bottom: 8, background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '0.7rem', padding: '3px 10px', borderRadius: 20 }}>
                     Analisando…
