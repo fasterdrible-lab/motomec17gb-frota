@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import { DecodeHintType } from '@zxing/library';
 import patrimonioRaw from '../data/patrimonio_estado.json';
 
 // ─── Helpers de dados ────────────────────────────────────────────────────────
@@ -116,14 +117,47 @@ export default function Inventario() {
 
     async function startScanner() {
       try {
-        const reader = new BrowserMultiFormatReader();
-        const controls = await reader.decodeFromVideoDevice(
-          undefined,
+        // TRY_HARDER faz o decoder tentar mais angulos/rotacoes por frame —
+        // mais lento por frame, mas bem mais confiavel para etiquetas de
+        // patrimonio (codigo de barras pequeno, nem sempre alinhado).
+        const hints = new Map();
+        hints.set(DecodeHintType.TRY_HARDER, true);
+        const reader = new BrowserMultiFormatReader(hints);
+
+        // Sem largura/altura definidas o navegador pode escolher uma
+        // resolucao baixa demais para ler um codigo de barras pequeno.
+        // facingMode 'environment' pede a camera traseira.
+        const constraints = {
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        };
+
+        const controls = await reader.decodeFromConstraints(
+          constraints,
           videoRef.current,
           (result) => { if (result && !stopped) processarRef.current(result.getText()); }
         );
-        if (!stopped) { controlsRef.current = controls; setCameraAtiva(true); }
-        else controls.stop();
+        if (!stopped) {
+          controlsRef.current = controls;
+          setCameraAtiva(true);
+          // Foco continuo ajuda muito em etiquetas pequenas de perto — nem
+          // todo aparelho suporta, entao e melhor esforco (nao trava nada
+          // se a API ou o modo nao existir).
+          try {
+            const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
+            const caps = track?.getCapabilities?.();
+            if (caps?.focusMode?.includes('continuous')) {
+              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            }
+          } catch {
+            // sem suporte a controle de foco manual, segue com o padrao do aparelho
+          }
+        } else {
+          controls.stop();
+        }
       } catch {
         if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
