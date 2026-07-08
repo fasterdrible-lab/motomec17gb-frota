@@ -298,13 +298,17 @@ export default function Inventario() {
   // ML Kit e nativo, muito mais rapido e muito mais preciso pra esse tipo
   // de leitura.
   //
-  // O OCR SO RODA quando o usuario aperta o botao "Capturar" — nao fica
-  // tentando ler sozinho o tempo todo, pra nao competir por CPU com o
-  // preview da camera.
+  // Leitura AUTOMATICA e continua de novo (como no inicio do projeto) —
+  // agora que o OCR e nativo (ML Kit) em vez de rodar dentro do WebView
+  // (tesseract.js), cada tentativa e rapida o bastante pra nao travar a
+  // tela como acontecia antes. O botao "Capturar" continua disponivel como
+  // forma de forcar uma tentativa imediata, sem esperar o proximo ciclo.
   useEffect(() => {
     if (step !== 'escaneando') return;
     let stopped = false;
     let stream = null;
+    let loopTimer = null;
+    let emAndamento = false;
     setCameraError('');
     setCameraAtiva(false);
     setOcrBusy(false);
@@ -350,59 +354,82 @@ export default function Inventario() {
           // sem suporte a controle de foco manual, segue com o padrao do aparelho
         }
 
-        capturarRef.current = async () => {
-          if (stopped) return;
+        // Retorna true se achou e processou um numero valido — usado tanto
+        // pelo botao manual quanto pelo loop automatico. `emAndamento`
+        // evita que as duas vias rodem uma captura ao mesmo tempo.
+        async function capturarUmaVez() {
+          if (stopped || emAndamento) return false;
           const region = getCropRegion(video, video.parentElement);
-          if (!region || region.srcW <= 0 || region.srcH <= 0) return;
+          if (!region || region.srcW <= 0 || region.srcH <= 0) return false;
 
-          scanCanvas.width = region.srcW;
-          scanCanvas.height = region.srcH;
-          scanCtx.filter = 'none';
-          scanCtx.drawImage(
-            video,
-            region.srcX, region.srcY, region.srcW, region.srcH,
-            0, 0, region.srcW, region.srcH
-          );
-
-          // Tenta achar a faixa logo apos o codigo de barras (onde o numero
-          // sempre fica impresso) e roda o OCR so nela — reduz a chance do
-          // ML Kit misturar o texto do orgao ou o codigo de barras com o
-          // numero. Se nao conseguir detectar o codigo de barras nesse
-          // frame, cai de volta pra mira inteira mesmo.
-          let ocrCanvas = scanCanvas;
-          const faixa = detectarFaixaAposBarcode(scanCanvas);
-          if (faixa && faixa.h >= 12) {
-            numeroCanvas.width = faixa.w;
-            numeroCanvas.height = faixa.h;
-            numeroCtx.drawImage(scanCanvas, faixa.x, faixa.y, faixa.w, faixa.h, 0, 0, faixa.w, faixa.h);
-            ocrCanvas = numeroCanvas;
-          }
-
-          // Mostra pro usuario exatamente a imagem que foi analisada — ajuda
-          // a perceber na hora se o problema e foco/distancia/enquadramento,
-          // sem precisar de mais nenhuma ida-e-volta.
-          const imagemAnalisada = ocrCanvas.toDataURL('image/jpeg', 0.9);
-          setUltimaCaptura(imagemAnalisada);
-
-          setOcrBusy(true);
+          emAndamento = true;
           try {
-            const { results } = await Ocr.process({ image: imagemAnalisada });
-            const textoCompleto = (results || []).map(r => r.text).join('\n');
-            const digitos = extrairChapa(textoCompleto);
-            if (stopped) return;
-            if (digitos) {
-              setManualAviso('');
-              processarRef.current(digitos);
-            } else {
-              setManualAviso('Não consegui ler o número. Ajuste o foco/distância e capture de novo, ou digite manualmente.');
+            scanCanvas.width = region.srcW;
+            scanCanvas.height = region.srcH;
+            scanCtx.filter = 'none';
+            scanCtx.drawImage(
+              video,
+              region.srcX, region.srcY, region.srcW, region.srcH,
+              0, 0, region.srcW, region.srcH
+            );
+
+            // Tenta achar a faixa logo apos o codigo de barras (onde o
+            // numero sempre fica impresso) e roda o OCR so nela — reduz a
+            // chance do ML Kit misturar o texto do orgao ou o codigo de
+            // barras com o numero. Se nao conseguir detectar o codigo de
+            // barras nesse frame, cai de volta pra mira inteira mesmo.
+            let ocrCanvas = scanCanvas;
+            const faixa = detectarFaixaAposBarcode(scanCanvas);
+            if (faixa && faixa.h >= 12) {
+              numeroCanvas.width = faixa.w;
+              numeroCanvas.height = faixa.h;
+              numeroCtx.drawImage(scanCanvas, faixa.x, faixa.y, faixa.w, faixa.h, 0, 0, faixa.w, faixa.h);
+              ocrCanvas = numeroCanvas;
             }
-          } catch {
-            if (!stopped) setManualAviso('Erro ao processar a imagem. Tente capturar de novo.');
+
+            // Mostra pro usuario exatamente a imagem que foi analisada —
+            // ajuda a perceber na hora se o problema e foco/distancia.
+            const imagemAnalisada = ocrCanvas.toDataURL('image/jpeg', 0.9);
+            setUltimaCaptura(imagemAnalisada);
+
+            setOcrBusy(true);
+            try {
+              const { results } = await Ocr.process({ image: imagemAnalisada });
+              const textoCompleto = (results || []).map(r => r.text).join('\n');
+              const digitos = extrairChapa(textoCompleto);
+              if (stopped) return false;
+              if (digitos) {
+                setManualAviso('');
+                processarRef.current(digitos);
+                return true;
+              }
+              return false;
+            } catch {
+              return false;
+            } finally {
+              if (!stopped) setOcrBusy(false);
+            }
           } finally {
-            if (!stopped) setOcrBusy(false);
+            emAndamento = false;
           }
-        };
+        }
+
+        capturarRef.current = () => { capturarUmaVez(); };
+
+        // Loop automatico: tenta de novo logo em seguida se nao achou nada
+        // (400ms — ML Kit e rapido o bastante pra isso nao pesar), e espera
+        // um pouco mais depois de um acerto (1200ms, tempo do flash de
+        // confirmacao na tela) pra nao reler a mesma etiqueta em sequencia
+        // enquanto o usuario ainda nao trocou de mira.
+        async function loop() {
+          if (stopped) return;
+          const achou = await capturarUmaVez();
+          if (stopped) return;
+          loopTimer = setTimeout(loop, achou ? 1200 : 400);
+        }
+
         setOcrReady(true);
+        loop();
       } catch {
         if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
@@ -412,6 +439,7 @@ export default function Inventario() {
     return () => {
       stopped = true;
       capturarRef.current = null;
+      if (loopTimer) clearTimeout(loopTimer);
       stream?.getTracks().forEach(t => t.stop());
       setCameraAtiva(false);
       setOcrBusy(false);
@@ -586,7 +614,7 @@ export default function Inventario() {
           {cameraAtiva && (
             <>
               <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                Centralize a etiqueta dentro da caixa, espere focar e toque em Capturar.
+                Centralize a etiqueta dentro da caixa — a leitura acontece sozinha. Se demorar, toque em Capturar pra forçar agora.
               </p>
               <button
                 onClick={() => capturarRef.current?.()}
@@ -598,7 +626,7 @@ export default function Inventario() {
                   cursor: (!ocrReady || ocrBusy) ? 'not-allowed' : 'pointer',
                 }}
               >
-                {ocrBusy ? 'Analisando…' : ocrReady ? '📸 Capturar' : 'Preparando leitor…'}
+                {ocrBusy ? 'Analisando…' : ocrReady ? '📸 Capturar agora' : 'Preparando leitor…'}
               </button>
             </>
           )}
