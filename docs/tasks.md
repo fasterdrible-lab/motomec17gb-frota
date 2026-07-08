@@ -1002,3 +1002,39 @@ Deploy:
 - Commits `5b56db2` (vite.config.js) e `3cfb17b` (Inventario.jsx), push para `main`.
 - VPS: `git pull` + `docker build --no-cache` do frontend (o build com cache normal nao pegou as mudancas — necessario `--no-cache` para builds futuros apos alteracoes em `frontend/src`). Container `motomec17gb-frontend-1` recriado, site publico verificado (200).
 - APK debug recompilado (`gradlew assembleDebug`) e reinstalado no aparelho de teste; copiado para `apk/MOTOMEC-17GB-Frota-debug.apk`.
+
+**Atualizacao 2026-07-08 — teste real revelou dois problemas novos, ambos corrigidos:**
+
+1. `frontend/.env.production` apontava para o antigo deploy no Railway (nunca atualizado apos migrar pra VPS). O build do APK nao tinha o `--build-arg` que o Dockerfile usa pra sobrescrever isso, entao o app instalado chamava uma API fora do ar — toda tela mostrava "Erro ao buscar dados do servidor". Corrigido a URL (commit `0f2f55e`), APK recompilado.
+2. Testando com etiqueta real (chapa 211029, Prefeitura Municipal de Mogi das Cruzes — fora do escopo atual, so Estado), usuario pediu pra trocar a abordagem: em vez de decodificar as barras do codigo (que podem gravar um valor diferente do numero impresso), ler diretamente os DIGITOS IMPRESSOS via OCR. Ver Issue 025.
+
+---
+
+## Issue 025 - Trocar leitura de codigo de barras por OCR dos digitos
+
+Status: `[done]` — deployado na VPS e no APK em 2026-07-08
+
+Objetivo:
+
+- O valor decodificado das barras de uma etiqueta de patrimonio pode nao ser o mesmo numero impresso nela. Pedido do usuario: parar de tentar decodificar o codigo de barras e ler os digitos impressos diretamente (OCR), do jeito que uma pessoa leria a etiqueta.
+
+Arquivos modificados:
+
+- `frontend/src/pages/Inventario.jsx`: `@zxing/browser` substituido por `tesseract.js`. Mesmo recorte da mira (`getCropRegion`, ja existente) alimenta o OCR em vez do decodificador de barras. `tessedit_char_whitelist` restrito a `0-9`, `PSM.SINGLE_LINE`, filtro `grayscale + contraste` no canvas antes de reconhecer. Loop sequencial (`setTimeout` apos cada reconhecimento, nao `setInterval`) pra nao empilhar OCRs simultaneos — bem mais pesado que decodificar barras. Indicador "Analisando…" sobre a mira enquanto processa.
+- `frontend/package.json`: `@zxing/browser` removido, `tesseract.js ^7.0.0` adicionado.
+- `frontend/public/tesseract-worker.min.js`, `frontend/public/tesseract-core/tesseract-core-simd-lstm.wasm(.js)`, `frontend/public/tessdata/eng.traineddata.gz`: arquivos do tesseract.js copiados localmente (nao usa o CDN padrao) — o app roda como APK e nao da pra depender de internet no momento do inventario.
+
+Bug encontrado e corrigido durante o teste no aparelho real (Samsung A07, via CDP):
+
+- `corePath` apontando para um DIRETORIO deixa o tesseract.js autodetectar SIMD/relaxedSIMD do aparelho e escolher a variante do `.wasm` sozinho. O aparelho de teste suporta `relaxedSimd`, mas eu só tinha copiado a variante `simd-lstm` — o worker quebrava em silencio (`importScripts` falhava) e o app so mostrava "Câmera não disponível", mascarando a causa real. Corrigido fixando `corePath` num arquivo especifico (`tesseract-core-simd-lstm.wasm.js`), pulando a autodeteccao.
+
+Validacao:
+
+- CDP no Samsung A07: worker carrega, camera ativa, loop de OCR roda sem excecoes.
+- Teste fisico de leitura (confirmar que os digitos reconhecidos batem com a etiqueta) pendente do usuario — sessao terminou com o app na tela de login (usuario deslogado durante o teste), sem credenciais disponiveis pra continuar via CDP.
+
+Deploy:
+
+- Commits `0f2f55e` (fix VITE_API_URL) e `a1d52ab` (OCR), push para `main`.
+- VPS: `git pull` + `docker build --no-cache` do frontend, container recriado, assets do tesseract confirmados presentes no container, site publico verificado (200).
+- APK debug recompilado e reinstalado no aparelho de teste.

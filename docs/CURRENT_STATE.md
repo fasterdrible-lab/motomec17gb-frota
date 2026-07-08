@@ -41,6 +41,12 @@ Corrigido em `frontend/src/pages/Inventario.jsx` (commit `3cfb17b`): captura pas
 
 Tambem commitado nesta rodada (estava pendente desde a Issue 023, sem commit): fix do atributo `crossorigin` no build do Capacitor (`frontend/vite.config.js`, commit `5b56db2`) — causava tela branca de login por falha silenciosa de CORS ao carregar o script do modulo na WebView.
 
+**Achado durante o teste com etiqueta real:** a etiqueta usada para testar (chapa 211029) e da Prefeitura Municipal de Mogi das Cruzes, nao do Estado — o Inventario so reconhece `patrimonio_estado.json`. O arquivo `Inventario_Municipio.xlsx` (pasta do projeto) e identico ao `Inventario_Estado.xlsx` (mesmas 1.334 linhas, mesmos dados) — nao e uma planilha real da Prefeitura. Usuario vai providenciar a planilha correta depois; Inventario continua Estado-only por enquanto.
+
+**Pivot 2026-07-08 (commit `a1d52ab`):** pedido do usuario apos o teste — o valor gravado nas barras do codigo nem sempre bate com o numero impresso na etiqueta (raiz provavel do "211029 leu 70730"). Trocado o scanner de decodificacao de codigo de barras (zxing) para OCR dos digitos impressos (tesseract.js), mantendo o mesmo recorte da mira. `@zxing/browser` removido. Detalhes tecnicos e a causa de um bug de deploy (corePath com autodeteccao de SIMD quebrando em silencio) documentados no commit e em `tasks.md` Issue 024.
+
+**Tambem corrigido nesta rodada (commit `0f2f55e`):** `frontend/.env.production` tinha a URL antiga do Railway (`VITE_API_URL`), nunca atualizada apos a migracao para a VPS. O build web usa `--build-arg` no Dockerfile pra sobrescrever, mas o build do APK nao tinha esse override — o app instalado estava chamando o Railway (fora do ar) e todas as telas mostravam "Erro ao buscar dados do servidor". Causou uma sessao de debug real apos o deploy do fix anterior.
+
 Deploy: frontend rebuildado na VPS (`docker build --no-cache`) e reiniciado; site publico verificado (200). APK debug recompilado e instalado no aparelho de teste (Samsung A07); camera validada via CDP (ativa em 1080x1920, foco continuo, recorte calculado ~865x256px ≈10% da area do frame). Teste fisico de leitura de etiqueta real fica pendente de confirmacao do usuario.
 
 ---
