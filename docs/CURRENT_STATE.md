@@ -1,6 +1,6 @@
 # Current State — MOTOMEC 17GB Frota
 
-Atualizado em: 2026-07-07
+Atualizado em: 2026-07-08
 
 ## Status geral
 
@@ -30,6 +30,18 @@ APK debug gerado e validado ponta a ponta em dispositivo real (Samsung A07). Tre
 **Mudanca de infraestrutura nao versionada:** `CORS_ORIGINS` em `/opt/motomec17gb-frota/.env.backend` na VPS agora e `https://motomec17gb-frota.com.br,https://www.motomec17gb-frota.com.br,https://localhost` (container `motomec17gb-backend-1` recriado com `docker run`, mesma imagem, sem rebuild).
 
 APK final: `apk/MOTOMEC-17GB-Frota-debug.apk` (fora do git, pasta OneDrive do projeto).
+
+---
+
+## Fix scanner de codigo de barras — 2026-07-08
+
+Reportado: leitura da camera trazia numero de chapa diferente do que estava na etiqueta mirada (ex.: mirou 211029, sistema mostrou 70730). Causa: `decodeFromConstraints` do zxing decodificava o FRAME INTEIRO da camera a cada tentativa, entao uma etiqueta vizinha dentro do campo de visao (mas fora da mira na tela) podia ser lida em vez da pretendida.
+
+Corrigido em `frontend/src/pages/Inventario.jsx` (commit `3cfb17b`): captura passou a ser controlada manualmente (loop de 350ms), recortando via `<canvas>` apenas a regiao correspondente a mira visivel (conversao tela→pixels do frame real considerando `object-fit:cover`) e decodificando so esse recorte com `reader.decodeFromCanvas`. A mira na tela usa as mesmas constantes percentuais do recorte, garantindo que o que o usuario ve e exatamente o que e analisado.
+
+Tambem commitado nesta rodada (estava pendente desde a Issue 023, sem commit): fix do atributo `crossorigin` no build do Capacitor (`frontend/vite.config.js`, commit `5b56db2`) — causava tela branca de login por falha silenciosa de CORS ao carregar o script do modulo na WebView.
+
+Deploy: frontend rebuildado na VPS (`docker build --no-cache`) e reiniciado; site publico verificado (200). APK debug recompilado e instalado no aparelho de teste (Samsung A07); camera validada via CDP (ativa em 1080x1920, foco continuo, recorte calculado ~865x256px ≈10% da area do frame). Teste fisico de leitura de etiqueta real fica pendente de confirmacao do usuario.
 
 ---
 
@@ -288,7 +300,7 @@ Rodar na VPS como root em `/opt/motomec17gb-frota`:
 git pull origin main
 
 # 2. Rebuild e restart backend
-docker build -t motomec17gb-backend-node ./backend
+docker build --no-cache -t motomec17gb-backend-node ./backend
 docker rm -f motomec17gb-backend-1
 docker run -d --name motomec17gb-backend-1 \
   --network motomec17gb_default \
@@ -296,7 +308,11 @@ docker run -d --name motomec17gb-backend-1 \
   -p 8001:8000 motomec17gb-backend-node
 
 # 3. Rebuild e restart frontend
-docker build -t motomec17gb-frontend \
+# IMPORTANTE: use sempre --no-cache. Confirmado em 2026-07-08 que "docker
+# build" sem --no-cache reaproveita a camada "COPY . ." / "RUN npm run
+# build" mesmo com codigo-fonte alterado pelo git pull, servindo bundle
+# desatualizado sem nenhum erro/aviso (ver Issue 024 em tasks.md).
+docker build --no-cache -t motomec17gb-frontend \
   --build-arg VITE_API_URL=https://motomec17gb-frota.com.br \
   ./frontend
 docker rm -f motomec17gb-frontend-1

@@ -972,3 +972,33 @@ Cenarios:
 Deploy:
 
 - Deployado na VPS em 2026-07-07. Nenhuma variavel de ambiente nova.
+
+---
+
+## Issue 024 - Scanner lia etiqueta errada (fora da mira)
+
+Status: `[done]` — deployado na VPS e no APK em 2026-07-08
+
+Objetivo:
+
+- Corrigir leitura incorreta de codigo de barras: usuario mirava uma etiqueta e o app trazia o numero de outra (relatado com etiqueta 211029 → leu 70730).
+
+Causa raiz:
+
+- `reader.decodeFromConstraints` (zxing) decodifica o FRAME INTEIRO da camera a cada tentativa, nao apenas a area dentro da mira desenhada na tela. Uma etiqueta vizinha dentro do campo de visao da camera, mas fora do que o usuario mirou, podia ser lida em vez da pretendida.
+
+Arquivos modificados:
+
+- `frontend/src/pages/Inventario.jsx`: captura passou a ser controlada manualmente (`getUserMedia` + loop de 350ms via `setInterval`), recortando via `<canvas>` apenas a regiao correspondente a mira visivel (conversao coordenadas de tela → pixels do frame real, considerando `object-fit:cover`) e decodificando so esse recorte com `reader.decodeFromCanvas`. Constantes `MIRA_LARGURA_PCT`/`MIRA_ALTURA_PCT` compartilhadas entre o calculo do recorte e o tamanho visual da mira, garantindo que o que o usuario ve e exatamente o que e analisado.
+- `frontend/vite.config.js`: commitado fix pendente desde a Issue 023 (remocao do atributo `crossorigin` no build do Capacitor — evita tela branca de login por falha silenciosa de CORS na WebView).
+
+Validacao:
+
+- CDP no Samsung A07: camera ativa (1080x1920, foco continuo), recorte calculado ~865x256px (~10% da area do frame), loop de decodificacao roda sem excecoes.
+- Teste fisico de leitura de etiqueta real (confirmacao de que o numero correto aparece) fica pendente do usuario.
+
+Deploy:
+
+- Commits `5b56db2` (vite.config.js) e `3cfb17b` (Inventario.jsx), push para `main`.
+- VPS: `git pull` + `docker build --no-cache` do frontend (o build com cache normal nao pegou as mudancas — necessario `--no-cache` para builds futuros apos alteracoes em `frontend/src`). Container `motomec17gb-frontend-1` recriado, site publico verificado (200).
+- APK debug recompilado (`gradlew assembleDebug`) e reinstalado no aparelho de teste; copiado para `apk/MOTOMEC-17GB-Frota-debug.apk`.
