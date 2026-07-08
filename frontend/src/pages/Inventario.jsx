@@ -43,8 +43,14 @@ function getEB(divisaoLabel) {
 // usuario so consegue ler o codigo de barras que aparece dentro da mira —
 // evita pegar por engano uma etiqueta vizinha que esteja no campo de visao
 // da camera mas fora da area que o usuario mirou.
-const MIRA_LARGURA_PCT = 0.8;
-const MIRA_ALTURA_PCT = 0.32;
+// A mira e estreita de proposito: o OCR so funciona bem quando le SO os
+// digitos impressos, sem pegar o codigo de barras ou o texto do orgao junto
+// (testado com etiqueta real — com a mira grande o reconhecimento sai
+// como lixo tipo "0\n14"; recortando so a faixa do numero, confianca de
+// 95%+). Por isso o usuario precisa alinhar so o numero dentro da caixa,
+// nao a etiqueta inteira.
+const MIRA_LARGURA_PCT = 0.7;
+const MIRA_ALTURA_PCT = 0.14;
 
 // Converte a mira (definida em % da area exibida do <video>, que usa
 // object-fit:cover) para coordenadas de pixel do frame REAL da camera, que
@@ -242,7 +248,11 @@ export default function Inventario() {
         if (stopped) { await worker.terminate(); return; }
         await worker.setParameters({
           tessedit_char_whitelist: '0123456789',
-          tessedit_pageseg_mode: PSM.SINGLE_LINE,
+          // SPARSE_TEXT (busca blocos de texto soltos na imagem) funciona
+          // muito melhor aqui do que SINGLE_LINE — testado com etiqueta
+          // real: SINGLE_LINE errava ou vinha vazio, SPARSE_TEXT acertou o
+          // numero certo com 95%+ de confianca.
+          tessedit_pageseg_mode: PSM.SPARSE_TEXT,
         });
 
         async function loop() {
@@ -458,6 +468,12 @@ export default function Inventario() {
               </div>
             )}
           </div>
+
+          {cameraAtiva && (
+            <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+              Alinhe só o <strong>número</strong> impresso da chapa dentro da caixa — sem pegar o código de barras.
+            </p>
+          )}
 
           {cameraError && (
             <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: 10, marginBottom: 10, color: '#92400e', fontSize: '0.82rem' }}>
