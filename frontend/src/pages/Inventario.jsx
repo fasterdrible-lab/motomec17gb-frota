@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createWorker, PSM } from 'tesseract.js';
+import { Ocr } from '@jcesarmobile/capacitor-ocr';
 import patrimonioRaw from '../data/patrimonio_estado.json';
 
 // ─── Helpers de dados ────────────────────────────────────────────────────────
@@ -291,16 +291,20 @@ export default function Inventario() {
   // Por isso a camera faz OCR (reconhecimento de texto) apenas dos DIGITOS
   // IMPRESSOS dentro da mira, em vez de tentar decodificar as barras.
   //
+  // OCR via ML Kit nativo (plugin @jcesarmobile/capacitor-ocr, usa
+  // com.google.mlkit:text-recognition no Android) em vez do tesseract.js
+  // rodando dentro do WebView — testado com varias etiquetas reais, o
+  // tesseract.js errava ou nao achava nada mesmo com a imagem bem legivel;
+  // ML Kit e nativo, muito mais rapido e muito mais preciso pra esse tipo
+  // de leitura.
+  //
   // O OCR SO RODA quando o usuario aperta o botao "Capturar" — nao fica
-  // tentando ler sozinho o tempo todo. Rodar continuamente deixava a tela
-  // "lenta" (analise a cada ~60ms competindo por CPU o tempo todo), sem
-  // ganho real: o usuario ja precisa segurar o aparelho parado e focado pra
-  // funcionar, entao e melhor deixar ele escolher a hora certa de capturar.
+  // tentando ler sozinho o tempo todo, pra nao competir por CPU com o
+  // preview da camera.
   useEffect(() => {
     if (step !== 'escaneando') return;
     let stopped = false;
     let stream = null;
-    let worker = null;
     setCameraError('');
     setCameraAtiva(false);
     setOcrBusy(false);
@@ -346,47 +350,14 @@ export default function Inventario() {
           // sem suporte a controle de foco manual, segue com o padrao do aparelho
         }
 
-        // Worker do tesseract.js apontando para arquivos locais (copiados em
-        // frontend/public/) em vez do CDN padrao — o app roda como APK e nao
-        // podemos depender de internet no momento do inventario.
-        worker = await createWorker('eng', 1, {
-          workerPath: '/tesseract-worker.min.js',
-          // Arquivo especifico (nao um diretorio) — evita a autodeteccao de
-          // SIMD/relaxedSIMD do tesseract.js, que tenta variantes diferentes
-          // do wasm dependendo do aparelho e falha se alguma nao estiver
-          // presente. simd-lstm cobre qualquer Android moderno.
-          corePath: '/tesseract-core/tesseract-core-simd-lstm.wasm.js',
-          langPath: '/tessdata',
-          // O WebView do Capacitor devolve 404 pra arquivos .gz (nao
-          // reconhece a extensao como servivel) — descoberto testando no
-          // aparelho real via CDP, o OCR nunca rodava porque o download do
-          // eng.traineddata.gz falhava em silencio. Usamos o arquivo
-          // descompactado (eng.traineddata) e avisamos o tesseract.js que
-          // nao precisa tentar descomprimir.
-          gzip: false,
-          cacheMethod: 'readOnly',
-        });
-        if (stopped) { await worker.terminate(); return; }
-        await worker.setParameters({
-          tessedit_char_whitelist: '0123456789',
-          // SPARSE_TEXT (busca blocos de texto soltos na imagem) funciona
-          // muito melhor aqui do que SINGLE_LINE — testado com etiqueta
-          // real: SINGLE_LINE errava ou vinha vazio, SPARSE_TEXT acertou o
-          // numero certo com 95%+ de confianca.
-          tessedit_pageseg_mode: PSM.SPARSE_TEXT,
-        });
-        if (stopped) { await worker.terminate(); return; }
-
         capturarRef.current = async () => {
-          if (stopped || !worker) return;
+          if (stopped) return;
           const region = getCropRegion(video, video.parentElement);
           if (!region || region.srcW <= 0 || region.srcH <= 0) return;
 
           scanCanvas.width = region.srcW;
           scanCanvas.height = region.srcH;
-          // Preto e branco + mais contraste ajuda bastante o OCR a separar
-          // os digitos impressos do fundo da etiqueta.
-          scanCtx.filter = 'grayscale(1) contrast(1.6)';
+          scanCtx.filter = 'none';
           scanCtx.drawImage(
             video,
             region.srcX, region.srcY, region.srcW, region.srcH,
@@ -394,9 +365,10 @@ export default function Inventario() {
           );
 
           // Tenta achar a faixa logo apos o codigo de barras (onde o numero
-          // sempre fica impresso) e roda o OCR so nela — se nao conseguir
-          // detectar o codigo de barras nesse frame, cai de volta pra mira
-          // inteira mesmo.
+          // sempre fica impresso) e roda o OCR so nela — reduz a chance do
+          // ML Kit misturar o texto do orgao ou o codigo de barras com o
+          // numero. Se nao conseguir detectar o codigo de barras nesse
+          // frame, cai de volta pra mira inteira mesmo.
           let ocrCanvas = scanCanvas;
           const faixa = detectarFaixaAposBarcode(scanCanvas);
           if (faixa && faixa.h >= 12) {
@@ -409,12 +381,14 @@ export default function Inventario() {
           // Mostra pro usuario exatamente a imagem que foi analisada — ajuda
           // a perceber na hora se o problema e foco/distancia/enquadramento,
           // sem precisar de mais nenhuma ida-e-volta.
-          setUltimaCaptura(ocrCanvas.toDataURL('image/jpeg', 0.8));
+          const imagemAnalisada = ocrCanvas.toDataURL('image/jpeg', 0.9);
+          setUltimaCaptura(imagemAnalisada);
 
           setOcrBusy(true);
           try {
-            const { data } = await worker.recognize(ocrCanvas);
-            const digitos = extrairChapa(data.text);
+            const { results } = await Ocr.process({ image: imagemAnalisada });
+            const textoCompleto = (results || []).map(r => r.text).join('\n');
+            const digitos = extrairChapa(textoCompleto);
             if (stopped) return;
             if (digitos) {
               setManualAviso('');
@@ -439,7 +413,6 @@ export default function Inventario() {
       stopped = true;
       capturarRef.current = null;
       stream?.getTracks().forEach(t => t.stop());
-      worker?.terminate();
       setCameraAtiva(false);
       setOcrBusy(false);
       setOcrReady(false);

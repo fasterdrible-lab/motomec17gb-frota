@@ -6,13 +6,13 @@
   "dependencies": {
     "@capacitor/android": "^8.4.1",
     "@capacitor/core": "^8.4.1",
+    "@jcesarmobile/capacitor-ocr": "^0.3.0",
     "axios": "^1.15.2",
     "lucide-react": "^0.311.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.1",
-    "recharts": "^2.10.3",
-    "tesseract.js": "^7.0.0"
+    "recharts": "^2.10.3"
   },
   "scripts": {
     "start": "vite",
