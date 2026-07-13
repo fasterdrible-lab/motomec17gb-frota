@@ -9,6 +9,16 @@ Deploy das Issues 020, 021 e 022 concluido na VPS em 2026-07-07 (backend + front
 
 ---
 
+## Scanner de Inventario — camera travava apos segundo plano (Issue 027, 2026-07-13)
+
+Debug ao vivo via CDP remoto no aparelho de teste (Samsung A07) a pedido do usuario ("a captura precisa ser refinada"). Causa raiz encontrada: o Android encerra a faixa de video da camera quando o app vai para segundo plano (tela apaga, troca de app), mas `frontend/src/pages/Inventario.jsx` nunca detectava isso — o loop de OCR continuava tentando ler um frame congelado (preto) indefinidamente, sem se recuperar sozinho. Confirmado que o app estava nesse estado ha cerca de 2 horas quando a investigacao comecou.
+
+Corrigido: a faixa de video agora e monitorada (`track.addEventListener('ended', ...)` + `document.addEventListener('visibilitychange', ...)`) e reinicia a captura (`getUserMedia` de novo) sozinha assim que detecta que a camera morreu. Validado no aparelho real reproduzindo o bug sob demanda (`adb shell input keyevent KEYCODE_HOME` + retorno ao app) e confirmando que a faixa volta para `"live"` automaticamente. Detalhes completos em `tasks.md`, Issue 027.
+
+**Deploy pendente:** fix aplicado e testado localmente (build + APK reinstalado no aparelho de teste), mas ainda nao publicado na VPS (frontend web) nem entregue como APK final ao usuario.
+
+---
+
 ## Deploy 2026-07-07 — Issues 020, 021, 022
 
 - `git pull origin main` na VPS: `fecd5ab` → `290b062` (commits `b9e1dbd`, `8a3d9a7`, `4a5226f`, `77b4cb4`, `a91be9c`, `45631c8`, `290b062`).

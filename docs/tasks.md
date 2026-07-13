@@ -7,6 +7,39 @@ Status:
 - `[todo]` pendente.
 - `[blocked]` depende de decisao, credencial ou backend inexistente.
 
+## Issue 027 - Scanner nao recuperava a camera apos o app voltar de segundo plano
+
+Status: `[done]` — corrigido e validado no aparelho real; deploy pendente (VPS + APK final)
+
+Objetivo:
+
+- Usuario pediu debug com o celular conectado: "a captura precisa ser refinada".
+
+Investigacao (via CDP remoto no Samsung A07, aparelho ja conectado):
+
+- O app estava parado na tela de Inventario havia cerca de 2 horas (ultimas leituras registradas as 12:45, sessao investigada as 14:39). A previa da camera estava preta.
+- `document.querySelector('video').srcObject.getVideoTracks()[0].readyState` retornava `"ended"` e o `<video>` estava `paused`. O sistema Android encerra a faixa de video da camera quando o app vai para segundo plano (tela apaga, troca de app), mas o codigo nunca detectava isso — o loop de OCR continuava rodando a cada 400ms sobre o ultimo frame congelado, sem avisar o usuario e sem tentar reconectar.
+- Reproduzido sob demanda: `adb shell input keyevent KEYCODE_HOME` (backgrounding) seguido de reabrir o app confirma `readyState` mudando para `"ended"` e permanecendo assim indefinidamente sem o fix.
+
+Fix aplicado em `frontend/src/pages/Inventario.jsx` (dentro do `useEffect` do scanner):
+
+- Contador `geracao`: cada chamada de `startScanner()` guarda sua propria `minhaGeracao`; o loop de captura (`iniciarLoop`/`capturarUmaVez`) e o `catch` de erro passam a checar `minhaGeracao === geracao` alem de `stopped`, entao uma chamada antiga se auto-encerra no proximo checkpoint em vez de continuar rodando em paralelo com a nova.
+- `track.addEventListener('ended', ...)`: quando o sistema encerra a faixa de video, chama `startScanner()` de novo automaticamente (pede um novo `getUserMedia`).
+- `document.addEventListener('visibilitychange', ...)`: cobre o caso do evento `'ended'` nao disparar em algum fabricante — ao voltar para o app, verifica se a faixa ainda esta `'live'`; se nao estiver, reinicia a captura; se estiver mas o `<video>` estiver pausado, so chama `video.play()`.
+
+Validacao no aparelho real (Samsung A07, via CDP + `adb`):
+
+- Build web (`vite build --mode capacitor`) + `npx cap copy android` + `./gradlew assembleDebug` + `adb install -r` no aparelho conectado.
+- Login efetuado, navegado ate Logistica → Patrimonio → Inventario, configuracao selecionada, scanner iniciado — `track.readyState` confirmado `"live"`.
+- `adb shell input keyevent KEYCODE_HOME` (background) → confirmado `readyState: "ended"`, `paused: true`, `document.visibilityState: "hidden"` (bug reproduzido).
+- App trazido de volta ao primeiro plano (`adb shell am start ...`, equivalente a tocar no icone) → sem nenhuma acao do usuario na tela do scanner, `readyState` voltou sozinho para `"live"`, `paused: false` — recuperacao automatica confirmada.
+
+Pendencias:
+
+- Nao testado ainda com uma etiqueta real apontada pela camera apos a recuperacao (a validacao desta rodada usou o celular sobre a mesa, sem etiqueta em vista) — recomendado o usuario confirmar em uso real.
+- Deploy pendente: rebuild do frontend web na VPS (`docker build --no-cache`) e novo APK final para o usuario reinstalar.
+- Achado a parte (nao e bug): quando a etiqueta mirada tem blocos de texto densos alem do numero (ex.: instrucoes do fabricante), o ML Kit as vezes le esse texto em vez do numero — `detectarFaixaAposBarcode` e `extrairChapa` ja mitigam isso, mas nao eliminam 100% dos casos; nao investigado a fundo nesta rodada porque o achado principal (camera travando) explicava a maior parte das leituras erradas observadas.
+
 ## Issue 023 - Gerar APK Android (Capacitor) para o modulo Inventario
 
 Status: `[done]` — APK debug gerado localmente; codigo commitado (`dcb1dbf`) e pushado

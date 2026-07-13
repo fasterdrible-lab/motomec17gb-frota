@@ -309,6 +309,15 @@ export default function Inventario() {
     let stream = null;
     let loopTimer = null;
     let emAndamento = false;
+    // O sistema pode encerrar a faixa de video sem avisar a pagina (app em
+    // segundo plano, tela bloqueada, outro app tomou a camera) — sem
+    // deteccao disso o <video> fica parado no ultimo frame ao vivo e o loop
+    // de OCR continua rodando escondido sobre essa imagem congelada,
+    // devolvendo lixo sem nenhum aviso pro usuario. `geracao` identifica
+    // qual chamada de startScanner e a atual: quando uma nova comeca (apos
+    // reinicio), o loop e a faixa da chamada anterior se auto-encerram no
+    // proximo checkpoint em vez de continuar rodando em paralelo.
+    let geracao = 0;
     setCameraError('');
     setCameraAtiva(false);
     setOcrBusy(false);
@@ -321,6 +330,7 @@ export default function Inventario() {
     const numeroCtx = numeroCanvas.getContext('2d');
 
     async function startScanner() {
+      const minhaGeracao = ++geracao;
       try {
         // Sem largura/altura definidas o navegador pode escolher uma
         // resolucao baixa demais para ler os digitos pequenos da etiqueta.
@@ -332,20 +342,27 @@ export default function Inventario() {
             height: { ideal: 1080 },
           },
         });
-        if (stopped) { stream.getTracks().forEach(t => t.stop()); return; }
+        if (stopped || minhaGeracao !== geracao) { stream.getTracks().forEach(t => t.stop()); return; }
 
         const video = videoRef.current;
         video.srcObject = stream;
         await video.play();
-        if (stopped) return;
+        if (stopped || minhaGeracao !== geracao) return;
 
         setCameraAtiva(true);
+
+        const track = stream.getVideoTracks()[0];
+        // Reinicia sozinho assim que o sistema derruba a faixa de video —
+        // ver comentario de `geracao` acima. `{ once: true }` porque uma
+        // faixa encerrada nunca mais dispara 'ended' de novo.
+        track.addEventListener('ended', () => {
+          if (!stopped && minhaGeracao === geracao) startScanner();
+        }, { once: true });
 
         // Foco continuo ajuda muito em etiquetas pequenas de perto — nem
         // todo aparelho suporta, entao e melhor esforco (nao trava nada se a
         // API ou o modo nao existir).
         try {
-          const track = stream.getVideoTracks()[0];
           const caps = track?.getCapabilities?.();
           if (caps?.focusMode?.includes('continuous')) {
             await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
@@ -358,7 +375,7 @@ export default function Inventario() {
         // pelo botao manual quanto pelo loop automatico. `emAndamento`
         // evita que as duas vias rodem uma captura ao mesmo tempo.
         async function capturarUmaVez() {
-          if (stopped || emAndamento) return false;
+          if (stopped || minhaGeracao !== geracao || emAndamento) return false;
           const region = getCropRegion(video, video.parentElement);
           if (!region || region.srcW <= 0 || region.srcH <= 0) return false;
 
@@ -423,12 +440,12 @@ export default function Inventario() {
         // automatico ate essa tentativa tambem dar certo.
         let loopAtivo = false;
         async function iniciarLoop() {
-          if (stopped || loopAtivo) return;
+          if (stopped || minhaGeracao !== geracao || loopAtivo) return;
           loopAtivo = true;
           try {
-            while (!stopped) {
+            while (!stopped && minhaGeracao === geracao) {
               const achou = await capturarUmaVez();
-              if (stopped || achou) break;
+              if (stopped || minhaGeracao !== geracao || achou) break;
               await new Promise(resolve => { loopTimer = setTimeout(resolve, 400); });
             }
           } finally {
@@ -441,13 +458,32 @@ export default function Inventario() {
         setOcrReady(true);
         iniciarLoop();
       } catch {
-        if (!stopped) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
+        if (!stopped && minhaGeracao === geracao) setCameraError('Câmera não disponível. Use o campo manual abaixo.');
       }
     }
+
+    // Se o app voltar a ficar visivel (usuario desbloqueou a tela, trocou
+    // de app e voltou) e a faixa de video nao estiver mais ao vivo — o
+    // sistema a encerrou enquanto o app estava em segundo plano —
+    // reinicia a captura sozinho em vez de deixar o usuario com a previa
+    // preta/congelada sem explicacao. Cobre o caso do listener 'ended' nao
+    // disparar (alguns fabricantes suspendem a faixa sem encerra-la).
+    function handleVisibilityChange() {
+      if (stopped || document.visibilityState !== 'visible') return;
+      const track = stream?.getVideoTracks?.()[0];
+      const video = videoRef.current;
+      if (!track || track.readyState !== 'live') {
+        startScanner();
+      } else if (video?.paused) {
+        video.play().catch(() => {});
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     startScanner();
     return () => {
       stopped = true;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       capturarRef.current = null;
       if (loopTimer) clearTimeout(loopTimer);
       stream?.getTracks().forEach(t => t.stop());
