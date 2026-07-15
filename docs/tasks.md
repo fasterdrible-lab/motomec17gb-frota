@@ -9,7 +9,7 @@ Status:
 
 ## Issue 028 - Scanner: orientacao de posicionamento e foco "cacando" sozinho
 
-Status: `[done]` — corrigido, testado no aparelho real e instalado; deploy na VPS pendente
+Status: `[done]` — corrigido, testado no aparelho real, instalado e deployado na VPS em 2026-07-15
 
 Objetivo:
 
@@ -37,9 +37,12 @@ Validacao:
 - Build web + `cap copy android` + `gradlew assembleDebug` (com o mesmo contorno de OneDrive documentado no `CURRENT_STATE.md`) + `adb install -r` no Samsung A07 conectado, repetido apos cada um dos dois fixes.
 - Teste fisico de leitura com etiqueta real apos os dois fixes fica com o usuario (sessao terminou aguardando esse feedback).
 
+Deploy:
+
+- VPS: `git pull origin main` (`096e73f` → `ed9e3d3`) + `docker build --no-cache` do frontend + container `motomec17gb-frontend-1` recriado. Site publico (200) e `/api/health` (200) confirmados em 2026-07-15.
+
 Pendencias:
 
-- Deploy do frontend web na VPS (`docker build --no-cache`) ainda nao feito para esta rodada de mudancas — so o APK foi atualizado e instalado no aparelho de teste ate agora.
 - Confirmar com o usuario se as dicas de posicionamento e o novo comportamento de foco realmente melhoraram a taxa de leitura em uso real.
 
 ## Issue 027 - Scanner nao recuperava a camera apos o app voltar de segundo plano

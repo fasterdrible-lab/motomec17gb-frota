@@ -31,7 +31,7 @@ Corrigido em `frontend/src/pages/Inventario.jsx`:
 
 Decisao registrada (nao implementada a pedido do usuario): pre-processamento de imagem para melhorar leitura de etiquetas manuscritas (usadas quando a etiqueta impressa se desgasta) foi avaliado e descartado — o motor de OCR (ML Kit) e otimizado para texto impresso e o campo manual + "Validar" ja cobre esse caso hoje. Revisitar se houver dificuldade real reportada em campo.
 
-APK atualizado e instalado no Samsung A07 de teste apos cada um dos dois fixes. **Deploy na VPS (frontend web) desta rodada ainda pendente** — so o APK foi atualizado ate aqui. Detalhes completos em `tasks.md`, Issue 028.
+APK atualizado e instalado no Samsung A07 de teste apos cada um dos dois fixes. **Deploy na VPS concluido em 2026-07-15:** `git pull` (`ed9e3d3`) + `docker build --no-cache` do frontend + container recriado; site (200) e `/api/health` (200) confirmados. Detalhes completos em `tasks.md`, Issue 028.
 
 ---
 
