@@ -216,6 +216,19 @@ TODOS_ITENS.forEach(i => {
 });
 const RESPONSAVEIS = Object.keys(RESP_TO_DIVISOES).sort();
 
+// Dica de posicionamento que aparece so quando o OCR esta de fato tendo
+// dificuldade (varias tentativas seguidas sem achar um numero valido) — em
+// vez de um texto fixo generico, guia o usuario com a acao mais provavel de
+// resolver o problema que ele esta tendo NAQUELE momento. Testado com
+// usuario real: sem nenhuma orientacao alem de "centralize a etiqueta", fica
+// dificil saber se o problema e distancia, reflexo ou etiqueta ilegivel.
+function getDicaPosicionamento(falhas) {
+  if (falhas >= 12) return '💡 Etiqueta muito desgastada ou ilegível? Digite o número no campo manual abaixo.';
+  if (falhas >= 6)  return '💡 Incline levemente a etiqueta ou a câmera para evitar reflexo de luz sobre o número.';
+  if (falhas >= 3)  return '💡 Aproxime mais a câmera — o número da chapa deve ocupar boa parte da mira.';
+  return null;
+}
+
 const STATUS_COR = {
   ok:           { label: 'Correto',      cor: '#16a34a', bg: '#dcfce7', borda: '#86efac', icon: '✓' },
   deslocado:    { label: 'Deslocado',    cor: '#d97706', bg: '#fef3c7', borda: '#fcd34d', icon: '⚠' },
@@ -241,6 +254,7 @@ export default function Inventario() {
   const [ocrReady, setOcrReady]       = useState(false);
   const [ultimaCaptura, setUltimaCaptura] = useState(null);
   const [busca, setBusca]             = useState('');
+  const [falhasSeguidas, setFalhasSeguidas] = useState(0);
 
   const videoRef     = useRef(null);
   const processarRef = useRef(null);
@@ -269,6 +283,7 @@ export default function Inventario() {
     }));
     setFlashStatus(status);
     setFlashNome(item?.descricao ?? 'Item não cadastrado');
+    setFalhasSeguidas(0);
     setTimeout(() => setFlashStatus(null), 1400);
   }
 
@@ -323,6 +338,7 @@ export default function Inventario() {
     setOcrBusy(false);
     setOcrReady(false);
     setUltimaCaptura(null);
+    setFalhasSeguidas(0);
 
     const scanCanvas = document.createElement('canvas');
     const scanCtx = scanCanvas.getContext('2d');
@@ -359,16 +375,38 @@ export default function Inventario() {
           if (!stopped && minhaGeracao === geracao) startScanner();
         }, { once: true });
 
-        // Foco continuo ajuda muito em etiquetas pequenas de perto — nem
-        // todo aparelho suporta, entao e melhor esforco (nao trava nada se a
-        // API ou o modo nao existir).
+        // 'continuous' fica reajustando o foco sozinho o tempo todo — testado
+        // com usuario real: o foco muda mesmo com o celular parado,
+        // especialmente perto (~15cm) da etiqueta. 'single-shot' foca uma
+        // vez e TRAVA ate ser acionado de novo, sem ficar "cacando" foco
+        // sozinho enquanto o usuario mira a etiqueta. So volta a focar de
+        // novo quando `refocar()` e chamado explicitamente (ver abaixo).
+        let modoFoco = null;
         try {
           const caps = track?.getCapabilities?.();
-          if (caps?.focusMode?.includes('continuous')) {
-            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+          const modos = caps?.focusMode || [];
+          modoFoco = modos.includes('single-shot') ? 'single-shot'
+                   : modos.includes('continuous') ? 'continuous'
+                   : null;
+          if (modoFoco) {
+            await track.applyConstraints({ advanced: [{ focusMode: modoFoco }] });
           }
         } catch {
           // sem suporte a controle de foco manual, segue com o padrao do aparelho
+        }
+
+        // Forca um novo ciclo de autofoco quando o modo e 'single-shot' (que
+        // so foca uma vez e trava). Chamado apos cada tentativa sem sucesso —
+        // se o foco nao pegou o numero, vale a pena focar de novo antes da
+        // proxima captura; sem isso o foco ficaria travado na primeira
+        // convergencia mesmo que o usuario reposicione a etiqueta.
+        async function refocar() {
+          if (modoFoco !== 'single-shot') return;
+          try {
+            await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+          } catch {
+            // ignora — segue com o foco atual
+          }
         }
 
         // Retorna true se achou e processou um numero valido — usado tanto
@@ -420,8 +458,12 @@ export default function Inventario() {
                 processarRef.current(digitos);
                 return true;
               }
+              setFalhasSeguidas(f => f + 1);
+              refocar();
               return false;
             } catch {
+              setFalhasSeguidas(f => f + 1);
+              refocar();
               return false;
             } finally {
               if (!stopped) setOcrBusy(false);
@@ -677,9 +719,18 @@ export default function Inventario() {
 
           {cameraAtiva && (
             <>
-              <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                Centralize a etiqueta — a leitura acontece sozinha e para ao confirmar um número. Pra próxima etiqueta, toque em Capturar.
+              <p style={{ margin: '0 0 6px', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                Aproxime a câmera a ~15 cm da etiqueta e encaixe o número da chapa dentro da mira. A leitura acontece sozinha e para ao confirmar.
               </p>
+              {getDicaPosicionamento(falhasSeguidas) && (
+                <p style={{
+                  margin: '0 0 10px', fontSize: '0.78rem', fontWeight: 600, color: '#92400e',
+                  background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8,
+                  padding: '8px 12px', textAlign: 'center',
+                }}>
+                  {getDicaPosicionamento(falhasSeguidas)}
+                </p>
+              )}
               <button
                 onClick={() => capturarRef.current?.()}
                 disabled={!ocrReady || ocrBusy}

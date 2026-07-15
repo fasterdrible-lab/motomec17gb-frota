@@ -7,9 +7,44 @@ Status:
 - `[todo]` pendente.
 - `[blocked]` depende de decisao, credencial ou backend inexistente.
 
+## Issue 028 - Scanner: orientacao de posicionamento e foco "cacando" sozinho
+
+Status: `[done]` — corrigido, testado no aparelho real e instalado; deploy na VPS pendente
+
+Objetivo:
+
+- Usuario testou o scanner apos a Issue 027 e reportou duas dificuldades reais de uso: "esta bem dificil de ler, o usuario fica sem orientacao de como posicionar a camera" e, em seguida, "por mais que mantenha a camera parada o foco muda sozinho".
+
+Fix 1 — orientacao de posicionamento (`frontend/src/pages/Inventario.jsx`):
+
+- Texto fixo acima do botao "Capturar" trocado de generico ("Centralize a etiqueta...") para uma instrucao concreta de distancia e enquadramento: "Aproxime a camera a ~15 cm da etiqueta e encaixe o numero da chapa dentro da mira."
+- Dica adaptativa nova (`getDicaPosicionamento`): conta tentativas de OCR sem sucesso (`falhasSeguidas`, resetado a zero em qualquer leitura confirmada, manual ou automatica) e exibe uma dica cada vez mais especifica conforme a dificuldade persiste — 3+ falhas: aproximar mais a camera; 6+ falhas: inclinar para evitar reflexo de luz; 12+ falhas: sugere usar o campo manual (etiqueta provavelmente ilegivel/danificada).
+
+Fix 2 — foco automatico reajustando sozinho:
+
+- Causa: o codigo forcava `focusMode: 'continuous'` via `track.applyConstraints`, que fica continuamente re-buscando foco mesmo com o aparelho parado — comportamento classico de "hunting" em distancias curtas (~15cm), confirmado pelo usuario em teste real no Samsung A07.
+- Corrigido: agora prefere `'single-shot'` quando o aparelho suporta essa capability (foca uma vez e trava, sem ficar reajustando sozinho); so cai para `'continuous'` se `'single-shot'` nao estiver disponivel nas `track.getCapabilities()`.
+- Nova funcao `refocar()`: chamada apos qualquer tentativa de OCR sem sucesso, forca um novo ciclo de foco `single-shot` antes da proxima captura — evita que o foco fique travado permanentemente na primeira convergencia (que pode ter sido ruim) sem nenhuma tentativa de corrigir.
+
+Decisao registrada (nao e bug, e limitacao conhecida) — etiquetas manuscritas:
+
+- Usuario relatou que as vezes usa etiqueta manuscrita quando a etiqueta convencional (impressa) se desgasta.
+- O motor de OCR (ML Kit Text Recognition, via `@jcesarmobile/capacitor-ocr`) e otimizado para texto IMPRESSO; letra manuscrita em bloco pode sair razoavel, mas manuscrito corrido tem taxa de acerto bem mais baixa, sem alternativa de "modo manuscrito" no mesmo motor.
+- Opcao de pre-processamento de imagem (contraste/binarizacao) para ajudar traços finos de caneta/lapis foi avaliada e descartada por pedido do usuario ("deixa como esta") — o campo manual + botao "Validar" ja existente na tela e o caminho usado hoje para esses casos. Revisitar se o usuario reportar dificuldade real de campo com etiquetas manuscritas.
+
+Validacao:
+
+- Build web + `cap copy android` + `gradlew assembleDebug` (com o mesmo contorno de OneDrive documentado no `CURRENT_STATE.md`) + `adb install -r` no Samsung A07 conectado, repetido apos cada um dos dois fixes.
+- Teste fisico de leitura com etiqueta real apos os dois fixes fica com o usuario (sessao terminou aguardando esse feedback).
+
+Pendencias:
+
+- Deploy do frontend web na VPS (`docker build --no-cache`) ainda nao feito para esta rodada de mudancas — so o APK foi atualizado e instalado no aparelho de teste ate agora.
+- Confirmar com o usuario se as dicas de posicionamento e o novo comportamento de foco realmente melhoraram a taxa de leitura em uso real.
+
 ## Issue 027 - Scanner nao recuperava a camera apos o app voltar de segundo plano
 
-Status: `[done]` — corrigido e validado no aparelho real; deploy pendente (VPS + APK final)
+Status: `[done]` — corrigido, validado no aparelho real e deployado (VPS + APK final) em 2026-07-15
 
 Objetivo:
 
@@ -37,7 +72,7 @@ Validacao no aparelho real (Samsung A07, via CDP + `adb`):
 Pendencias:
 
 - Nao testado ainda com uma etiqueta real apontada pela camera apos a recuperacao (a validacao desta rodada usou o celular sobre a mesa, sem etiqueta em vista) — recomendado o usuario confirmar em uso real.
-- Deploy pendente: rebuild do frontend web na VPS (`docker build --no-cache`) e novo APK final para o usuario reinstalar.
+- Deploy concluido em 2026-07-15: rebuild do frontend web na VPS (`docker build --no-cache`) e novo APK final gerado (`apk/MOTOMEC-17GB-Frota-debug.apk`) para o usuario reinstalar.
 - Achado a parte (nao e bug): quando a etiqueta mirada tem blocos de texto densos alem do numero (ex.: instrucoes do fabricante), o ML Kit as vezes le esse texto em vez do numero — `detectarFaixaAposBarcode` e `extrairChapa` ja mitigam isso, mas nao eliminam 100% dos casos; nao investigado a fundo nesta rodada porque o achado principal (camera travando) explicava a maior parte das leituras erradas observadas.
 
 ## Issue 023 - Gerar APK Android (Capacitor) para o modulo Inventario

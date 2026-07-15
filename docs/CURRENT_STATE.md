@@ -1,6 +1,6 @@
 # Current State — MOTOMEC 17GB Frota
 
-Atualizado em: 2026-07-08
+Atualizado em: 2026-07-15
 
 ## Status geral
 
@@ -15,7 +15,23 @@ Debug ao vivo via CDP remoto no aparelho de teste (Samsung A07) a pedido do usua
 
 Corrigido: a faixa de video agora e monitorada (`track.addEventListener('ended', ...)` + `document.addEventListener('visibilitychange', ...)`) e reinicia a captura (`getUserMedia` de novo) sozinha assim que detecta que a camera morreu. Validado no aparelho real reproduzindo o bug sob demanda (`adb shell input keyevent KEYCODE_HOME` + retorno ao app) e confirmando que a faixa volta para `"live"` automaticamente. Detalhes completos em `tasks.md`, Issue 027.
 
-**Deploy pendente:** fix aplicado e testado localmente (build + APK reinstalado no aparelho de teste), mas ainda nao publicado na VPS (frontend web) nem entregue como APK final ao usuario.
+**Deploy concluido em 2026-07-15:** frontend rebuildado na VPS (`docker build --no-cache`, imagem `03a59120d7b3`), container `motomec17gb-frontend-1` recriado; site publico (200) e `/api/health` (200) confirmados. Novo APK debug gerado (`vite build --mode capacitor` + `cap copy android` + `gradlew assembleDebug`) e copiado para `apk/MOTOMEC-17GB-Frota-debug.apk`. **Nota de build:** o projeto Android dentro da pasta OneDrive falha no Gradle (`Cannot snapshot ...: not a regular file`) por causa dos reparse points do OneDrive Files On-Demand — contornado copiando `frontend/android` + os modulos nativos usados (`node_modules/@capacitor/android`, `node_modules/@jcesarmobile/capacitor-ocr`) para uma pasta local fora do OneDrive antes de rodar `gradlew`. Repetir esse contorno em builds futuros de APK.
+
+---
+
+## Scanner de Inventario — orientacao de posicionamento e foco "cacando" (Issue 028, 2026-07-15)
+
+Apos o deploy da Issue 027, usuario testou o scanner em uso real e reportou duas dificuldades: falta de orientacao de como posicionar a camera, e o foco automatico mudando sozinho mesmo com o aparelho parado.
+
+Corrigido em `frontend/src/pages/Inventario.jsx`:
+
+- Instrucao fixa na tela trocada para orientacao concreta de distancia/enquadramento ("Aproxime a camera a ~15 cm da etiqueta...").
+- Dica adaptativa que so aparece quando o OCR esta de fato com dificuldade (conta tentativas seguidas sem sucesso e escala a orientacao: aproximar mais → evitar reflexo → usar campo manual).
+- Foco trocado de `'continuous'` (ficava reajustando sozinho, causa da reclamacao) para `'single-shot'` quando o aparelho suporta — foca uma vez e trava; um novo ciclo de foco e forcado automaticamente apos cada tentativa de leitura sem sucesso.
+
+Decisao registrada (nao implementada a pedido do usuario): pre-processamento de imagem para melhorar leitura de etiquetas manuscritas (usadas quando a etiqueta impressa se desgasta) foi avaliado e descartado — o motor de OCR (ML Kit) e otimizado para texto impresso e o campo manual + "Validar" ja cobre esse caso hoje. Revisitar se houver dificuldade real reportada em campo.
+
+APK atualizado e instalado no Samsung A07 de teste apos cada um dos dois fixes. **Deploy na VPS (frontend web) desta rodada ainda pendente** — so o APK foi atualizado ate aqui. Detalhes completos em `tasks.md`, Issue 028.
 
 ---
 
