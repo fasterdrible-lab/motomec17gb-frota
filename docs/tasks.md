@@ -7,6 +7,43 @@ Status:
 - `[todo]` pendente.
 - `[blocked]` depende de decisao, credencial ou backend inexistente.
 
+## Issue 029 - Scanner confirmava leitura errada (mira verde em fragmento de numero)
+
+Status: `[done]` — corrigido, validado ao vivo no aparelho real (CDP + adb) e deployado na VPS + APK em 2026-07-16
+
+Objetivo:
+
+- Usuario reportou "ferramenta de captura em loop"; refinando o relato, o problema real era: a mira ficava verde tanto quando lia o numero completo quanto quando lia so uma parte dele, e pediu pra investigar por que as vezes nao le o numero completo.
+
+Investigacao (via CDP remoto no Samsung A07, aparelho conectado):
+
+- Instrumentado `window.Capacitor.Plugins.Ocr.process` para logar cada chamada, e testado ao vivo apontando pra etiqueta real da chapa 167207 (LANTERNA TATICA, mesma usada na Issue 026). Confirmado no relatorio de "LIDOS" do proprio app: leituras confirmadas em sequencia foram `2013`, `7207`, `20229`, `6720`, `197186` — todas marcadas "Nao cadastrado". `7207` e `6720` sao literalmente pedacos contiguos de `167207`.
+
+Causas raiz (duas, em `frontend/src/pages/Inventario.jsx`):
+
+1. **Cor da mira nao refletia o status real.** `corMira = flashStatus ? '#4ade80' : ...` so checava se HAVIA um resultado confirmado, nao QUAL — entao uma leitura "Nao cadastrado" (fragmento/ruido) piscava o mesmo verde de uma leitura "Correto", passando confianca falsa pro usuario.
+2. **`extrairChapa()` aceitava qualquer fragmento numerico valido (4-6 digitos) como resultado final.** O ML Kit fragmenta o numero por causa do espacamento da fonte; sem preferencia por uma reconstrucao que bata com uma chapa cadastrada de verdade, o algoritmo travava no primeiro candidato "do tamanho certo" (mesmo sendo so um pedaco) em vez de continuar tentando ate reconstruir o numero completo.
+
+Fix:
+
+- `corMira` agora usa `STATUS_COR[flashStatus].cor` — verde so para "Correto", laranja para "Deslocado", vermelho para "Nao cadastrado".
+- `extrairChapa(texto, chapasConhecidas)` agora recebe o conjunto de todas as chapas cadastradas (`CHAPAS_CONHECIDAS`, construido uma vez a partir de `TODOS_ITENS`) e, entre os candidatos de tamanho valido de um mesmo frame, prioriza o mais longo que bata exatamente com uma chapa real — so cai para "candidato mais longo" (comportamento antigo) se nenhum bater.
+
+Validacao:
+
+- Build web local (`vite build --mode capacitor`) + `cap copy android` + `gradlew assembleDebug` (com o contorno de OneDrive documentado abaixo) + `adb install -r` no Samsung A07 conectado.
+- Reproduzido ao vivo: apontando pra chapa 167207 de novo, a leitura confirmada mais recente mostrou `167207 — LANTERNA TATICA · Divisao correta: EM EB SHANGAI SALA DE MATERIAIS PARA DESCARGA` em **laranja** (Deslocado, correto — o item pertence a outra divisao) em vez do verde enganoso de antes. Fragmentos de tentativas anteriores na mesma sessao ainda apareceram (`67207`, `2029`, `16720`), mas agora corretamente em vermelho.
+
+Limitacao conhecida (nao e bug, ja existia antes):
+
+- O ML Kit ainda fragmenta o numero em alguns frames — o fix faz o app reconhecer e priorizar o numero completo assim que ele aparece em algum frame, mas nao elimina 100% das tentativas com fragmento antes disso. Cada fragmento confirmado ainda para o loop automatico (exige toque em "Capturar agora" pra tentar de novo) — comportamento existente desde a Issue 026, nao alterado nesta rodada.
+
+Deploy:
+
+- Commit `9c3c21c`, push para `main`.
+- VPS: `git pull origin main` (`ed9e3d3` → `9c3c21c`) + `docker build --no-cache` do frontend + container `motomec17gb-frontend-1` recriado. Site (200 em `/motomec17gb-frota/`) e `/api/health` (200) confirmados.
+- APK debug recompilado e reinstalado no aparelho de teste; copiado para `apk/MOTOMEC-17GB-Frota-debug.apk`.
+
 ## Issue 028 - Scanner: orientacao de posicionamento e foco "cacando" sozinho
 
 Status: `[done]` — corrigido, testado no aparelho real, instalado e deployado na VPS em 2026-07-15

@@ -1,6 +1,6 @@
 # Current State — MOTOMEC 17GB Frota
 
-Atualizado em: 2026-07-15
+Atualizado em: 2026-07-16
 
 ## Status geral
 
@@ -16,6 +16,16 @@ Debug ao vivo via CDP remoto no aparelho de teste (Samsung A07) a pedido do usua
 Corrigido: a faixa de video agora e monitorada (`track.addEventListener('ended', ...)` + `document.addEventListener('visibilitychange', ...)`) e reinicia a captura (`getUserMedia` de novo) sozinha assim que detecta que a camera morreu. Validado no aparelho real reproduzindo o bug sob demanda (`adb shell input keyevent KEYCODE_HOME` + retorno ao app) e confirmando que a faixa volta para `"live"` automaticamente. Detalhes completos em `tasks.md`, Issue 027.
 
 **Deploy concluido em 2026-07-15:** frontend rebuildado na VPS (`docker build --no-cache`, imagem `03a59120d7b3`), container `motomec17gb-frontend-1` recriado; site publico (200) e `/api/health` (200) confirmados. Novo APK debug gerado (`vite build --mode capacitor` + `cap copy android` + `gradlew assembleDebug`) e copiado para `apk/MOTOMEC-17GB-Frota-debug.apk`. **Nota de build:** o projeto Android dentro da pasta OneDrive falha no Gradle (`Cannot snapshot ...: not a regular file`) por causa dos reparse points do OneDrive Files On-Demand — contornado copiando `frontend/android` + os modulos nativos usados (`node_modules/@capacitor/android`, `node_modules/@jcesarmobile/capacitor-ocr`) para uma pasta local fora do OneDrive antes de rodar `gradlew`. Repetir esse contorno em builds futuros de APK.
+
+---
+
+## Scanner de Inventario — mira verde em leitura errada (Issue 029, 2026-07-16)
+
+Usuario percebeu (com o termo inicial "captura em loop") que a mira ficava verde tanto numa leitura correta quanto numa leitura de fragmento/ruido, e pediu pra investigar por que as vezes o numero completo nao e lido. Debug ao vivo via CDP no Samsung A07 (etiqueta real da chapa 167207) confirmou duas causas em `frontend/src/pages/Inventario.jsx`: a cor da mira so checava se havia ALGUM resultado confirmado (nao qual — bug visual), e `extrairChapa()` aceitava qualquer fragmento numerico de tamanho valido (4-6 digitos) como resultado final em vez de priorizar uma reconstrucao que bata com uma chapa cadastrada de verdade (o ML Kit fragmenta o numero por espacamento de fonte).
+
+Corrigido: mira agora usa a cor real do status (`STATUS_COR[flashStatus].cor`); `extrairChapa()` recebe o conjunto de chapas cadastradas e prioriza candidatos que batem exatamente com uma chapa real. Validado ao vivo apontando pra mesma etiqueta: leitura confirmou `167207` (Deslocado, laranja) corretamente em vez de travar num fragmento marcado verde. Detalhes completos em `tasks.md`, Issue 029.
+
+**Deploy concluido em 2026-07-16:** commit `9c3c21c` pushado; VPS atualizada (`git pull` + `docker build --no-cache` do frontend, container recriado, site e `/api/health` confirmados 200); APK debug recompilado e reinstalado no aparelho de teste, copiado para `apk/MOTOMEC-17GB-Frota-debug.apk`.
 
 ---
 
