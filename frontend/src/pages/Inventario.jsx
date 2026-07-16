@@ -100,7 +100,7 @@ function getCropRegion(video, containerEl) {
 // digitos) — isso reconstroi o numero mesmo se ele saiu bem fragmentado, e
 // ainda rejeita ruido isolado e uniões longas demais tipo
 // "211029"+"4"="2110294" (7 digitos, fora do range valido).
-function extrairChapa(texto) {
+function extrairChapa(texto, chapasConhecidas) {
   const candidatos = [];
   for (const linha of texto.split(/\n+/)) {
     const tokens = linha.trim().split(/\s+/).filter(t => /^\d+$/.test(t));
@@ -113,9 +113,26 @@ function extrairChapa(texto) {
       }
     }
   }
-  const validos = candidatos
-    .filter(c => c.length >= 4 && c.length <= 6)
-    .sort((a, b) => b.length - a.length);
+  const validos = candidatos.filter(c => c.length >= 4 && c.length <= 6);
+
+  // O ML Kit frequentemente fragmenta o numero (espacamento da fonte), entao
+  // varios candidatos de tamanho valido (4-6 digitos) sao apenas PEDACOS do
+  // numero real — nao o numero inteiro. Testado com etiqueta real (chapa
+  // 167207): sem essa checagem, o app confirmava fragmentos como "7207" ou
+  // "6720" como se fossem o resultado final, sempre que o numero completo
+  // nao aparecia como o candidato mais longo. Priorizando candidatos que
+  // batem exatamente com uma chapa cadastrada (a mais longa entre eles),
+  // o app so aceita um fragmento se nenhuma reconstrucao completa/valida
+  // foi encontrada naquele frame — reduz bastante a chance de confirmar
+  // ruido em vez de continuar tentando.
+  if (chapasConhecidas) {
+    const conhecidos = validos
+      .filter(c => chapasConhecidas.has(c))
+      .sort((a, b) => b.length - a.length);
+    if (conhecidos.length) return conhecidos[0];
+  }
+
+  validos.sort((a, b) => b.length - a.length);
   return validos[0] || null;
 }
 
@@ -204,6 +221,11 @@ const TODOS_ITENS = patrimonioRaw.map(i => ({ ...i, divisaoLabel: parseDivisao(i
 
 const DIVISOES = [...new Set(TODOS_ITENS.map(i => i.divisao))]
   .sort((a, b) => parseDivisao(a).localeCompare(parseDivisao(b)));
+
+// Usado por extrairChapa() para priorizar candidatos que batem com uma chapa
+// cadastrada de verdade, em vez de aceitar qualquer fragmento numerico de
+// tamanho valido (ver comentario na funcao).
+const CHAPAS_CONHECIDAS = new Set(TODOS_ITENS.map(i => i.chapa));
 
 // Mapa responsável → divisões sob sua responsabilidade (usado para filtrar
 // o dropdown de Divisão/Ambiente assim que o responsável e escolhido).
@@ -451,7 +473,7 @@ export default function Inventario() {
             try {
               const { results } = await Ocr.process({ image: imagemAnalisada });
               const textoCompleto = (results || []).map(r => r.text).join('\n');
-              const digitos = extrairChapa(textoCompleto);
+              const digitos = extrairChapa(textoCompleto, CHAPAS_CONHECIDAS);
               if (stopped) return false;
               if (digitos) {
                 setManualAviso('');
@@ -689,7 +711,12 @@ export default function Inventario() {
                     azul analisando, verde quando confirma um número. */}
                 <div style={{ position: 'relative', width: `${MIRA_LARGURA_PCT * 100}%`, height: `${MIRA_ALTURA_PCT * 100}%`, boxShadow: '0 0 0 9999px rgba(0,0,0,0.38)', borderRadius: 8 }}>
                   {(() => {
-                    const corMira = flashStatus ? '#4ade80' : ocrBusy ? '#60a5fa' : 'rgba(255,255,255,0.85)';
+                    // A cor da mira precisa refletir o status real da leitura, nao
+                    // so "alguma coisa foi confirmada" — testado com usuario real:
+                    // "Nao cadastrado" (leitura de fragmento/ruido) piscava a mesma
+                    // cor verde de uma leitura correta, passando confianca falsa de
+                    // que o numero completo foi lido quando na verdade nao foi.
+                    const corMira = flashStatus ? STATUS_COR[flashStatus].cor : ocrBusy ? '#60a5fa' : 'rgba(255,255,255,0.85)';
                     const espessura = 4;
                     const tamanho = 26;
                     const base = { position: 'absolute', width: tamanho, height: tamanho, borderColor: corMira, transition: 'border-color 0.25s' };
