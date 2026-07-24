@@ -7,6 +7,73 @@ Status:
 - `[todo]` pendente.
 - `[blocked]` depende de decisao, credencial ou backend inexistente.
 
+## Issue 031 - 1SGB com coluna nova deslocando leitura de status/alertas no backend
+
+Status: `[done]` — corrigido e validado contra a planilha ao vivo em 2026-07-24; deploy na VPS pendente
+
+Objetivo:
+
+- Usuario pediu pra analisar se ainda e possivel extrair os dados da planilha em producao (`https://docs.google.com/spreadsheets/d/1q6wy9iO4aRDKMBPzxR9cISE7pCmUuIaYSRBdhUNlM4Q`). A extracao publica via GViz continua funcionando normalmente, mas a analise revelou um bug real de producao na leitura da aba 1SGB.
+
+Investigacao:
+
+- Fetch direto via GViz (`&sheet=1SGB` e `&sheet=2SGB`) comparado com os indices de coluna documentados em `CURRENT_STATE.md` (que description dizia "1SGB e 2SGB tem estrutura IDENTICA").
+- Achado: em algum momento apos 2026-06-08 (ultima verificacao documentada), a aba **1SGB** ganhou uma coluna nova — "KM ATUAL" (tipo data) — inserida entre "KM ANTERIOR" (coluna C) e "VTR EM GARANTIA". Isso empurrou todas as colunas a partir de VTR EM GARANTIA uma posicao pra direita **so em 1SGB**; 2SGB continua identica ao documentado.
+- Como `backend/src/services/sheetsService.js` (`getDashboardMacro`, `mapSgbDetalhado`) usava indices fixos compartilhados entre 1SGB e 2SGB, a leitura de STATUS OPERACIONAL do 1SGB (esperada na coluna P/indice 15) na verdade lia a coluna "KM TROCA EMBREAGEM" (um numero), que nunca contem "BAIXA"/"RESERVA".
+- Impacto medido contra os dados reais da planilha (29 viaturas validas em 1SGB): a coluna real (Q/indice 16) mostrava **16 operando, 4 baixadas, 9 reserva**; o codigo antigo calculava **29 operando, 0 baixadas, 0 reserva** — 13 viaturas do 1SGB apareciam erradas como operando no dashboard e na tela de Frota. Os status pre-computados de oleo/freio/bateria/lavagem (indices 8-14) e os alertas de pneu/embreagem tambem liam a coluna errada pro 1SGB.
+
+Fix aplicado em `backend/src/services/sheetsService.js`:
+
+- Novas funcoes `getSgbIndex(semanticIdx, sgb)`, `getSgbCell(row, semanticIdx, sgb)` e `getSgbCellFormatted(row, semanticIdx, sgb)`: aplicam +1 no indice apenas quando `sgb === '1SGB'` e o indice semantico e >= 3 (tudo a partir de VTR EM GARANTIA). O campo `km` (indice semantico 2) fica de fora do deslocamento de proposito — ver "Achado de dados" abaixo.
+- `getDashboardMacro()`: `sgbRows` agora marca cada linha com `__sgb: '1SGB'|'2SGB'` na hora de juntar as duas abas; toda leitura de STATUS OPERACIONAL e dos indices de alerta (8-14) passou a usar `getSgbCell(row, idx, row.__sgb)`.
+- `mapSgbDetalhado(rows, sgb)` (usada por `getFrotaDetalhada`, tela de Frota): todos os campos exceto `km` passaram a usar `getSgbCellFormatted(row, idx, sgb)`.
+
+**Achado de dados (nao e bug de codigo, e pendencia pra quem mantem a planilha):**
+
+- A nova coluna "KM ATUAL" do 1SGB esta armazenando **datas** (ex.: `20/07/2026`), nao numeros de km. O km de fato (numero, ex.: `109.833`) continua na coluna "KM ANTERIOR" ao lado. Por isso o fix mantem o campo `km` lendo essa coluna (sem deslocamento) — se simplesmente deslocasse +1 como as outras, o km exibido na tela de Frota viraria uma data. Recomendado o usuario verificar com quem edita a planilha se "KM ATUAL" foi preenchida errado ou se a intencao mudou (nesse caso, revisar esse mapeamento de novo).
+
+Validacao:
+
+- Script Node standalone chamando `getDashboardMacro()` e `getFrotaDetalhada()` diretamente contra a planilha ao vivo (`GOOGLE_SHEETS_ID` real).
+- `getDashboardMacro()` retornou `{ total: 65, operando: 39, baixadas: 4, reserva: 22 }` — antes do fix, baixadas/reserva do 1SGB eram sempre 0.
+- Amostra de 5 viaturas do 1SGB (`ABE-17101`, `ABS-17101`, `ABS-17102`, `ABS-17103`, `ABS-17105`) comparada campo a campo (status, statusOleoKm, statusBateria, km) contra a leitura bruta da planilha — bateu 100%.
+- `node -c backend/src/services/sheetsService.js`: sintaxe OK.
+
+Pendencias:
+
+- Deploy na VPS: `git pull` + rebuild do backend (`docker build --no-cache -t motomec17gb-backend-node ./backend` + recriar container) — nao executado ainda nesta sessao.
+- Confirmar com o usuario/gestor da planilha a divergencia da coluna "KM ATUAL" (data em vez de numero) no 1SGB.
+
+## Issue 030 - Remover frotaService.js (codigo morto)
+
+Status: `[done]`
+
+Objetivo:
+
+- `frotaService.js` foi deixado de lado desde a Issue 020 (Frota e Manutencao migraram para `api.js`/backend), mas o arquivo continuava no repositorio sem nenhum import ativo — registrado como limpeza pendente no `CURRENT_STATE.md`.
+
+Investigacao:
+
+- `grep` por `frotaService` em `frontend/src` nao encontrou nenhuma referencia em nenhum arquivo (nem import, nem uso).
+
+Arquivos modificados:
+
+- `frontend/src/services/frotaService.js`: removido.
+- `docs/ARCHITECTURE.md`: entrada de `frotaService.js` removida da arvore de camadas do codigo.
+
+Banco de dados:
+
+- Nenhuma alteracao.
+
+Dependencias externas:
+
+- Nenhuma. `publicConfig.frotaSheetId` (usado por `requirePublicConfig` dentro do arquivo removido) continua em uso por `googleSheets.js`, entao nao foi tocado.
+
+Cenarios:
+
+- Sucesso: build do frontend continua passando sem o arquivo; nenhuma tela quebra.
+- Edge cases: nenhum — arquivo nao tinha consumidores.
+
 ## Issue 029 - Scanner confirmava leitura errada (mira verde em fragmento de numero)
 
 Status: `[done]` — corrigido, validado ao vivo no aparelho real (CDP + adb) e deployado na VPS + APK em 2026-07-16

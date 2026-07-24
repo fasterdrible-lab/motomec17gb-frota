@@ -9,6 +9,18 @@ Deploy das Issues 020, 021 e 022 concluido na VPS em 2026-07-07 (backend + front
 
 ---
 
+## Bug de producao: 1SGB com coluna nova deslocando status/alertas (Issue 031, 2026-07-24)
+
+Usuario pediu pra analisar se ainda era possivel extrair dados da planilha em producao. A extracao continua funcionando, mas a analise revelou que a aba **1SGB** ganhou uma coluna nova ("KM ATUAL", tipo data) em algum momento apos 2026-06-08, deslocando todas as colunas a partir de VTR EM GARANTIA uma posicao pra direita **so nessa aba** (2SGB continua identica ao documentado). Isso fazia o backend ler STATUS OPERACIONAL do 1SGB na coluna errada (numero de km em vez do texto BAIXADA/OPERANDO/RESERVA) — **13 das 29 viaturas do 1SGB apareciam erradas como "operando"** no dashboard e na tela de Frota (4 baixadas + 9 reserva viravam operando). Alertas de oleo/freio/bateria/lavagem/pneu/embreagem do 1SGB tambem liam a coluna errada.
+
+Corrigido em `backend/src/services/sheetsService.js`: novo helper `getSgbCell`/`getSgbCellFormatted` que aplica o deslocamento de +1 apenas quando a linha vem do 1SGB. Validado rodando `getDashboardMacro()`/`getFrotaDetalhada()` direto contra a planilha real — status por viatura bateu 100% com a coluna real. Detalhes completos em `tasks.md`, Issue 031.
+
+**Achado de dados separado (nao e bug de codigo):** a nova coluna "KM ATUAL" do 1SGB esta guardando datas em vez de numeros de km — o km real continua em "KM ANTERIOR" ao lado, e o codigo foi ajustado pra continuar lendo dali. Recomendado confirmar com quem mantem a planilha se isso foi um erro de preenchimento.
+
+**Deploy pendente:** fix ainda nao foi enviado pra VPS (precisa `git pull` + rebuild do backend com `--no-cache`).
+
+---
+
 ## Scanner de Inventario — camera travava apos segundo plano (Issue 027, 2026-07-13)
 
 Debug ao vivo via CDP remoto no aparelho de teste (Samsung A07) a pedido do usuario ("a captura precisa ser refinada"). Causa raiz encontrada: o Android encerra a faixa de video da camera quando o app vai para segundo plano (tela apaga, troca de app), mas `frontend/src/pages/Inventario.jsx` nunca detectava isso — o loop de OCR continuava tentando ler um frame congelado (preto) indefinidamente, sem se recuperar sozinho. Confirmado que o app estava nesse estado ha cerca de 2 horas quando a investigacao comecou.
@@ -310,7 +322,7 @@ Apos o Apps Script sincronizar, MOB-17108 foi adicionada como nova BAIXADA na 1S
 - `frontend/src/pages/Frota.jsx`: import trocado de `frotaService` para `api`.
 - `frontend/src/pages/Manutencao.jsx`: import trocado de `frotaService` para `api`.
 
-**Resultado:** `frotaService.js` nao e mais usado por nenhuma pagina ativa. Pode ser removido em issue futura de limpeza.
+**Resultado:** `frotaService.js` nao e mais usado por nenhuma pagina ativa. Removido em 2026-07-24 (Issue 030).
 
 ### Issue 021 — Modulo Patrimonio (Logistica) [CONCLUIDO — deploy pendente na VPS]
 

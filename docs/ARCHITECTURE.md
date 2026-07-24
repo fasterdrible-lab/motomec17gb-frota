@@ -72,7 +72,6 @@ motomec17gb-frota-main/
         api.js                       # cliente Axios para backend REST
         googleSheets.js              # leitura direta de planilhas (frota/manutencao)
         logisticaSheets.js           # leitura direta de planilhas (logistica)
-        frotaService.js              # leitura de frota isolada (reutilizada por Manutencao)
     Dockerfile                       # node:22-alpine build + nginx:1.27-alpine serve
   backend/
     src/

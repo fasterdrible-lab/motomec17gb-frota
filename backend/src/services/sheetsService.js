@@ -40,6 +40,24 @@ function getCellFormatted(row, idx) {
   return cell.f != null ? String(cell.f) : String(cell.v);
 }
 
+// 1SGB ganhou uma coluna nova ("KM ATUAL", tipo data) entre KM ANTERIOR e
+// VTR EM GARANTIA, deslocando tudo a partir de VTR EM GARANTIA (indice
+// semantico 3) uma posicao pra direita em relacao a 2SGB. O indice 2 (km,
+// que em 1SGB aponta pra KM ANTERIOR) fica de fora do deslocamento de
+// proposito: KM ANTERIOR ainda guarda um numero de km valido, enquanto a
+// nova coluna "KM ATUAL" guarda datas — ver Issue 031 em tasks.md.
+function getSgbIndex(semanticIdx, sgb) {
+  return sgb === '1SGB' && semanticIdx >= 3 ? semanticIdx + 1 : semanticIdx;
+}
+
+function getSgbCell(row, semanticIdx, sgb) {
+  return getCell(row, getSgbIndex(semanticIdx, sgb));
+}
+
+function getSgbCellFormatted(row, semanticIdx, sgb) {
+  return getCellFormatted(row, getSgbIndex(semanticIdx, sgb));
+}
+
 function parseCusto(val) {
   if (!val) return 0;
   if (typeof val === 'number') return val;
@@ -169,9 +187,10 @@ async function getDashboardMacro() {
   });
 
   // Mapa prefixo → dados do SGB (status + alertas)
+  // __sgb marca a origem de cada linha pra getSgbCell aplicar o deslocamento de colunas do 1SGB.
   const sgbRows = [
-    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
-    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))),
+    ...(sgb1.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))).map(r => ({ ...r, __sgb: '1SGB' })),
+    ...(sgb2.table?.rows || []).filter(r => getCell(r, 0) && !isSyncRow(getCell(r, 0))).map(r => ({ ...r, __sgb: '2SGB' })),
   ];
   const sgbMap = {};
   sgbRows.forEach(r => {
@@ -184,7 +203,7 @@ async function getDashboardMacro() {
   frotaRows.forEach(r => {
     const p = String(getCell(r, 0)).toUpperCase().trim();
     const sgbRow = sgbMap[p];
-    const rawS = sgbRow ? String(getCell(sgbRow, 15)).toUpperCase() : '';
+    const rawS = sgbRow ? String(getSgbCell(sgbRow, 15, sgbRow.__sgb)).toUpperCase() : '';
     const s = p in STATUS_OVERRIDES ? STATUS_OVERRIDES[p] : rawS;
     if (s.includes('BAIXA')) baixadas++;
     else if (s.includes('RESERVA')) reserva++;
@@ -192,31 +211,31 @@ async function getDashboardMacro() {
   });
 
   // Alertas — mesma lógica do Apps Script (calcularAlertas)
-  // Cols I(8)/J(9)/K(10)/L(11) = status pré-computados pelo Apps Script (VENCIDO/A VENCER/OK)
-  // Cols M(12)/N(13)/O(14) = valores brutos (data lavagem, km pneu, km embreagem)
+  // Índices semânticos (2SGB nativo): I(8)/J(9)/K(10)/L(11) = status pré-computados pelo Apps Script (VENCIDO/A VENCER/OK)
+  // M(12)/N(13)/O(14) = valores brutos (data lavagem, km pneu, km embreagem)
   const hoje = new Date();
   let totalAlertas = 0;
   sgbRows.forEach(r => {
     const kmAtual = parseFloat(getCell(r, 2)) || 0;
 
-    // I — Óleo KM (col 8, pré-computado pelo Apps Script)
-    const sOleoKm = String(getCell(r, 8)).toUpperCase();
+    // I — Óleo KM (pré-computado pelo Apps Script)
+    const sOleoKm = String(getSgbCell(r, 8, r.__sgb)).toUpperCase();
     if (sOleoKm.includes('VENCIDO') || sOleoKm.includes('A VENCER')) totalAlertas++;
 
-    // J — Óleo Tempo (col 9, pré-computado)
-    const sOleoTempo = String(getCell(r, 9)).toUpperCase();
+    // J — Óleo Tempo (pré-computado)
+    const sOleoTempo = String(getSgbCell(r, 9, r.__sgb)).toUpperCase();
     if (sOleoTempo.includes('VENCIDO') || sOleoTempo.includes('A VENCER')) totalAlertas++;
 
-    // K — Freio (col 10, pré-computado)
-    const sFreio = String(getCell(r, 10)).toUpperCase();
+    // K — Freio (pré-computado)
+    const sFreio = String(getSgbCell(r, 10, r.__sgb)).toUpperCase();
     if (sFreio.includes('VENCIDO') || sFreio.includes('A VENCER')) totalAlertas++;
 
-    // L — Bateria (col 11, pré-computado)
-    const sBateria = String(getCell(r, 11)).toUpperCase();
+    // L — Bateria (pré-computado)
+    const sBateria = String(getSgbCell(r, 11, r.__sgb)).toUpperCase();
     if (sBateria.includes('VENCIDO') || sBateria.includes('A VENCER')) totalAlertas++;
 
-    // M — Lavagem (col 12, data bruta): alerta quando df <= ALERTA_DIAS_AVISO ou vencido
-    const lavagem = getCell(r, 12);
+    // M — Lavagem (data bruta): alerta quando df <= ALERTA_DIAS_AVISO ou vencido
+    const lavagem = getSgbCell(r, 12, r.__sgb);
     if (lavagem) {
       const parts = String(lavagem).split('/');
       if (parts.length === 3) {
@@ -227,12 +246,12 @@ async function getDashboardMacro() {
       }
     }
 
-    // N — Pneu (col 13, km bruto)
-    const kmPneu = parseFloat(getCell(r, 13)) || 0;
+    // N — Pneu (km bruto)
+    const kmPneu = parseFloat(getSgbCell(r, 13, r.__sgb)) || 0;
     if (kmPneu > 0 && (kmAtual >= kmPneu || kmPneu - kmAtual <= KM_THRESHOLD_WARNING)) totalAlertas++;
 
-    // O — Embreagem (col 14, km bruto)
-    const kmEmb = parseFloat(getCell(r, 14)) || 0;
+    // O — Embreagem (km bruto)
+    const kmEmb = parseFloat(getSgbCell(r, 14, r.__sgb)) || 0;
     if (kmEmb > 0 && (kmAtual >= kmEmb || kmEmb - kmAtual <= KM_THRESHOLD_WARNING)) totalAlertas++;
   });
 
@@ -378,19 +397,19 @@ function mapSgbDetalhado(rows, sgb) {
     acc[String(prefixo).toUpperCase().trim()] = {
       sgb,
       km: getCellFormatted(row, 2),
-      vtrGarantia: getCellFormatted(row, 3),
-      proximaTrocaOleoKm: getCellFormatted(row, 4),
-      proximaTrocaOleoTempo: getCellFormatted(row, 5),
-      revisaoFreioKm: getCellFormatted(row, 6),
-      vencimentoBateria: getCellFormatted(row, 7),
-      statusOleoKm: getCellFormatted(row, 8),
-      statusOleoTempo: getCellFormatted(row, 9),
-      statusFreio: getCellFormatted(row, 10),
-      statusBateria: getCellFormatted(row, 11),
-      dataLavagemLubrificacao: getCellFormatted(row, 12),
-      pneusProximaTroca: getCellFormatted(row, 13),
-      embreagemProximaTroca: getCellFormatted(row, 14),
-      status: getCellFormatted(row, 15),
+      vtrGarantia: getSgbCellFormatted(row, 3, sgb),
+      proximaTrocaOleoKm: getSgbCellFormatted(row, 4, sgb),
+      proximaTrocaOleoTempo: getSgbCellFormatted(row, 5, sgb),
+      revisaoFreioKm: getSgbCellFormatted(row, 6, sgb),
+      vencimentoBateria: getSgbCellFormatted(row, 7, sgb),
+      statusOleoKm: getSgbCellFormatted(row, 8, sgb),
+      statusOleoTempo: getSgbCellFormatted(row, 9, sgb),
+      statusFreio: getSgbCellFormatted(row, 10, sgb),
+      statusBateria: getSgbCellFormatted(row, 11, sgb),
+      dataLavagemLubrificacao: getSgbCellFormatted(row, 12, sgb),
+      pneusProximaTroca: getSgbCellFormatted(row, 13, sgb),
+      embreagemProximaTroca: getSgbCellFormatted(row, 14, sgb),
+      status: getSgbCellFormatted(row, 15, sgb),
     };
     return acc;
   }, {});
